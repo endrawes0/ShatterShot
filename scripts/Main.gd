@@ -196,6 +196,30 @@ func _fit_to_viewport() -> void:
 		top_shape.size = Vector2(size.x + 40.0, 20.0)
 	if top_wall:
 		top_wall.position = Vector2(size.x * 0.5, -10.0)
+	_center_bricks_in_viewport()
+
+func _center_bricks_in_viewport() -> void:
+	if bricks_root == null or bricks_root.get_child_count() == 0:
+		return
+	var half_w: float = brick_size.x * 0.5
+	var half_h: float = brick_size.y * 0.5
+	var min_x: float = INF
+	var max_x: float = -INF
+	for brick in bricks_root.get_children():
+		if brick is Node2D:
+			var pos: Vector2 = (brick as Node2D).position
+			min_x = min(min_x, pos.x - half_w)
+			max_x = max(max_x, pos.x + half_w)
+	if min_x == INF or max_x == -INF:
+		return
+	var center_x: float = (min_x + max_x) * 0.5
+	var target_x: float = get_viewport_rect().size.x * 0.5
+	var offset_x: float = target_x - center_x
+	if absf(offset_x) < 0.5:
+		return
+	for brick in bricks_root.get_children():
+		if brick is Node2D:
+			(brick as Node2D).position.x += offset_x
 
 func _set_hud_tooltips() -> void:
 	energy_label.mouse_filter = Control.MOUSE_FILTER_STOP

@@ -106,7 +106,11 @@ func _build_resolution_options() -> void:
 			"label": "%dx%d (Display)" % [display_resolution.x, display_resolution.y]
 		})
 	items.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		return String(a["label"]) < String(b["label"])
+		var size_a: Vector2i = a["size"]
+		var size_b: Vector2i = b["size"]
+		if size_a.x == size_b.x:
+			return size_a.y < size_b.y
+		return size_a.x < size_b.x
 	)
 	resolution_sizes = []
 	for item in items:
