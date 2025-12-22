@@ -341,3 +341,10 @@ offset_top = 52.0
 offset_right = 320.0
 offset_bottom = 84.0
 text = "Main Menu"
+
+[node name="ForfeitDialog" type="ConfirmationDialog" parent="HUD"]
+visible = false
+title = "Forfeit Volley"
+dialog_text = "End the volley and take threat damage?"
+ok_button_text = "Forfeit"
+cancel_button_text = "Cancel"

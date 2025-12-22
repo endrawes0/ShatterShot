@@ -14,12 +14,16 @@ config/name="BlockBreaker"
 run/main_scene="res://scenes/MainMenu.tscn"
 config/features=PackedStringArray("4.5")
 
+[autoload]
+
+App="*res://scripts/App.gd"
+
 [display]
 
 window/size/viewport_width=800
 window/size/viewport_height=600
-window/size/mode=3
-window/size/resizable=false
+window/size/mode=0
+window/size/resizable=true
 window/size/window_width_override=800
 window/size/window_height_override=600
 

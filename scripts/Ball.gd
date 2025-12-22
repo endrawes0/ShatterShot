@@ -10,7 +10,7 @@ signal mod_consumed(mod_id: String)
 @onready var rect: ColorRect = $Rect
 
 var launched: bool = false
-const OFFSET: Vector2 = Vector2(0, -22)
+const OFFSET: Vector2 = Vector2(0, -32)
 var damage: int = 1
 var piercing: bool = false
 var base_damage: int = 1
@@ -32,8 +32,6 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if not launched:
 		global_position = paddle.global_position + OFFSET
-		if Input.is_action_just_pressed("ui_accept"):
-			_launched()
 		return
 
 	var collision: KinematicCollision2D = move_and_collide(velocity * delta)
@@ -77,12 +75,6 @@ func _physics_process(delta: float) -> void:
 			_consume_mod("spikes")
 		_reset()
 		emit_signal("lost", self)
-
-func _launched() -> void:
-	launched = true
-	base_damage = damage
-	var angle: float = randf_range(-0.35, 0.35)
-	velocity = Vector2(0, -1).rotated(angle) * speed
 
 func launch_with_angle(angle: float) -> void:
 	launched = true

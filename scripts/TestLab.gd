@@ -70,7 +70,7 @@ func _ready() -> void:
 			child.queue_free()
 	)
 	_connect_button("DebugPanel/VBox/BackMenu", func() -> void:
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+		App.show_menu()
 	)
 
 func _apply_debug_font_size(size: int) -> void:

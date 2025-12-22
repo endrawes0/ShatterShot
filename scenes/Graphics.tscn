@@ -1,0 +1,39 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/Graphics.gd" id=1]
+
+[node name="Graphics" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="Center" type="CenterContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="VBox" type="VBoxContainer" parent="Center"]
+theme_override_constants/separation = 12
+
+[node name="Title" type="Label" parent="Center/VBox"]
+text = "Graphics"
+horizontal_alignment = 1
+
+[node name="WindowModeLabel" type="Label" parent="Center/VBox"]
+text = "Window Mode"
+horizontal_alignment = 1
+
+[node name="WindowMode" type="OptionButton" parent="Center/VBox"]
+text = "Windowed"
+
+[node name="ResolutionLabel" type="Label" parent="Center/VBox"]
+text = "Resolution"
+horizontal_alignment = 1
+
+[node name="Resolution" type="OptionButton" parent="Center/VBox"]
+text = "1280x720"
+
+[node name="BackButton" type="Button" parent="Center/VBox"]
+text = "Back"

@@ -28,8 +28,14 @@ horizontal_alignment = 1
 [node name="StartButton" type="Button" parent="Center/VBox"]
 text = "Start Run"
 
+[node name="ContinueButton" type="Button" parent="Center/VBox"]
+text = "Continue Run"
+
 [node name="HelpButton" type="Button" parent="Center/VBox"]
 text = "How To Play"
+
+[node name="GraphicsButton" type="Button" parent="Center/VBox"]
+text = "Graphics"
 
 [node name="TestButton" type="Button" parent="Center/VBox"]
 text = "Test Lab"

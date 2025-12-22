@@ -4,7 +4,7 @@ enum GameState { MAP, PLANNING, VOLLEY, REWARD, SHOP, REST, GAME_OVER, VICTORY }
 
 const CARD_DATA: Dictionary = {
 	"strike": {"name": "Strike", "cost": 1, "desc": "+1 volley damage.", "type": "offense"},
-	"twin": {"name": "Twin Launch", "cost": 1, "desc": "+1 ball this volley.", "type": "offense"},
+	"twin": {"name": "Twin Launch", "cost": 1, "desc": "Gain an extra launch this volley.", "type": "offense"},
 	"guard": {"name": "Guard", "cost": 1, "desc": "Gain 4 block. Block reduces threat damage this turn.", "type": "defense"},
 	"widen": {"name": "Widen Paddle", "cost": 1, "desc": "Widen paddle for 2 turns.", "type": "utility"},
 	"bomb": {"name": "Bomb", "cost": 2, "desc": "Destroy up to 3 random bricks.", "type": "offense"},
@@ -25,6 +25,7 @@ const CARD_TYPE_COLORS: Dictionary = {
 const CARD_BUTTON_SIZE: Vector2 = Vector2(110, 154)
 const MAX_HAND_SIZE: int = 7
 const BASE_STARTING_HAND_SIZE: int = 4
+const BALL_SPAWN_OFFSET: Vector2 = Vector2(0, -32)
 
 const BALL_MOD_DATA: Dictionary = {
 	"explosive": {"name": "Explosives", "desc": "Explode bricks on hit.", "cost": 50},
@@ -57,6 +58,7 @@ const CARD_POOL: Array[String] = [
 @onready var paddle: CharacterBody2D = $Paddle
 @onready var bricks_root: Node2D = $Bricks
 @onready var hud: CanvasLayer = $HUD
+@onready var hand_bar: Control = $HUD/HandBar
 @onready var hand_container: HBoxContainer = $HUD/HandBar/HandContainer
 @onready var energy_label: Label = $HUD/TopBar/EnergyLabel
 @onready var deck_label: Label = $HUD/TopBar/DeckLabel
@@ -90,6 +92,7 @@ const CARD_POOL: Array[String] = [
 @onready var gameover_label: Label = $HUD/GameOverPanel/GameOverLabel
 @onready var restart_button: Button = $HUD/GameOverPanel/RestartButton
 @onready var menu_button: Button = $HUD/GameOverPanel/MenuButton
+@onready var forfeit_dialog: ConfirmationDialog = $HUD/ForfeitDialog
 @onready var left_wall: CollisionShape2D = $Walls/LeftWall
 @onready var right_wall: CollisionShape2D = $Walls/RightWall
 @onready var top_wall: CollisionShape2D = $Walls/TopWall
@@ -124,8 +127,10 @@ var persist_ball_mods: bool = false
 
 var volley_damage_bonus: int = 0
 var volley_ball_bonus: int = 0
+var volley_ball_reserve: int = 0
 var volley_piercing: bool = false
 var volley_ball_speed_multiplier: float = 1.0
+var reserve_launch_cooldown: float = 0.0
 
 var base_paddle_half_width: float = 50.0
 var paddle_buff_turns: int = 0
@@ -144,8 +149,17 @@ var encounter_speed_boost: bool = false
 var deck_return_panel: String = ""
 var deck_return_info: String = ""
 
+func _update_reserve_indicator() -> void:
+	if paddle and paddle.has_method("set_reserve_count"):
+		if state == GameState.PLANNING:
+			paddle.set_reserve_count(volley_ball_bonus)
+		else:
+			paddle.set_reserve_count(volley_ball_reserve)
+
 func _ready() -> void:
 	randomize()
+	if get_viewport():
+		get_viewport().size_changed.connect(_fit_to_viewport)
 	_fit_to_viewport()
 	base_paddle_half_width = paddle.half_width
 	base_paddle_speed = paddle.speed
@@ -154,6 +168,8 @@ func _ready() -> void:
 		restart_button.pressed.connect(_start_run)
 	if menu_button:
 		menu_button.pressed.connect(_go_to_menu)
+	if forfeit_dialog:
+		forfeit_dialog.confirmed.connect(_confirm_forfeit_volley)
 	if deck_button:
 		deck_button.pressed.connect(_show_deck_panel)
 	if deck_close_button:
@@ -190,6 +206,30 @@ func _fit_to_viewport() -> void:
 		top_shape.size = Vector2(size.x + 40.0, 20.0)
 	if top_wall:
 		top_wall.position = Vector2(size.x * 0.5, -10.0)
+	_center_bricks_in_viewport()
+
+func _center_bricks_in_viewport() -> void:
+	if bricks_root == null or bricks_root.get_child_count() == 0:
+		return
+	var half_w: float = brick_size.x * 0.5
+	var half_h: float = brick_size.y * 0.5
+	var min_x: float = INF
+	var max_x: float = -INF
+	for brick in bricks_root.get_children():
+		if brick is Node2D:
+			var pos: Vector2 = (brick as Node2D).position
+			min_x = min(min_x, pos.x - half_w)
+			max_x = max(max_x, pos.x + half_w)
+	if min_x == INF or max_x == -INF:
+		return
+	var center_x: float = (min_x + max_x) * 0.5
+	var target_x: float = get_viewport_rect().size.x * 0.5
+	var offset_x: float = target_x - center_x
+	if absf(offset_x) < 0.5:
+		return
+	for brick in bricks_root.get_children():
+		if brick is Node2D:
+			(brick as Node2D).position.x += offset_x
 
 func _set_hud_tooltips() -> void:
 	energy_label.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -216,11 +256,29 @@ func _set_hud_tooltips() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		get_tree().quit()
+		App.show_menu()
+	if event is InputEventKey and event.is_pressed() and not event.is_echo():
+		var key_event: InputEventKey = event
+		if key_event.keycode in [KEY_ENTER, KEY_KP_ENTER]:
+			if state == GameState.VOLLEY and active_balls.is_empty() and volley_ball_reserve > 0:
+				_prompt_forfeit_volley()
+				return
 	if state == GameState.PLANNING and event.is_action_pressed("ui_accept"):
 		_launch_volley()
+	if state == GameState.VOLLEY and event.is_action_pressed("ui_select") and active_balls.is_empty() and volley_ball_reserve > 0:
+		_prompt_forfeit_volley()
+	if state == GameState.VOLLEY and event.is_action_pressed("ui_accept") and reserve_launch_cooldown <= 0.0:
+		if event is InputEventKey:
+			var launch_key: InputEventKey = event
+			if launch_key.keycode in [KEY_ENTER, KEY_KP_ENTER]:
+				return
+		_launch_reserve_ball()
 	if state == GameState.PLANNING and event.is_action_pressed("ui_select"):
 		_end_turn()
+
+func _process(delta: float) -> void:
+	if reserve_launch_cooldown > 0.0:
+		reserve_launch_cooldown = max(0.0, reserve_launch_cooldown - delta)
 
 func _start_run() -> void:
 	hp = max_hp
@@ -379,6 +437,8 @@ func _start_turn() -> void:
 	block = 0
 	volley_damage_bonus = 0
 	volley_ball_bonus = 0
+	volley_ball_reserve = 0
+	_update_reserve_indicator()
 	volley_piercing = false
 	volley_ball_speed_multiplier = 1.0
 	_apply_paddle_buffs()
@@ -404,47 +464,84 @@ func _launch_volley() -> void:
 		return
 	state = GameState.VOLLEY
 	var total_balls: int = 1 + volley_ball_bonus
-	var damage: int = 1 + volley_damage_bonus
+	volley_ball_reserve = max(0, total_balls - 1)
+	_update_reserve_indicator()
+	reserve_launch_cooldown = 0.1
+	_spawn_volley_ball()
+	info_label.text = "Volley in motion."
+
+func _launch_reserve_ball() -> void:
+	if state != GameState.VOLLEY:
+		return
+	if volley_ball_reserve <= 0:
+		return
+	volley_ball_reserve -= 1
+	_update_reserve_indicator()
+	_spawn_volley_ball()
+	info_label.text = "Extra ball launched."
+
+func _spawn_volley_ball() -> void:
+	var ball: CharacterBody2D = ball_scene.instantiate() as CharacterBody2D
+	ball.paddle_path = NodePath("../Paddle")
+	ball.damage = 1 + volley_damage_bonus
+	ball.piercing = volley_piercing
 	var speed_multiplier: float = volley_ball_speed_multiplier
 	if encounter_speed_boost:
 		speed_multiplier *= 1.25
-	for index in range(total_balls):
-		var ball: CharacterBody2D = ball_scene.instantiate() as CharacterBody2D
-		ball.paddle_path = NodePath("../Paddle")
-		ball.damage = damage
-		ball.piercing = volley_piercing
-		ball.speed *= speed_multiplier
-		if ball.has_method("set_ball_mod"):
-			ball.set_ball_mod(active_ball_mod)
-		else:
-			ball.ball_mod = active_ball_mod
-		add_child(ball)
-		var angle: float = 0.0
-		if total_balls > 1:
-			angle = lerp(-0.35, 0.35, float(index) / float(total_balls - 1))
-		ball.global_position = paddle.global_position + Vector2(0, -22)
-		ball.launch_with_angle(angle)
-		ball.lost.connect(_on_ball_lost)
-		ball.mod_consumed.connect(_on_ball_mod_consumed)
-		active_balls.append(ball)
-	info_label.text = "Volley in motion."
+	ball.speed *= speed_multiplier
+	if ball.has_method("set_ball_mod"):
+		ball.set_ball_mod(active_ball_mod)
+	else:
+		ball.ball_mod = active_ball_mod
+	add_child(ball)
+	ball.global_position = paddle.global_position + BALL_SPAWN_OFFSET
+	ball.launch_with_angle(0.0)
+	ball.lost.connect(_on_ball_lost)
+	ball.mod_consumed.connect(_on_ball_mod_consumed)
+	active_balls.append(ball)
 
 func _on_ball_lost(ball: Node) -> void:
 	active_balls.erase(ball)
 	if is_instance_valid(ball):
 		ball.queue_free()
+	_regen_bricks_on_drop()
+	if active_balls.is_empty():
+		if _check_victory():
+			_end_encounter()
+			return
+		if volley_ball_reserve > 0:
+			info_label.text = "Press Space to launch the next ball or Enter to end the volley."
+			return
+		_apply_volley_threat()
+
+func _forfeit_volley() -> void:
+	if state != GameState.VOLLEY:
+		return
+	if not active_balls.is_empty():
+		return
+	if volley_ball_reserve <= 0:
+		return
+	volley_ball_reserve = 0
+	_update_reserve_indicator()
+	_apply_volley_threat()
+
+func _prompt_forfeit_volley() -> void:
+	if forfeit_dialog == null:
+		_forfeit_volley()
+		return
+	forfeit_dialog.popup_centered()
+
+func _confirm_forfeit_volley() -> void:
+	_forfeit_volley()
+
+func _apply_volley_threat() -> void:
 	var threat: int = _calculate_threat()
 	hp -= threat
 	if hp <= 0:
 		_show_game_over()
 		return
 	info_label.text = "Ball lost. You take %d damage." % threat
-	_regen_bricks_on_drop()
-	if active_balls.is_empty():
-		if _check_victory():
-			_end_encounter()
-		else:
-			_start_turn()
+	_start_turn()
 
 func _on_ball_mod_consumed(mod_id: String) -> void:
 	if active_ball_mod != mod_id:
@@ -616,7 +713,20 @@ func _show_victory() -> void:
 	info_label.text = "You cleared the run."
 
 func _go_to_menu() -> void:
-	get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")
+	App.show_menu()
+
+func on_menu_opened() -> void:
+	for node in [paddle, bricks_root, hud]:
+		if node:
+			node.visible = false
+	process_mode = Node.PROCESS_MODE_DISABLED
+
+func on_menu_closed() -> void:
+	for node in [paddle, bricks_root, hud]:
+		if node:
+			node.visible = true
+	process_mode = Node.PROCESS_MODE_INHERIT
+	_fit_to_viewport()
 
 func _hide_all_panels() -> void:
 	if map_panel:
@@ -635,6 +745,8 @@ func _clear_active_balls() -> void:
 		if is_instance_valid(ball):
 			ball.queue_free()
 	active_balls.clear()
+	volley_ball_reserve = 0
+	_update_reserve_indicator()
 
 func _build_bricks(rows: int, cols: int, base_hp: int, pattern: String) -> void:
 	for child in bricks_root.get_children():
@@ -808,6 +920,7 @@ func _play_card(card_id: String) -> void:
 	discard_pile.append(card_id)
 	hand.erase(card_id)
 	_refresh_hand()
+	_update_reserve_indicator()
 	_update_labels()
 
 func _apply_card_effect(card_id: String) -> void:
