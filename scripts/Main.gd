@@ -249,6 +249,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		App.show_menu()
 	if state == GameState.PLANNING and event.is_action_pressed("ui_accept"):
 		_launch_volley()
+	if state == GameState.VOLLEY and event.is_action_pressed("ui_select") and active_balls.is_empty() and volley_ball_reserve > 0:
+		_forfeit_volley()
 	if state == GameState.VOLLEY and event.is_action_pressed("ui_accept") and reserve_launch_cooldown <= 0.0:
 		_launch_reserve_ball()
 	if state == GameState.PLANNING and event.is_action_pressed("ui_select"):
@@ -485,15 +487,28 @@ func _on_ball_lost(ball: Node) -> void:
 			_end_encounter()
 			return
 		if volley_ball_reserve > 0:
-			info_label.text = "Press Space to launch the next ball."
+			info_label.text = "Press Space to launch the next ball or Enter to end the volley."
 			return
-		var threat: int = _calculate_threat()
-		hp -= threat
-		if hp <= 0:
-			_show_game_over()
-			return
-		info_label.text = "Ball lost. You take %d damage." % threat
-		_start_turn()
+		_apply_volley_threat()
+
+func _forfeit_volley() -> void:
+	if state != GameState.VOLLEY:
+		return
+	if not active_balls.is_empty():
+		return
+	if volley_ball_reserve <= 0:
+		return
+	volley_ball_reserve = 0
+	_apply_volley_threat()
+
+func _apply_volley_threat() -> void:
+	var threat: int = _calculate_threat()
+	hp -= threat
+	if hp <= 0:
+		_show_game_over()
+		return
+	info_label.text = "Ball lost. You take %d damage." % threat
+	_start_turn()
 
 func _on_ball_mod_consumed(mod_id: String) -> void:
 	if active_ball_mod != mod_id:
