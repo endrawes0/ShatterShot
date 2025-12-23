@@ -1,8 +1,8 @@
-[gd_scene load_steps=8 format=3 uid="uid://dhnntcfxs4lg0"]
+[gd_scene load_steps=7 format=3 uid="uid://dhnntcfxs4lg0"]
 
 [ext_resource type="PackedScene" path="res://scenes/Paddle.tscn" id="1"]
 [ext_resource type="Script" uid="uid://b8nul2np1du6b" path="res://scripts/Main.gd" id="3"]
-[ext_resource type="PackedScene" path="res://scenes/Shop.tscn" id="4"]
+[ext_resource type="PackedScene" uid="uid://cfnto8it2e26m" path="res://scenes/Shop.tscn" id="4"]
 
 [sub_resource type="RectangleShape2D" id="1"]
 size = Vector2(20, 600)
@@ -196,9 +196,74 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 156.0
 offset_top = 8.0
-offset_right = -8.0
+offset_right = -156.0
 offset_bottom = -8.0
 theme_override_constants/separation = 8
+
+[node name="DiscardStack" type="Control" parent="HUD/HandBar"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -136.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = 174.0
+grow_horizontal = 0
+
+[node name="DiscardCardBack3" type="ColorRect" parent="HUD/HandBar/DiscardStack"]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 2.0
+offset_right = 138.0
+offset_bottom = 156.0
+rotation = 0.174533
+color = Color(0.12156863, 0.12156863, 0.12156863, 1)
+
+[node name="DiscardCardBack2" type="ColorRect" parent="HUD/HandBar/DiscardStack"]
+layout_mode = 0
+offset_left = -4.0
+offset_top = 27.0
+offset_right = 106.0
+offset_bottom = 181.0
+rotation = -0.174533
+color = Color(0.16, 0.16, 0.16, 1)
+
+[node name="DiscardCardBack1" type="ColorRect" parent="HUD/HandBar/DiscardStack"]
+layout_mode = 0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = 122.0
+offset_bottom = 166.0
+color = Color(0.23921569, 0.23921569, 0.23921569, 1)
+
+[node name="DiscardCountLabel" type="Label" parent="HUD/HandBar/DiscardStack"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -2.0
+offset_top = -9.0
+offset_right = -2.0
+offset_bottom = 3.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="DiscardButton" type="Button" parent="HUD/HandBar/DiscardStack"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 7.0
+offset_top = 5.0
+offset_right = -1.0
+offset_bottom = 7.0
+grow_horizontal = 2
+grow_vertical = 2
+flat = true
 
 [node name="MapPanel" type="Panel" parent="HUD"]
 visible = false
@@ -229,6 +294,7 @@ offset_bottom = 100.0
 theme_override_constants/separation = 12
 
 [node name="RewardPanel" type="Panel" parent="HUD"]
+visible = false
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
@@ -266,6 +332,7 @@ layout_mode = 2
 text = "Skip"
 
 [node name="ShopPanel" parent="HUD" instance=ExtResource("4")]
+visible = false
 
 [node name="DeckPanel" type="Panel" parent="HUD"]
 visible = false
@@ -343,8 +410,6 @@ offset_bottom = 84.0
 text = "Main Menu"
 
 [node name="ForfeitDialog" type="ConfirmationDialog" parent="HUD"]
-visible = false
 title = "Forfeit Volley"
-dialog_text = "End the volley and take threat damage?"
 ok_button_text = "Forfeit"
-cancel_button_text = "Cancel"
+dialog_text = "End the volley and take threat damage?"

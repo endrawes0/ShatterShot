@@ -3,16 +3,16 @@ extends Node2D
 enum GameState { MAP, PLANNING, VOLLEY, REWARD, SHOP, REST, GAME_OVER, VICTORY }
 
 const CARD_DATA: Dictionary = {
-	"strike": {"name": "Strike", "cost": 1, "desc": "+1 volley damage.", "type": "offense"},
+	"strike": {"name": "Punch", "cost": 1, "desc": "+1 volley damage.", "type": "offense"},
 	"twin": {"name": "Twin Launch", "cost": 1, "desc": "Gain an extra launch this volley.", "type": "offense"},
-	"guard": {"name": "Guard", "cost": 1, "desc": "Gain 4 block. Block reduces threat damage this turn.", "type": "defense"},
+	"guard": {"name": "Guard", "cost": 1, "desc": "Gain 5 block. Block reduces threat damage this turn.", "type": "defense"},
 	"widen": {"name": "Widen Paddle", "cost": 1, "desc": "Widen paddle for 2 turns.", "type": "utility"},
 	"bomb": {"name": "Bomb", "cost": 2, "desc": "Destroy up to 3 random bricks.", "type": "offense"},
 	"rally": {"name": "Rally", "cost": 0, "desc": "Draw 2 cards.", "type": "utility"},
 	"focus": {"name": "Focus", "cost": 1, "desc": "+1 energy this turn.", "type": "utility"},
 	"haste": {"name": "Haste", "cost": 1, "desc": "Paddle moves faster for 2 turns.", "type": "utility"},
 	"slow": {"name": "Stasis", "cost": 1, "desc": "Slow balls this volley.", "type": "defense"},
-	"wound": {"name": "Wound", "cost": 9, "desc": "Unplayable. Clutters your hand until end of turn.", "type": "curse"}
+	"wound": {"name": "Wound", "cost": 1, "desc": "Playable. Remove it from your deck.", "type": "curse"}
 }
 
 const CARD_TYPE_COLORS: Dictionary = {
@@ -64,6 +64,8 @@ const CARD_POOL: Array[String] = [
 @onready var deck_label: Label = $HUD/TopBar/DeckLabel
 @onready var deck_count_label: Label = $HUD/HandBar/DeckStack/DeckCountLabel
 @onready var deck_stack: Control = $HUD/HandBar/DeckStack
+@onready var discard_stack: Control = $HUD/HandBar/DiscardStack
+@onready var discard_count_label: Label = $HUD/HandBar/DiscardStack/DiscardCountLabel
 @onready var discard_label: Label = $HUD/TopBar/DiscardLabel
 @onready var hp_label: Label = $HUD/TopBar/HpLabel
 @onready var gold_label: Label = $HUD/TopBar/GoldLabel
@@ -88,6 +90,7 @@ const CARD_POOL: Array[String] = [
 @onready var deck_list: VBoxContainer = $HUD/DeckPanel/DeckScroll/DeckList
 @onready var deck_close_button: Button = $HUD/DeckPanel/DeckCloseButton
 @onready var deck_button: Button = $HUD/HandBar/DeckStack/DeckButton
+@onready var discard_button: Button = $HUD/HandBar/DiscardStack/DiscardButton
 @onready var gameover_panel: Panel = $HUD/GameOverPanel
 @onready var gameover_label: Label = $HUD/GameOverPanel/GameOverLabel
 @onready var restart_button: Button = $HUD/GameOverPanel/RestartButton
@@ -100,8 +103,11 @@ const CARD_POOL: Array[String] = [
 var brick_scene: PackedScene = preload("res://scenes/Brick.tscn")
 var ball_scene: PackedScene = preload("res://scenes/Ball.tscn")
 var card_art_textures: Dictionary = {
-	"strike": preload("res://assets/cards/strike.png"),
-	"twin": preload("res://assets/cards/twin.png")
+	"strike": preload("res://assets/cards/punch.png"),
+	"twin": preload("res://assets/cards/twin.png"),
+	"guard": preload("res://assets/cards/guard.png"),
+	"rally": preload("res://assets/cards/rally.png"),
+	"wound": preload("res://assets/cards/wound.png")
 }
 
 var state: GameState = GameState.MAP
@@ -172,6 +178,8 @@ func _ready() -> void:
 		forfeit_dialog.confirmed.connect(_confirm_forfeit_volley)
 	if deck_button:
 		deck_button.pressed.connect(_show_deck_panel)
+	if discard_button:
+		discard_button.pressed.connect(_show_discard_panel)
 	if deck_close_button:
 		deck_close_button.pressed.connect(_close_deck_panel)
 	if reward_skip_button:
@@ -243,6 +251,9 @@ func _set_hud_tooltips() -> void:
 		deck_button.tooltip_text = "View your deck."
 	discard_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	discard_label.tooltip_text = "Cards that were played this fight."
+	if discard_count_label:
+		discard_count_label.mouse_filter = Control.MOUSE_FILTER_STOP
+		discard_count_label.tooltip_text = "Cards in your discard pile."
 	hp_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	hp_label.tooltip_text = "Your health. If it reaches 0, the run ends."
 	gold_label.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -908,16 +919,14 @@ func _refresh_hand() -> void:
 func _play_card(card_id: String) -> void:
 	if state != GameState.PLANNING:
 		return
-	if card_id == "wound":
-		info_label.text = "Wound is unplayable."
-		return
 	var cost: int = CARD_DATA[card_id]["cost"]
 	if energy < cost:
 		info_label.text = "Not enough energy."
 		return
 	energy -= cost
 	_apply_card_effect(card_id)
-	discard_pile.append(card_id)
+	if card_id != "wound":
+		discard_pile.append(card_id)
 	hand.erase(card_id)
 	_refresh_hand()
 	_update_reserve_indicator()
@@ -930,7 +939,7 @@ func _apply_card_effect(card_id: String) -> void:
 		"twin":
 			volley_ball_bonus += 1
 		"guard":
-			block += 4
+			block += 5
 		"widen":
 			paddle_buff_turns = max(paddle_buff_turns, 2)
 			paddle.set_half_width(base_paddle_half_width + 30.0)
@@ -946,9 +955,15 @@ func _apply_card_effect(card_id: String) -> void:
 		"slow":
 			volley_ball_speed_multiplier = 0.7
 		"wound":
-			info_label.text = "Wound is unplayable."
+			_remove_one_from_array(deck, "wound")
+			info_label.text = "Wound removed from your deck."
 		_:
 			pass
+
+func _remove_one_from_array(values: Array, target: String) -> void:
+	var index: int = values.find(target)
+	if index >= 0:
+		values.remove_at(index)
 
 func _destroy_random_bricks(amount: int) -> void:
 	var bricks: Array = bricks_root.get_children()
@@ -1089,6 +1104,8 @@ func _update_labels() -> void:
 	deck_label.text = "Draw: %d" % draw_count
 	deck_count_label.text = "%d" % draw_count
 	discard_label.text = "Discard: %d" % discard_pile.size()
+	if discard_count_label:
+		discard_count_label.text = "%d" % discard_pile.size()
 	hp_label.text = "HP: %d/%d" % [hp, max_hp]
 	gold_label.text = "Gold: %d" % gold
 	if shop_gold_label:
@@ -1182,6 +1199,24 @@ func _show_deck_panel() -> void:
 	info_label.text = "Deck contents."
 	_build_deck_list()
 
+func _show_discard_panel() -> void:
+	if state == GameState.GAME_OVER or state == GameState.VICTORY:
+		return
+	deck_return_panel = ""
+	if map_panel.visible:
+		deck_return_panel = "map"
+	elif reward_panel.visible:
+		deck_return_panel = "reward"
+	elif shop_panel.visible:
+		deck_return_panel = "shop"
+	elif gameover_panel.visible:
+		deck_return_panel = "gameover"
+	deck_return_info = info_label.text
+	_hide_all_panels()
+	deck_panel.visible = true
+	info_label.text = "Discard contents."
+	_build_deck_list(discard_pile)
+
 func _close_deck_panel() -> void:
 	_hide_all_panels()
 	match deck_return_panel:
@@ -1197,11 +1232,11 @@ func _close_deck_panel() -> void:
 			pass
 	info_label.text = deck_return_info
 
-func _build_deck_list() -> void:
+func _build_deck_list(source: Array = deck) -> void:
 	for child in deck_list.get_children():
 		child.queue_free()
 	var counts: Dictionary = {}
-	for card_id in deck:
+	for card_id in source:
 		counts[card_id] = counts.get(card_id, 0) + 1
 	var card_ids: Array[String] = []
 	for key in counts.keys():

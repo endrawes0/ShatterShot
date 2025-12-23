@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b533250ij0hjw"
-path="res://.godot/imported/strike.png-b6a558c3179c29ab5d13be9b06e7b2bb.ctex"
+uid="uid://ipvnksols6tn"
+path="res://.godot/imported/rally.png-a0e0b911acfab01060bd0a3d75bbd163.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/cards/strike.png"
-dest_files=["res://.godot/imported/strike.png-b6a558c3179c29ab5d13be9b06e7b2bb.ctex"]
+source_file="res://assets/cards/rally.png"
+dest_files=["res://.godot/imported/rally.png-a0e0b911acfab01060bd0a3d75bbd163.ctex"]
 
 [params]
 
