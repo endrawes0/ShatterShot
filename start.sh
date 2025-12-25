@@ -2,7 +2,7 @@
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-GODOT_BIN="$DIR/../Godot_v4.5.1-stable_linux.x86_64"
+GODOT_BIN="$DIR/../Godot_v4.5.1"
 
 if [[ -x "$GODOT_BIN" ]]; then
   exec "$GODOT_BIN" --path "$DIR"

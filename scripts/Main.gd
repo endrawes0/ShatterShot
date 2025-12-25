@@ -3,7 +3,7 @@ extends Node2D
 enum GameState { MAP, PLANNING, VOLLEY, REWARD, SHOP, REST, GAME_OVER, VICTORY }
 
 const CARD_DATA: Dictionary = {
-	"strike": {"name": "Punch", "cost": 1, "desc": "+1 volley damage.", "type": "offense"},
+	"punch": {"name": "Punch", "cost": 1, "desc": "+1 volley damage.", "type": "offense"},
 	"twin": {"name": "Twin Launch", "cost": 1, "desc": "Gain an extra launch this volley.", "type": "offense"},
 	"guard": {"name": "Guard", "cost": 1, "desc": "Gain 5 block. Block reduces threat damage this turn.", "type": "defense"},
 	"widen": {"name": "Widen Paddle", "cost": 1, "desc": "Widen paddle for 2 turns.", "type": "utility"},
@@ -12,7 +12,7 @@ const CARD_DATA: Dictionary = {
 	"focus": {"name": "Focus", "cost": 1, "desc": "+1 energy this turn.", "type": "utility"},
 	"haste": {"name": "Haste", "cost": 1, "desc": "Paddle moves faster for 2 turns.", "type": "utility"},
 	"slow": {"name": "Stasis", "cost": 1, "desc": "Slow balls this volley.", "type": "defense"},
-	"wound": {"name": "Wound", "cost": 1, "desc": "Playable. Remove it from your deck.", "type": "curse"}
+	"wound": {"name": "Wound", "cost": 1, "desc": "Pay 1 energy to remove it from your deck.", "type": "curse"}
 }
 
 const CARD_TYPE_COLORS: Dictionary = {
@@ -40,14 +40,14 @@ const BALL_MOD_COLORS: Dictionary = {
 }
 
 const STARTING_DECK: Array[String] = [
-	"strike", "strike", "strike", "strike",
+	"punch", "punch", "punch", "punch",
 	"twin", "twin",
 	"guard", "guard",
 	"rally", "focus"
 ]
 
 const CARD_POOL: Array[String] = [
-	"strike", "twin", "guard", "widen", "bomb", "rally", "focus",
+	"punch", "twin", "guard", "widen", "bomb", "rally", "focus",
 	"haste", "slow"
 ]
 
@@ -103,7 +103,7 @@ const CARD_POOL: Array[String] = [
 var brick_scene: PackedScene = preload("res://scenes/Brick.tscn")
 var ball_scene: PackedScene = preload("res://scenes/Ball.tscn")
 var card_art_textures: Dictionary = {
-	"strike": preload("res://assets/cards/punch.png"),
+	"punch": preload("res://assets/cards/punch.png"),
 	"twin": preload("res://assets/cards/twin.png"),
 	"guard": preload("res://assets/cards/guard.png"),
 	"rally": preload("res://assets/cards/rally.png"),
@@ -352,10 +352,11 @@ func _build_map_buttons() -> void:
 		child.queue_free()
 	var choices: Array[String] = _generate_room_choices()
 	for room_type in choices:
+		var selected_room_type := room_type
 		var button := Button.new()
-		button.text = _room_label(room_type)
+		button.text = _room_label(selected_room_type)
 		button.pressed.connect(func() -> void:
-			_enter_room(room_type)
+			_enter_room(selected_room_type)
 		)
 		map_buttons.add_child(button)
 
@@ -587,9 +588,10 @@ func _build_reward_buttons() -> void:
 		child.queue_free()
 	for _i in range(3):
 		var card_id: String = CARD_POOL.pick_random()
+		var reward_card_id := card_id
 		var button := _create_card_button(card_id)
 		button.pressed.connect(func() -> void:
-			_add_card_to_deck(card_id)
+			_add_card_to_deck(reward_card_id)
 			_show_map()
 		)
 		reward_buttons.add_child(button)
@@ -623,12 +625,13 @@ func _build_shop_buttons() -> void:
 
 	for _i in range(2):
 		var card_id: String = CARD_POOL.pick_random()
+		var shop_card_id := card_id
 		var button := _create_card_button(card_id)
 		_set_card_button_desc(button, "%s\nPrice: 40g" % CARD_DATA[card_id]["desc"])
 		button.pressed.connect(func() -> void:
 			if gold >= 40:
 				gold -= 40
-				_add_card_to_deck(card_id)
+				_add_card_to_deck(shop_card_id)
 				_show_map()
 			else:
 				info_label.text = "Not enough gold."
@@ -639,9 +642,8 @@ func _build_shop_buttons() -> void:
 	remove.pressed.connect(func() -> void:
 		if gold >= 30 and deck.size() > 0:
 			gold -= 30
-			deck.remove_at(randi_range(0, deck.size() - 1))
-			info_label.text = "Card removed."
-			_show_map()
+			_update_labels()
+			_show_remove_card_panel()
 		else:
 			info_label.text = "Cannot remove."
 	)
@@ -678,6 +680,8 @@ func _build_shop_buttons() -> void:
 	for mod_id in BALL_MOD_ORDER:
 		var count: int = int(ball_mod_counts.get(mod_id, 0))
 		var mod: Dictionary = BALL_MOD_DATA[mod_id]
+		var shop_mod_id := mod_id
+		var shop_mod := mod
 		var button := Button.new()
 		if count > 0:
 			button.text = "%s x%d (+1) (%dg)" % [mod["name"], count, mod["cost"]]
@@ -687,10 +691,10 @@ func _build_shop_buttons() -> void:
 		if BALL_MOD_COLORS.has(mod_id):
 			button.self_modulate = BALL_MOD_COLORS[mod_id]
 		button.pressed.connect(func() -> void:
-			if gold >= int(mod["cost"]):
-				gold -= int(mod["cost"])
-				ball_mod_counts[mod_id] = int(ball_mod_counts.get(mod_id, 0)) + 1
-				info_label.text = "%s buff acquired." % mod["name"]
+			if gold >= int(shop_mod["cost"]):
+				gold -= int(shop_mod["cost"])
+				ball_mod_counts[shop_mod_id] = int(ball_mod_counts.get(shop_mod_id, 0)) + 1
+				info_label.text = "%s buff acquired." % shop_mod["name"]
 				_refresh_mod_buttons()
 				_update_labels()
 				_show_shop()
@@ -906,15 +910,7 @@ func _shuffle_into_draw(cards: Array) -> void:
 	draw_pile.shuffle()
 
 func _refresh_hand() -> void:
-	for child in hand_container.get_children():
-		child.queue_free()
-	for card_id in hand:
-		var button := _create_card_button(card_id)
-		button.disabled = state != GameState.PLANNING
-		button.pressed.connect(func() -> void:
-			_play_card(card_id)
-		)
-		hand_container.add_child(button)
+	_populate_card_container(hand_container, hand, Callable(self, "_play_card"), state != GameState.PLANNING)
 
 func _play_card(card_id: String) -> void:
 	if state != GameState.PLANNING:
@@ -934,7 +930,7 @@ func _play_card(card_id: String) -> void:
 
 func _apply_card_effect(card_id: String) -> void:
 	match card_id:
-		"strike":
+		"punch":
 			volley_damage_bonus += 1
 		"twin":
 			volley_ball_bonus += 1
@@ -964,6 +960,39 @@ func _remove_one_from_array(values: Array, target: String) -> void:
 	var index: int = values.find(target)
 	if index >= 0:
 		values.remove_at(index)
+
+func _clear_container(container: Node) -> void:
+	for child in container.get_children():
+		child.queue_free()
+
+func _populate_card_container(container: Container, cards: Array, on_pressed: Callable = Callable(), disabled: bool = false, columns: int = 0) -> void:
+	_clear_container(container)
+	var target_container: Container = container
+	if columns > 0:
+		var grid := GridContainer.new()
+		grid.columns = columns
+		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		grid.add_theme_constant_override("h_separation", 6)
+		grid.add_theme_constant_override("v_separation", 6)
+		container.add_child(grid)
+		target_container = grid
+	for card_id in cards:
+		var selected_card_id: String = String(card_id)
+		var button := _create_card_button(selected_card_id)
+		button.disabled = disabled
+		if on_pressed.is_valid():
+			button.pressed.connect(func() -> void:
+				on_pressed.call(selected_card_id)
+			)
+		target_container.add_child(button)
+
+func _remove_card_from_piles(card_id: String, remove_from_deck: bool) -> void:
+	if remove_from_deck:
+		_remove_one_from_array(deck, card_id)
+	_remove_one_from_array(draw_pile, card_id)
+	_remove_one_from_array(discard_pile, card_id)
+	_remove_one_from_array(hand, card_id)
 
 func _destroy_random_bricks(amount: int) -> void:
 	var bricks: Array = bricks_root.get_children()
@@ -1144,13 +1173,14 @@ func _refresh_mod_buttons() -> void:
 		if count <= 0:
 			continue
 		var mod: Dictionary = BALL_MOD_DATA[mod_id]
+		var active_mod_id := mod_id
 		var button := Button.new()
 		button.text = "%s x%d" % [mod["name"], count]
 		button.tooltip_text = mod["desc"]
 		if BALL_MOD_COLORS.has(mod_id):
 			button.self_modulate = BALL_MOD_COLORS[mod_id]
 		button.pressed.connect(func() -> void:
-			_select_ball_mod(mod_id)
+			_select_ball_mod(active_mod_id)
 		)
 		mods_buttons.add_child(button)
 	var clear_button := Button.new()
@@ -1197,7 +1227,7 @@ func _show_deck_panel() -> void:
 	_hide_all_panels()
 	deck_panel.visible = true
 	info_label.text = "Deck contents."
-	_build_deck_list()
+	_populate_card_container(deck_list, deck, Callable(), false, 4)
 
 func _show_discard_panel() -> void:
 	if state == GameState.GAME_OVER or state == GameState.VICTORY:
@@ -1215,7 +1245,32 @@ func _show_discard_panel() -> void:
 	_hide_all_panels()
 	deck_panel.visible = true
 	info_label.text = "Discard contents."
-	_build_deck_list(discard_pile)
+	_populate_card_container(deck_list, discard_pile, Callable(), false, 5)
+
+func _show_remove_card_panel() -> void:
+	if state == GameState.GAME_OVER or state == GameState.VICTORY:
+		return
+	deck_return_panel = ""
+	if map_panel.visible:
+		deck_return_panel = "map"
+	elif reward_panel.visible:
+		deck_return_panel = "reward"
+	elif shop_panel.visible:
+		deck_return_panel = "shop"
+	elif gameover_panel.visible:
+		deck_return_panel = "gameover"
+	deck_return_info = info_label.text
+	_hide_all_panels()
+	deck_panel.visible = true
+	info_label.text = "Choose a card to remove."
+	_populate_card_container(deck_list, deck, Callable(self, "_on_remove_card_selected"), false, 5)
+
+func _on_remove_card_selected(card_id: String) -> void:
+	_remove_card_from_piles(card_id, true)
+	_refresh_hand()
+	var card_name: String = CARD_DATA[card_id]["name"]
+	deck_return_info = "Removed %s." % card_name
+	_close_deck_panel()
 
 func _close_deck_panel() -> void:
 	_hide_all_panels()
@@ -1226,28 +1281,9 @@ func _close_deck_panel() -> void:
 			reward_panel.visible = true
 		"shop":
 			shop_panel.visible = true
+			_update_labels()
 		"gameover":
 			gameover_panel.visible = true
 		_:
 			pass
 	info_label.text = deck_return_info
-
-func _build_deck_list(source: Array = deck) -> void:
-	for child in deck_list.get_children():
-		child.queue_free()
-	var counts: Dictionary = {}
-	for card_id in source:
-		counts[card_id] = counts.get(card_id, 0) + 1
-	var card_ids: Array[String] = []
-	for key in counts.keys():
-		card_ids.append(String(key))
-	card_ids.sort_custom(func(a: String, b: String) -> bool:
-		return CARD_DATA[a]["name"] < CARD_DATA[b]["name"]
-	)
-	for card_id in card_ids:
-		var count: int = counts[card_id]
-		var card: Dictionary = CARD_DATA[card_id]
-		var label := Label.new()
-		label.text = "%s x%d" % [card["name"], count]
-		label.tooltip_text = _card_tooltip(card_id)
-		deck_list.add_child(label)

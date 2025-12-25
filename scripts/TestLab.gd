@@ -26,8 +26,8 @@ func _ready() -> void:
 		main.gold += 100
 		main._update_labels()
 	)
-	_connect_button("DebugPanel/VBox/AddStrike", func() -> void:
-		main._add_card_to_deck("strike")
+	_connect_button("DebugPanel/VBox/AddPunch", func() -> void:
+		main._add_card_to_deck("punch")
 		main._update_labels()
 	)
 	_connect_button("DebugPanel/VBox/AddWound", func() -> void:

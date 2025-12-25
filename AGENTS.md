@@ -9,9 +9,9 @@ Prereqs:
 
 Build commands (from repo root, update the Godot path if needed):
 ```bash
-../Godot_v4.5.1-stable_linux.x86_64 --headless --export-release "Windows Desktop" builds/windows/BlockBreaker.exe
-../Godot_v4.5.1-stable_linux.x86_64 --headless --export-release "Linux/X11" builds/linux/BlockBreaker.x86_64
-../Godot_v4.5.1-stable_linux.x86_64 --headless --export-release "macOS" builds/mac/BlockBreaker.app
+../Godot_v4.5.1 --headless --export-release "Windows Desktop" builds/windows/BlockBreaker.exe
+../Godot_v4.5.1 --headless --export-release "Linux/X11" builds/linux/BlockBreaker.x86_64
+../Godot_v4.5.1 --headless --export-release "macOS" builds/mac/BlockBreaker.app
 ```
 
 Zip artifacts for release:
