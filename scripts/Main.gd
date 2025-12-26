@@ -21,9 +21,15 @@ const CARD_TYPE_COLORS: Dictionary = {
 	"utility": Color(0.98, 0.94, 0.08),
 	"curse": Color(0.2, 0.2, 0.2)
 }
+const ROW_PALETTE: Array[Color] = [
+	Color(0.86, 0.32, 0.26),
+	Color(0.95, 0.60, 0.20),
+	Color(0.95, 0.85, 0.25),
+	Color(0.45, 0.78, 0.36),
+	Color(0.26, 0.62, 0.96)
+]
 
 const CARD_BUTTON_SIZE: Vector2 = Vector2(110, 154)
-const MAX_HAND_SIZE: int = 7
 const BASE_STARTING_HAND_SIZE: int = 4
 const BALL_SPAWN_OFFSET: Vector2 = Vector2(0, -32)
 
@@ -110,11 +116,12 @@ var card_art_textures: Dictionary = {
 	"wound": preload("res://assets/cards/wound.png")
 }
 
+var encounter_manager: EncounterManager
+var map_manager: MapManager
+var deck_manager: DeckManager
+var hud_controller: HudController
+
 var state: GameState = GameState.MAP
-var deck: Array[String] = []
-var draw_pile: Array[String] = []
-var discard_pile: Array[String] = []
-var hand: Array[String] = []
 
 var max_hp: int = 150
 var hp: int = 150
@@ -169,6 +176,33 @@ func _ready() -> void:
 	_fit_to_viewport()
 	base_paddle_half_width = paddle.half_width
 	base_paddle_speed = paddle.speed
+	encounter_manager = EncounterManager.new()
+	add_child(encounter_manager)
+	encounter_manager.setup(bricks_root, brick_scene, brick_size, brick_gap, top_margin, ROW_PALETTE)
+	map_manager = MapManager.new()
+	add_child(map_manager)
+	deck_manager = DeckManager.new()
+	add_child(deck_manager)
+	hud_controller = HudController.new()
+	add_child(hud_controller)
+	hud_controller.setup({
+		"energy_label": energy_label,
+		"deck_label": deck_label,
+		"deck_count_label": deck_count_label,
+		"discard_label": discard_label,
+		"discard_count_label": discard_count_label,
+		"hp_label": hp_label,
+		"gold_label": gold_label,
+		"shop_gold_label": shop_gold_label,
+		"threat_label": threat_label,
+		"floor_label": floor_label,
+		"map_panel": map_panel,
+		"reward_panel": reward_panel,
+		"shop_panel": shop_panel,
+		"deck_panel": deck_panel,
+		"gameover_panel": gameover_panel,
+		"hand_container": hand_container
+	}, CARD_DATA, CARD_TYPE_COLORS, CARD_BUTTON_SIZE, card_art_textures)
 	# Buttons removed; use Space to launch and cards/turn flow for control.
 	if restart_button:
 		restart_button.pressed.connect(_start_run)
@@ -302,20 +336,16 @@ func _start_run() -> void:
 	persist_ball_mods = false
 	if mods_persist_checkbox:
 		mods_persist_checkbox.button_pressed = false
-	deck = STARTING_DECK.duplicate()
 	active_balls.clear()
 	for child in bricks_root.get_children():
 		child.queue_free()
-	draw_pile.clear()
-	discard_pile.clear()
-	hand.clear()
-	_shuffle_into_draw(deck)
+	deck_manager.setup(STARTING_DECK)
 	floor_index = 1
 	_start_encounter(false)
 
 func _show_map() -> void:
 	state = GameState.MAP
-	_hide_all_panels()
+	hud_controller.hide_all_panels()
 	map_panel.visible = true
 	var display_floor: int = min(floor_index + 1, max_floors)
 	floor_label.text = "Floor %d/%d" % [display_floor, max_floors]
@@ -350,38 +380,15 @@ func _apply_persist_checkbox_style() -> void:
 func _build_map_buttons() -> void:
 	for child in map_buttons.get_children():
 		child.queue_free()
-	var choices: Array[String] = _generate_room_choices()
+	var choices: Array[String] = map_manager.build_room_choices(floor_index, max_combat_floors)
 	for room_type in choices:
 		var selected_room_type := room_type
 		var button := Button.new()
-		button.text = _room_label(selected_room_type)
+		button.text = map_manager.room_label(selected_room_type)
 		button.pressed.connect(func() -> void:
 			_enter_room(selected_room_type)
 		)
 		map_buttons.add_child(button)
-
-func _generate_room_choices() -> Array[String]:
-	if floor_index >= max_combat_floors:
-		return ["boss"]
-	var pool: Array[String] = ["combat", "combat", "combat", "rest", "shop", "elite"]
-	return [pool.pick_random(), pool.pick_random()]
-
-func _room_label(room_type: String) -> String:
-	match room_type:
-		"combat":
-			return "Combat"
-		"elite":
-			return "Elite"
-		"rest":
-			return "Rest"
-		"shop":
-			return "Shop"
-		"boss":
-			return "Boss"
-		"victory":
-			return "Victory"
-		_:
-			return "???"
 
 func _enter_room(room_type: String) -> void:
 	if room_type == "victory":
@@ -404,43 +411,36 @@ func _enter_room(room_type: String) -> void:
 
 func _start_encounter(is_elite: bool) -> void:
 	state = GameState.PLANNING
-	_hide_all_panels()
+	hud_controller.hide_all_panels()
 	info_label.text = "Plan your volley, then launch."
 	_clear_active_balls()
 	current_is_boss = false
-	var difficulty: int = max(1, floor_index)
-	current_pattern = _pick_pattern()
-	encounter_speed_boost = randf() < (0.15 + 0.05 * difficulty)
-	if is_elite:
-		encounter_rows = 5 + int(difficulty / 2)
-		encounter_cols = 9
-		encounter_hp = 2 + int(difficulty / 2)
-		encounter_base_threat = 0
-	else:
-		encounter_rows = 4 + int(difficulty / 2)
-		encounter_cols = 8
-		encounter_hp = 1 + int(difficulty / 3)
-		encounter_base_threat = 0
+	var config := encounter_manager.build_config_from_floor(floor_index, is_elite, false)
+	current_pattern = config.pattern_id
+	encounter_speed_boost = config.speed_boost
+	encounter_rows = config.rows
+	encounter_cols = config.cols
+	encounter_hp = config.base_hp
+	encounter_base_threat = config.base_threat
 	if encounter_speed_boost:
 		info_label.text = "Volley Mod: Speed Boost."
-	_build_bricks(encounter_rows, encounter_cols, encounter_hp, current_pattern)
+	encounter_manager.start_encounter(config, Callable(self, "_on_brick_destroyed"), Callable(self, "_on_brick_damaged"))
 	_start_turn()
 
 func _start_boss() -> void:
 	state = GameState.PLANNING
-	_hide_all_panels()
+	hud_controller.hide_all_panels()
 	info_label.text = "Boss fight. Plan carefully."
 	_clear_active_balls()
 	current_is_boss = true
-	var difficulty: int = max(1, floor_index)
-	current_pattern = "ring"
-	encounter_speed_boost = true
-	encounter_rows = 6 + int(difficulty / 2)
-	encounter_cols = 10
-	encounter_hp = 4 + int(difficulty / 2)
-	encounter_base_threat = 0
-	_build_bricks(encounter_rows, encounter_cols, encounter_hp, current_pattern)
-	_spawn_boss_core(encounter_rows, encounter_cols, encounter_hp + 2)
+	var config := encounter_manager.build_config_from_floor(floor_index, false, true)
+	current_pattern = config.pattern_id
+	encounter_speed_boost = config.speed_boost
+	encounter_rows = config.rows
+	encounter_cols = config.cols
+	encounter_hp = config.base_hp
+	encounter_base_threat = config.base_threat
+	encounter_manager.start_encounter(config, Callable(self, "_on_brick_destroyed"), Callable(self, "_on_brick_damaged"))
 	_start_turn()
 
 func _start_turn() -> void:
@@ -454,7 +454,7 @@ func _start_turn() -> void:
 	volley_piercing = false
 	volley_ball_speed_multiplier = 1.0
 	_apply_paddle_buffs()
-	_draw_cards(starting_hand_size)
+	deck_manager.draw_cards(starting_hand_size)
 	_refresh_hand()
 	_refresh_mod_buttons()
 	_update_labels()
@@ -463,7 +463,7 @@ func _end_turn() -> void:
 	if state != GameState.PLANNING:
 		return
 	_discard_hand()
-	var incoming: int = max(0, _calculate_threat() - block)
+	var incoming: int = max(0, encounter_manager.calculate_threat(encounter_base_threat) - block)
 	hp -= incoming
 	info_label.text = "You take %d damage." % incoming
 	if hp <= 0:
@@ -516,9 +516,9 @@ func _on_ball_lost(ball: Node) -> void:
 	active_balls.erase(ball)
 	if is_instance_valid(ball):
 		ball.queue_free()
-	_regen_bricks_on_drop()
+	encounter_manager.regen_bricks_on_drop()
 	if active_balls.is_empty():
-		if _check_victory():
+		if encounter_manager.check_victory():
 			_end_encounter()
 			return
 		if volley_ball_reserve > 0:
@@ -547,7 +547,9 @@ func _confirm_forfeit_volley() -> void:
 	_forfeit_volley()
 
 func _apply_volley_threat() -> void:
-	var threat: int = _calculate_threat()
+	var threat: int = 0
+	if encounter_manager:
+		threat = encounter_manager.calculate_threat(encounter_base_threat)
 	hp -= threat
 	if hp <= 0:
 		_show_game_over()
@@ -567,11 +569,8 @@ func _on_ball_mod_consumed(mod_id: String) -> void:
 	_apply_ball_mod_to_active_balls()
 	_refresh_mod_buttons()
 
-func _check_victory() -> bool:
-	return bricks_root.get_child_count() == 0
-
 func _end_encounter() -> void:
-	_hide_all_panels()
+	hud_controller.hide_all_panels()
 	_clear_active_balls()
 	if current_is_boss:
 		_show_victory()
@@ -589,7 +588,7 @@ func _build_reward_buttons() -> void:
 	for _i in range(3):
 		var card_id: String = CARD_POOL.pick_random()
 		var reward_card_id := card_id
-		var button := _create_card_button(card_id)
+		var button := hud_controller.create_card_button(card_id)
 		button.pressed.connect(func() -> void:
 			_add_card_to_deck(reward_card_id)
 			_show_map()
@@ -598,7 +597,7 @@ func _build_reward_buttons() -> void:
 
 func _show_shop() -> void:
 	state = GameState.SHOP
-	_hide_all_panels()
+	hud_controller.hide_all_panels()
 	if map_panel:
 		map_panel.visible = false
 	if reward_panel:
@@ -626,8 +625,8 @@ func _build_shop_buttons() -> void:
 	for _i in range(2):
 		var card_id: String = CARD_POOL.pick_random()
 		var shop_card_id := card_id
-		var button := _create_card_button(card_id)
-		_set_card_button_desc(button, "%s\nPrice: 40g" % CARD_DATA[card_id]["desc"])
+		var button := hud_controller.create_card_button(card_id)
+		hud_controller.set_card_button_desc(button, "%s\nPrice: 40g" % CARD_DATA[card_id]["desc"])
 		button.pressed.connect(func() -> void:
 			if gold >= 40:
 				gold -= 40
@@ -640,7 +639,7 @@ func _build_shop_buttons() -> void:
 	var remove := Button.new()
 	remove.text = "Remove a card (30g)"
 	remove.pressed.connect(func() -> void:
-		if gold >= 30 and deck.size() > 0:
+		if gold >= 30 and deck_manager.deck.size() > 0:
 			gold -= 30
 			_update_labels()
 			_show_remove_card_panel()
@@ -705,7 +704,7 @@ func _build_shop_buttons() -> void:
 
 func _show_rest() -> void:
 	state = GameState.REST
-	_hide_all_panels()
+	hud_controller.hide_all_panels()
 	info_label.text = "Rest to heal."
 	hp = min(max_hp, hp + 20)
 	_update_labels()
@@ -714,7 +713,7 @@ func _show_rest() -> void:
 func _show_game_over() -> void:
 	state = GameState.GAME_OVER
 	_clear_active_balls()
-	_hide_all_panels()
+	hud_controller.hide_all_panels()
 	gameover_panel.visible = true
 	gameover_label.text = "Game Over"
 	info_label.text = "Your run has ended."
@@ -722,7 +721,7 @@ func _show_game_over() -> void:
 func _show_victory() -> void:
 	state = GameState.VICTORY
 	_clear_active_balls()
-	_hide_all_panels()
+	hud_controller.hide_all_panels()
 	gameover_panel.visible = true
 	gameover_label.text = "Victory!"
 	info_label.text = "You cleared the run."
@@ -743,18 +742,6 @@ func on_menu_closed() -> void:
 	process_mode = Node.PROCESS_MODE_INHERIT
 	_fit_to_viewport()
 
-func _hide_all_panels() -> void:
-	if map_panel:
-		map_panel.visible = false
-	if reward_panel:
-		reward_panel.visible = false
-	if shop_panel:
-		shop_panel.visible = false
-	if deck_panel:
-		deck_panel.visible = false
-	if gameover_panel:
-		gameover_panel.visible = false
-
 func _clear_active_balls() -> void:
 	for ball in active_balls:
 		if is_instance_valid(ball):
@@ -762,97 +749,6 @@ func _clear_active_balls() -> void:
 	active_balls.clear()
 	volley_ball_reserve = 0
 	_update_reserve_indicator()
-
-func _build_bricks(rows: int, cols: int, base_hp: int, pattern: String) -> void:
-	for child in bricks_root.get_children():
-		child.queue_free()
-
-	for row in range(rows):
-		for col in range(cols):
-			if not _pattern_allows(row, col, rows, cols, pattern):
-				continue
-			var hp_value: int = base_hp + int(row / 2)
-			_spawn_brick(row, col, rows, cols, hp_value, _row_color(row), _roll_variants())
-
-func _spawn_brick(row: int, col: int, rows: int, cols: int, hp_value: int, color: Color, data: Dictionary) -> void:
-	var brick: Node = brick_scene.instantiate()
-	var total_width: float = cols * brick_size.x + (cols - 1) * brick_gap.x
-	var start_x: float = (get_viewport_rect().size.x - total_width) * 0.5
-	var start_y: float = top_margin
-	var x: float = start_x + col * (brick_size.x + brick_gap.x) + brick_size.x * 0.5
-	var y: float = start_y + row * (brick_size.y + brick_gap.y) + brick_size.y * 0.5
-	brick.position = Vector2(x, y)
-	brick.add_to_group("bricks")
-	bricks_root.add_child(brick)
-	brick.destroyed.connect(_on_brick_destroyed)
-	brick.damaged.connect(_on_brick_damaged)
-	brick.setup(hp_value, 1, color, data)
-
-func _pattern_allows(row: int, col: int, rows: int, cols: int, pattern: String) -> bool:
-	match pattern:
-		"stagger":
-			return not (row % 2 == 1 and col % 2 == 0)
-		"pyramid":
-			var center: int = int(cols / 2)
-			var spread: int = min(center, row + 1)
-			return abs(col - center) <= spread
-		"zigzag":
-			return (row + col) % 2 == 0
-		"ring":
-			return row == 0 or row == rows - 1 or col == 0 or col == cols - 1
-		_:
-			return true
-
-func _pick_pattern() -> String:
-	var patterns: Array[String] = ["grid", "stagger", "pyramid", "zigzag", "ring"]
-	return patterns[floor_index % patterns.size()]
-
-func _roll_variants() -> Dictionary:
-	var data: Dictionary = {}
-	var shield_chance: float = 0.1
-	var regen_chance: float = 0.1
-	var curse_chance: float = 0.08
-	if current_is_boss:
-		shield_chance = 0.4
-		regen_chance = 0.35
-		curse_chance = 0.25
-	elif floor_index >= 3:
-		shield_chance = 0.2
-		regen_chance = 0.18
-		curse_chance = 0.12
-	if randf() < shield_chance:
-		var sides: Array[String] = ["left", "right", "top", "bottom"]
-		sides.shuffle()
-		data["shielded_sides"] = [sides[0]]
-	if randf() < regen_chance:
-		data["regen_on_drop"] = true
-		data["regen_amount"] = 1
-	if randf() < curse_chance:
-		data["is_cursed"] = true
-	return data
-
-func _spawn_boss_core(rows: int, cols: int, hp_value: int) -> void:
-	var center_row: int = int(rows / 2)
-	var center_col: int = int(cols / 2)
-	for row in range(center_row - 1, center_row + 1):
-		for col in range(center_col - 1, center_col + 1):
-			var data: Dictionary = {
-				"shielded_sides": ["left", "right"],
-				"regen_on_drop": true,
-				"regen_amount": 2,
-				"is_cursed": true
-			}
-			_spawn_brick(row, col, rows, cols, hp_value + 2, Color(0.85, 0.2, 0.2), data)
-
-func _row_color(row: int) -> Color:
-	var palette: Array[Color] = [
-		Color(0.86, 0.32, 0.26),
-		Color(0.95, 0.60, 0.20),
-		Color(0.95, 0.85, 0.25),
-		Color(0.45, 0.78, 0.36),
-		Color(0.26, 0.62, 0.96)
-	]
-	return palette[row % palette.size()]
 
 func _on_brick_destroyed(_brick: Node) -> void:
 	_update_labels()
@@ -862,55 +758,22 @@ func _on_brick_destroyed(_brick: Node) -> void:
 			if _brick.has_method("get"):
 				suppress = bool(_brick.get("suppress_curse_on_destroy"))
 			if not suppress:
-				deck.append("wound")
-				draw_pile.append("wound")
-				draw_pile.shuffle()
+				deck_manager.add_card("wound")
 				if _brick is Node2D:
 					_spawn_wound_flyout((_brick as Node2D).global_position)
 				_update_labels()
-	if _check_victory() and (state == GameState.VOLLEY or state == GameState.PLANNING):
+	if encounter_manager.check_victory() and (state == GameState.VOLLEY or state == GameState.PLANNING):
 		_end_encounter()
 
 func _on_brick_damaged(_brick: Node) -> void:
 	_update_labels()
 
-func _regen_bricks_on_drop() -> void:
-	for brick in bricks_root.get_children():
-		if brick.has_method("on_ball_drop"):
-			brick.on_ball_drop()
-
-func _calculate_threat() -> int:
-	if bricks_root.get_child_count() == 0:
-		return 0
-	var total: int = 0
-	for brick in bricks_root.get_children():
-		if brick.has_method("get_threat"):
-			total += brick.get_threat()
-	return total + encounter_base_threat
-
-func _draw_cards(count: int) -> void:
-	for _i in range(count):
-		if hand.size() >= MAX_HAND_SIZE:
-			return
-		if draw_pile.is_empty():
-			_shuffle_into_draw(discard_pile)
-			discard_pile.clear()
-		if draw_pile.is_empty():
-			return
-		hand.append(draw_pile.pop_back())
-
 func _discard_hand() -> void:
-	for card_id in hand:
-		discard_pile.append(card_id)
-	hand.clear()
+	deck_manager.discard_hand()
 	_refresh_hand()
 
-func _shuffle_into_draw(cards: Array) -> void:
-	draw_pile = cards.duplicate()
-	draw_pile.shuffle()
-
 func _refresh_hand() -> void:
-	_populate_card_container(hand_container, hand, Callable(self, "_play_card"), state != GameState.PLANNING)
+	hud_controller.refresh_hand(deck_manager.hand, state != GameState.PLANNING, Callable(self, "_play_card"))
 
 func _play_card(card_id: String) -> void:
 	if state != GameState.PLANNING:
@@ -922,8 +785,8 @@ func _play_card(card_id: String) -> void:
 	energy -= cost
 	_apply_card_effect(card_id)
 	if card_id != "wound":
-		discard_pile.append(card_id)
-	hand.erase(card_id)
+		deck_manager.discard_card(card_id)
+	deck_manager.play_card(card_id)
 	_refresh_hand()
 	_update_reserve_indicator()
 	_update_labels()
@@ -942,7 +805,7 @@ func _apply_card_effect(card_id: String) -> void:
 		"bomb":
 			_destroy_random_bricks(3)
 		"rally":
-			_draw_cards(2)
+			deck_manager.draw_cards(2)
 		"focus":
 			energy += 1
 		"haste":
@@ -951,48 +814,10 @@ func _apply_card_effect(card_id: String) -> void:
 		"slow":
 			volley_ball_speed_multiplier = 0.7
 		"wound":
-			_remove_one_from_array(deck, "wound")
+			deck_manager.remove_card_from_all("wound", true)
 			info_label.text = "Wound removed from your deck."
 		_:
 			pass
-
-func _remove_one_from_array(values: Array, target: String) -> void:
-	var index: int = values.find(target)
-	if index >= 0:
-		values.remove_at(index)
-
-func _clear_container(container: Node) -> void:
-	for child in container.get_children():
-		child.queue_free()
-
-func _populate_card_container(container: Container, cards: Array, on_pressed: Callable = Callable(), disabled: bool = false, columns: int = 0) -> void:
-	_clear_container(container)
-	var target_container: Container = container
-	if columns > 0:
-		var grid := GridContainer.new()
-		grid.columns = columns
-		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		grid.add_theme_constant_override("h_separation", 6)
-		grid.add_theme_constant_override("v_separation", 6)
-		container.add_child(grid)
-		target_container = grid
-	for card_id in cards:
-		var selected_card_id: String = String(card_id)
-		var button := _create_card_button(selected_card_id)
-		button.disabled = disabled
-		if on_pressed.is_valid():
-			button.pressed.connect(func() -> void:
-				on_pressed.call(selected_card_id)
-			)
-		target_container.add_child(button)
-
-func _remove_card_from_piles(card_id: String, remove_from_deck: bool) -> void:
-	if remove_from_deck:
-		_remove_one_from_array(deck, card_id)
-	_remove_one_from_array(draw_pile, card_id)
-	_remove_one_from_array(discard_pile, card_id)
-	_remove_one_from_array(hand, card_id)
 
 func _destroy_random_bricks(amount: int) -> void:
 	var bricks: Array = bricks_root.get_children()
@@ -1013,135 +838,25 @@ func _apply_paddle_buffs() -> void:
 			paddle.speed = base_paddle_speed
 
 func _add_card_to_deck(card_id: String) -> void:
-	deck.append(card_id)
-	draw_pile.append(card_id)
-	draw_pile.shuffle()
-
-func _card_label(card_id: String) -> String:
-	var card: Dictionary = CARD_DATA[card_id]
-	return "%s [%d]" % [card["name"], card["cost"]]
-
-func _card_tooltip(card_id: String) -> String:
-	var card: Dictionary = CARD_DATA[card_id]
-	return "%s (Cost %d)\n%s" % [card["name"], card["cost"], card["desc"]]
-
-func _apply_card_style(button: Button, card_id: String) -> void:
-	var card: Dictionary = CARD_DATA[card_id]
-	var card_type: String = card.get("type", "utility")
-	if CARD_TYPE_COLORS.has(card_type):
-		var color: Color = CARD_TYPE_COLORS[card_type]
-		color.a = 1.0
-		button.modulate = Color(1, 1, 1, 1)
-		button.self_modulate = color
-
-func _apply_card_button_size(button: Button) -> void:
-	button.custom_minimum_size = CARD_BUTTON_SIZE
-
-func _create_card_button(card_id: String) -> Button:
-	var button := Button.new()
-	button.text = ""
-	button.tooltip_text = _card_tooltip(card_id)
-	button.clip_text = false
-	_apply_card_style(button, card_id)
-	_apply_card_button_size(button)
-
-	var layout := VBoxContainer.new()
-	layout.name = "CardLayout"
-	layout.set_anchors_preset(Control.PRESET_FULL_RECT)
-	layout.offset_left = 6.0
-	layout.offset_top = 6.0
-	layout.offset_right = -6.0
-	layout.offset_bottom = -6.0
-	layout.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layout.alignment = BoxContainer.ALIGNMENT_BEGIN
-	layout.add_theme_constant_override("separation", 4)
-	button.add_child(layout)
-
-	var name_frame := Control.new()
-	name_frame.name = "NameFrame"
-	name_frame.custom_minimum_size = Vector2(0.0, 20.0)
-	name_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layout.add_child(name_frame)
-
-	var name_label := Label.new()
-	name_label.name = "NameLabel"
-	name_label.text = _card_label(card_id)
-	name_label.add_theme_font_size_override("font_size", 10)
-	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	name_label.clip_text = true
-	name_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	name_frame.add_child(name_label)
-
-	var art_frame := Control.new()
-	art_frame.name = "ArtFrame"
-	art_frame.custom_minimum_size = Vector2(CARD_BUTTON_SIZE.x - 12.0, 70.0)
-	art_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	art_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	art_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layout.add_child(art_frame)
-
-	var art := TextureRect.new()
-	art.name = "Art"
-	art.texture = _get_card_art(card_id)
-	art.expand_mode = TextureRect.EXPAND_FIT_HEIGHT
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	art.set_anchors_preset(Control.PRESET_FULL_RECT)
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	art_frame.add_child(art)
-
-	var desc_frame := Control.new()
-	desc_frame.name = "DescFrame"
-	desc_frame.custom_minimum_size = Vector2(0.0, 44.0)
-	desc_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	desc_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	layout.add_child(desc_frame)
-
-	var desc_label := Label.new()
-	desc_label.name = "DescLabel"
-	desc_label.text = CARD_DATA[card_id]["desc"]
-	desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	desc_label.add_theme_font_size_override("font_size", 8)
-	desc_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	desc_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	desc_frame.add_child(desc_label)
-
-	return button
-
-func _set_card_button_desc(button: Button, text: String) -> void:
-	var layout: VBoxContainer = button.get_node("CardLayout") as VBoxContainer
-	if layout == null:
-		return
-	var desc_label: Label = layout.get_node("DescFrame/DescLabel") as Label
-	if desc_label:
-		desc_label.text = text
-
-func _get_card_art(card_id: String) -> Texture2D:
-	if card_art_textures.has(card_id):
-		return card_art_textures[card_id]
-	return card_art_textures["twin"]
+	deck_manager.add_card(card_id)
 
 func _update_labels() -> void:
-	energy_label.text = "Energy: %d/%d" % [energy, max_energy]
-	var draw_count: int = draw_pile.size()
+	var draw_count: int = deck_manager.draw_pile.size()
 	if state != GameState.PLANNING and state != GameState.VOLLEY:
-		draw_count = deck.size()
-	deck_label.text = "Draw: %d" % draw_count
-	deck_count_label.text = "%d" % draw_count
-	discard_label.text = "Discard: %d" % discard_pile.size()
-	if discard_count_label:
-		discard_count_label.text = "%d" % discard_pile.size()
-	hp_label.text = "HP: %d/%d" % [hp, max_hp]
-	gold_label.text = "Gold: %d" % gold
-	if shop_gold_label:
-		shop_gold_label.text = "Gold: %d" % gold
-	threat_label.text = "Threat: %d" % _calculate_threat()
-	var display_floor: int = min(max(1, floor_index), max_floors)
-	floor_label.text = "Floor %d/%d" % [display_floor, max_floors]
+		draw_count = deck_manager.deck.size()
+	var threat: int = encounter_manager.calculate_threat(encounter_base_threat)
+	hud_controller.update_labels(
+		energy,
+		max_energy,
+		draw_count,
+		deck_manager.discard_pile.size(),
+		hp,
+		max_hp,
+		gold,
+		threat,
+		floor_index,
+		max_floors
+	)
 
 func _spawn_wound_flyout(start_pos: Vector2) -> void:
 	var fly_label := Label.new()
@@ -1224,10 +939,10 @@ func _show_deck_panel() -> void:
 	elif gameover_panel.visible:
 		deck_return_panel = "gameover"
 	deck_return_info = info_label.text
-	_hide_all_panels()
+	hud_controller.hide_all_panels()
 	deck_panel.visible = true
 	info_label.text = "Deck contents."
-	_populate_card_container(deck_list, deck, Callable(), false, 4)
+	hud_controller.populate_card_container(deck_list, deck_manager.deck, Callable(), false, 4)
 
 func _show_discard_panel() -> void:
 	if state == GameState.GAME_OVER or state == GameState.VICTORY:
@@ -1242,10 +957,10 @@ func _show_discard_panel() -> void:
 	elif gameover_panel.visible:
 		deck_return_panel = "gameover"
 	deck_return_info = info_label.text
-	_hide_all_panels()
+	hud_controller.hide_all_panels()
 	deck_panel.visible = true
 	info_label.text = "Discard contents."
-	_populate_card_container(deck_list, discard_pile, Callable(), false, 5)
+	hud_controller.populate_card_container(deck_list, deck_manager.discard_pile, Callable(), false, 5)
 
 func _show_remove_card_panel() -> void:
 	if state == GameState.GAME_OVER or state == GameState.VICTORY:
@@ -1260,20 +975,20 @@ func _show_remove_card_panel() -> void:
 	elif gameover_panel.visible:
 		deck_return_panel = "gameover"
 	deck_return_info = info_label.text
-	_hide_all_panels()
+	hud_controller.hide_all_panels()
 	deck_panel.visible = true
 	info_label.text = "Choose a card to remove."
-	_populate_card_container(deck_list, deck, Callable(self, "_on_remove_card_selected"), false, 5)
+	hud_controller.populate_card_container(deck_list, deck_manager.deck, Callable(self, "_on_remove_card_selected"), false, 5)
 
 func _on_remove_card_selected(card_id: String) -> void:
-	_remove_card_from_piles(card_id, true)
+	deck_manager.remove_card_from_all(card_id, true)
 	_refresh_hand()
 	var card_name: String = CARD_DATA[card_id]["name"]
 	deck_return_info = "Removed %s." % card_name
 	_close_deck_panel()
 
 func _close_deck_panel() -> void:
-	_hide_all_panels()
+	hud_controller.hide_all_panels()
 	match deck_return_panel:
 		"map":
 			map_panel.visible = true
