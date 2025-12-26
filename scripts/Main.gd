@@ -814,7 +814,7 @@ func _apply_card_effect(card_id: String) -> void:
 		"slow":
 			volley_ball_speed_multiplier = 0.7
 		"wound":
-			deck_manager.remove_card_from_all("wound", true)
+			deck_manager.remove_card_from_deck("wound")
 			info_label.text = "Wound removed from your deck."
 		_:
 			pass

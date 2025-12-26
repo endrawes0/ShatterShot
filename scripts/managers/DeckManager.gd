@@ -59,6 +59,10 @@ func remove_card_from_all(card_id: String, remove_from_deck: bool = true) -> voi
 	_emit_hand_changed()
 	_emit_piles_changed()
 
+func remove_card_from_deck(card_id: String) -> void:
+	_remove_one_from_array(deck, card_id)
+	_emit_piles_changed()
+
 func play_card(card_id: String) -> void:
 	hand.erase(card_id)
 	_emit_hand_changed()
