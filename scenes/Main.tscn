@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://dhnntcfxs4lg0"]
+[gd_scene load_steps=10 format=3 uid="uid://dhnntcfxs4lg0"]
 
 [ext_resource type="PackedScene" path="res://scenes/Paddle.tscn" id="1"]
 [ext_resource type="Script" uid="uid://b8nul2np1du6b" path="res://scripts/Main.gd" id="3"]
@@ -12,6 +12,13 @@ size = Vector2(800, 20)
 
 [sub_resource type="StyleBoxFlat" id="3"]
 bg_color = Color(0.85, 0.85, 0.85, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0bbpv"]
+bg_color = Color(0.12225222, 0.12225225, 0.12225217, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_vcsgt"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_rarhs"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("3")
@@ -335,16 +342,18 @@ text = "Skip"
 visible = false
 
 [node name="DeckPanel" type="Panel" parent="HUD"]
-visible = false
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -240.0
-offset_top = -140.0
-offset_right = 240.0
-offset_bottom = 140.0
+offset_left = -376.0
+offset_top = -264.0
+offset_right = 377.0
+offset_bottom = 253.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_0bbpv")
 
 [node name="DeckLabel" type="Label" parent="HUD/DeckPanel"]
 layout_mode = 0
@@ -358,8 +367,9 @@ text = "Deck"
 layout_mode = 0
 offset_left = 16.0
 offset_top = 44.0
-offset_right = 440.0
-offset_bottom = 196.0
+offset_right = 735.0
+offset_bottom = 460.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_vcsgt")
 
 [node name="DeckList" type="VBoxContainer" parent="HUD/DeckPanel/DeckScroll"]
 layout_mode = 2
@@ -368,9 +378,10 @@ theme_override_constants/separation = 4
 [node name="DeckCloseButton" type="Button" parent="HUD/DeckPanel"]
 layout_mode = 0
 offset_left = 16.0
-offset_top = 204.0
+offset_top = 467.0
 offset_right = 160.0
-offset_bottom = 232.0
+offset_bottom = 498.0
+theme_override_styles/normal = SubResource("StyleBoxFlat_rarhs")
 text = "Close"
 
 [node name="GameOverPanel" type="Panel" parent="HUD"]

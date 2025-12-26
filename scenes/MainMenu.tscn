@@ -1,44 +1,55 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=2 format=3 uid="uid://5dhdft0ohhet"]
 
-[ext_resource type="Script" path="res://scripts/MainMenu.gd" id=1]
+[ext_resource type="Script" uid="uid://dqfdq6li4w8rt" path="res://scripts/MainMenu.gd" id="1"]
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1")
 
 [node name="Center" type="CenterContainer" parent="."]
-anchors_preset = 15
+layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 
 [node name="VBox" type="VBoxContainer" parent="Center"]
+layout_mode = 2
 theme_override_constants/separation = 10
 
 [node name="Title" type="Label" parent="Center/VBox"]
+layout_mode = 2
 text = "Blockbreaker Deck Run"
 horizontal_alignment = 1
 
 [node name="Subtitle" type="Label" parent="Center/VBox"]
+layout_mode = 2
 text = "Roguelike deckbuilder + paddle combat"
 horizontal_alignment = 1
 
 [node name="StartButton" type="Button" parent="Center/VBox"]
+layout_mode = 2
 text = "Start Run"
 
 [node name="ContinueButton" type="Button" parent="Center/VBox"]
+layout_mode = 2
 text = "Continue Run"
 
 [node name="HelpButton" type="Button" parent="Center/VBox"]
+layout_mode = 2
 text = "How To Play"
 
 [node name="GraphicsButton" type="Button" parent="Center/VBox"]
+layout_mode = 2
 text = "Graphics"
 
 [node name="TestButton" type="Button" parent="Center/VBox"]
+layout_mode = 2
 text = "Test Lab"
 
 [node name="QuitButton" type="Button" parent="Center/VBox"]
+layout_mode = 2
 text = "Quit"

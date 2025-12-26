@@ -13,3 +13,4 @@ Thumbs.db
 
 # Builds
 builds/
+.release_extract/
