@@ -55,7 +55,7 @@ func _ready() -> void:
 	_connect_button("DebugPanel/VBox/ClearMod", func() -> void:
 		main.active_ball_mod = ""
 		main._apply_ball_mod_to_active_balls()
-		main._update_mods_ui()
+		main._refresh_mod_buttons()
 	)
 	_connect_button("DebugPanel/VBox/RefillEnergy", func() -> void:
 		main.energy = main.max_energy
