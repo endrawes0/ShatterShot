@@ -52,17 +52,14 @@ func _ensure_menu() -> void:
 
 func show_help() -> void:
 	_ensure_help()
-	_show_aux_scene(help_instance)
+	_switch_to_scene(help_instance)
 
 func show_graphics() -> void:
 	_ensure_graphics()
-	_show_aux_scene(graphics_instance)
+	_switch_to_scene(graphics_instance)
 
 func show_test_lab() -> void:
 	_ensure_test_lab()
-	_show_aux_scene(test_instance)
-
-func _show_aux_scene(scene_instance: Node) -> void:
 	_switch_to_scene(scene_instance)
 
 func _switch_to_scene(scene_instance: Node) -> void:
