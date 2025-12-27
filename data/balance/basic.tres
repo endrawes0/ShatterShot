@@ -1,0 +1,100 @@
+[gd_resource type="Resource" script_class="BalanceData" load_steps=2 format=3 uid="uid://d0j48q0kssw7f"]
+
+[ext_resource type="Script" uid="uid://c1h7y7h4ld7lq" path="res://scripts/data/BalanceData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+card_data = {
+"bomb": {
+"cost": 2,
+"desc": "Destroy up to 3 random bricks.",
+"name": "Bomb",
+"type": "offense"
+},
+"focus": {
+"cost": 1,
+"desc": "+1 energy this turn.",
+"name": "Focus",
+"type": "utility"
+},
+"guard": {
+"cost": 1,
+"desc": "Gain 5 block. Block reduces threat damage this turn.",
+"name": "Guard",
+"type": "defense"
+},
+"haste": {
+"cost": 1,
+"desc": "Paddle moves faster for 2 turns.",
+"name": "Haste",
+"type": "utility"
+},
+"punch": {
+"cost": 1,
+"desc": "+1 volley damage.",
+"name": "Punch",
+"type": "offense"
+},
+"rally": {
+"cost": 0,
+"desc": "Draw 2 cards.",
+"name": "Rally",
+"type": "utility"
+},
+"slow": {
+"cost": 1,
+"desc": "Slow balls this volley.",
+"name": "Stasis",
+"type": "defense"
+},
+"twin": {
+"cost": 1,
+"desc": "Gain an extra launch this volley.",
+"name": "Twin Launch",
+"type": "offense"
+},
+"widen": {
+"cost": 1,
+"desc": "Widen paddle for 2 turns.",
+"name": "Widen Paddle",
+"type": "utility"
+},
+"wound": {
+"cost": 1,
+"desc": "Pay 1 energy to remove it from your deck.",
+"name": "Wound",
+"type": "curse"
+}
+}
+card_pool = Array[String](["punch", "twin", "guard", "widen", "bomb", "rally", "focus", "haste", "slow"])
+starting_deck = Array[String](["punch", "punch", "punch", "punch", "twin", "twin", "guard", "guard", "rally", "focus"])
+ball_mod_data = {
+"explosive": {
+"cost": 50,
+"desc": "Explode bricks on hit.",
+"name": "Explosives"
+},
+"miracle": {
+"cost": 60,
+"desc": "One floor bounce per ball.",
+"name": "Miracle"
+},
+"spikes": {
+"cost": 50,
+"desc": "Ignore brick shields on hit.",
+"name": "Spikes"
+}
+}
+ball_mod_order = Array[String](["explosive", "spikes", "miracle"])
+ball_mod_colors = {
+"explosive": Color(0.95, 0.35, 0.35),
+"miracle": Color(0.45, 0.75, 1),
+"spikes": Color(0.95, 0.85, 0.25)
+}
+shop_card_price = 40
+shop_remove_price = 30
+shop_upgrade_price = 60
+shop_upgrade_hand_bonus = 1
+shop_vitality_price = 60
+shop_vitality_max_hp_bonus = 10
+shop_vitality_heal = 10
