@@ -60,7 +60,7 @@ func show_graphics() -> void:
 
 func show_test_lab() -> void:
 	_ensure_test_lab()
-	_switch_to_scene(scene_instance)
+	_switch_to_scene(test_instance)
 
 func _switch_to_scene(scene_instance: Node) -> void:
 	for instance in _all_scene_instances():
