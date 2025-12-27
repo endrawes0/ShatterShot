@@ -117,6 +117,7 @@ var volley_ball_reserve: int = 0
 var volley_piercing: bool = false
 var volley_ball_speed_multiplier: float = 1.0
 var reserve_launch_cooldown: float = 0.0
+enum ReturnPanel { NONE, MAP, REWARD, SHOP, GAMEOVER }
 
 var base_paddle_half_width: float = 50.0
 var paddle_buff_turns: int = 0
@@ -132,7 +133,7 @@ var encounter_cols: int = 8
 var current_is_boss: bool = false
 var current_pattern: String = "grid"
 var encounter_speed_boost: bool = false
-var deck_return_panel: String = ""
+var deck_return_panel: int = ReturnPanel.NONE
 var deck_return_info: String = ""
 
 func _update_reserve_indicator() -> void:
@@ -942,15 +943,15 @@ func _show_single_panel(panel: Control) -> void:
 		panel.visible = true
 
 func _capture_deck_return_context() -> void:
-	deck_return_panel = ""
+	deck_return_panel = ReturnPanel.NONE
 	if map_panel.visible:
-		deck_return_panel = "map"
+		deck_return_panel = ReturnPanel.MAP
 	elif reward_panel.visible:
-		deck_return_panel = "reward"
+		deck_return_panel = ReturnPanel.REWARD
 	elif shop_panel.visible:
-		deck_return_panel = "shop"
+		deck_return_panel = ReturnPanel.SHOP
 	elif gameover_panel.visible:
-		deck_return_panel = "gameover"
+		deck_return_panel = ReturnPanel.GAMEOVER
 	deck_return_info = info_label.text
 
 func _show_deck_panel() -> void:
@@ -987,14 +988,14 @@ func _on_remove_card_selected(card_id: String) -> void:
 func _close_deck_panel() -> void:
 	hud_controller.hide_all_panels()
 	match deck_return_panel:
-		"map":
+		ReturnPanel.MAP:
 			map_panel.visible = true
-		"reward":
+		ReturnPanel.REWARD:
 			reward_panel.visible = true
-		"shop":
+		ReturnPanel.SHOP:
 			shop_panel.visible = true
 			_update_labels()
-		"gameover":
+		ReturnPanel.GAMEOVER:
 			gameover_panel.visible = true
 		_:
 			pass
