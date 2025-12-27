@@ -512,6 +512,8 @@ func _spawn_volley_ball() -> void:
 	if encounter_speed_boost:
 		speed_multiplier *= 1.25
 	ball.speed *= speed_multiplier
+	if ball.has_method("set_mod_colors"):
+		ball.set_mod_colors(ball_mod_colors)
 	if ball.has_method("set_ball_mod"):
 		ball.set_ball_mod(active_ball_mod)
 	else:
@@ -922,6 +924,8 @@ func _select_ball_mod(mod_id: String) -> void:
 func _apply_ball_mod_to_active_balls() -> void:
 	for ball in active_balls:
 		if is_instance_valid(ball):
+			if ball.has_method("set_mod_colors"):
+				ball.set_mod_colors(ball_mod_colors)
 			if ball.has_method("set_ball_mod"):
 				ball.set_ball_mod(active_ball_mod)
 			else:
