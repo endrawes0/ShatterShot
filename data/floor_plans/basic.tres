@@ -1,0 +1,54 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/FloorPlan.gd" id=1]
+
+[resource]
+script = ExtResource("1")
+start_room_id = "start"
+rooms = [
+	{
+		"id": "start",
+		"type": "combat",
+		"next": ["c1", "c2"]
+	},
+	{
+		"id": "c1",
+		"type": "combat",
+		"next": ["r1", "e1"]
+	},
+	{
+		"id": "c2",
+		"type": "combat",
+		"next": ["s1", "c3"]
+	},
+	{
+		"id": "r1",
+		"type": "rest",
+		"next": ["c3"]
+	},
+	{
+		"id": "e1",
+		"type": "elite",
+		"next": ["c3"]
+	},
+	{
+		"id": "s1",
+		"type": "shop",
+		"next": ["c3"]
+	},
+	{
+		"id": "c3",
+		"type": "combat",
+		"next": ["boss"]
+	},
+	{
+		"id": "boss",
+		"type": "boss",
+		"next": ["victory"]
+	},
+	{
+		"id": "victory",
+		"type": "victory",
+		"next": []
+	}
+]

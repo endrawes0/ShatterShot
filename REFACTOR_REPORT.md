@@ -17,7 +17,7 @@
 
 ## Level Design and Extensibility
 
-- RR-11 (Medium): Move encounter configs (rows/cols/hp/base threat/pattern) to data resources or JSON so new levels do not require editing `_start_encounter()` or `_start_boss()` (`scripts/Main.gd:405-443`).
-- RR-12 (Medium): Replace `_pattern_allows()` with a pattern registry (dictionary of callbacks or small pattern classes) so adding layouts is data-driven (`scripts/Main.gd:791-808`).
-- RR-13 (Medium): Extract `_roll_variants()` into per-encounter variant policies (normal/elite/boss) for easier difficulty tuning (`scripts/Main.gd:810-832`).
-- RR-14 (Low): Replace `_generate_room_choices()` fixed pool with a data-driven floor plan/room graph to enable curated progression (`scripts/Main.gd:363-366`).
+- RR-11 (Medium): Encounter configs are now data-driven via `EncounterConfig` resources in `data/encounters/`, loaded by `EncounterManager` (no edits to `_start_encounter()`/`_start_boss()` required).
+- RR-12 (Medium): Pattern selection is data-driven via `PatternRegistry` and `EncounterConfig.pattern_id` (use `auto` for rotation or specify a pattern).
+- RR-13 (Medium): Variant behavior is data-driven via `VariantPolicy` resources in `data/variant_policies/` and assigned per encounter config.
+- RR-14 (Low): Room choices are data-driven via `FloorPlan` resources (see `data/floor_plans/basic.tres`) and traversed by `MapManager`.

@@ -69,6 +69,14 @@ func _ready() -> void:
 		for child in main.bricks_root.get_children():
 			child.queue_free()
 	)
+	_connect_button("DebugPanel/VBox/PassLevel", func() -> void:
+		for child in main.bricks_root.get_children():
+			child.queue_free()
+		if main.current_is_boss:
+			main._show_victory()
+		else:
+			main._end_encounter()
+	)
 	_connect_button("DebugPanel/VBox/BackMenu", func() -> void:
 		App.show_menu()
 	)

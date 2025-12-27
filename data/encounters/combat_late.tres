@@ -1,0 +1,23 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/EncounterConfig.gd" id=1]
+[ext_resource type="Resource" path="res://data/variant_policies/variant_normal.tres" id=2]
+
+[resource]
+script = ExtResource("1")
+id = "combat_late"
+encounter_kind = "combat"
+min_floor = 5
+max_floor = 99
+weight = 2
+rows = 5
+cols = 9
+base_hp = 3
+base_threat = 0
+pattern_id = "auto"
+speed_boost_chance = 0.3
+speed_boost = false
+is_boss = false
+boss_core = false
+boss_core_hp_bonus = 2
+variant_policy = ExtResource("2")
