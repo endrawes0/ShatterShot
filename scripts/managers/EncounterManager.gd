@@ -159,10 +159,10 @@ func _roll_speed_boost(floor_index: int, is_boss: bool) -> bool:
 
 func _variant_policy_for_floor(floor_index: int, is_elite: bool, is_boss: bool) -> VariantPolicy:
 	if is_boss:
-		return boss_variant_policy
+		return boss_variant_policy.duplicate() as VariantPolicy
 	if floor_index >= 3 or is_elite:
-		return elite_variant_policy
-	return normal_variant_policy
+		return elite_variant_policy.duplicate() as VariantPolicy
+	return normal_variant_policy.duplicate() as VariantPolicy
 
 func _build_fallback_config(floor_index: int, is_elite: bool, is_boss: bool) -> EncounterConfig:
 	var config := EncounterConfig.new()
