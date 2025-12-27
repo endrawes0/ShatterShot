@@ -15,6 +15,20 @@ var row_palette: Array[Color] = []
 
 var pattern_registry: PatternRegistry = PatternRegistry.new()
 var config_library: Array[EncounterConfig] = []
+var normal_variant_policy: VariantPolicy
+var elite_variant_policy: VariantPolicy
+var boss_variant_policy: VariantPolicy
+
+func _init() -> void:
+	normal_variant_policy = VariantPolicy.new()
+	elite_variant_policy = VariantPolicy.new()
+	elite_variant_policy.shield_chance = 0.2
+	elite_variant_policy.regen_chance = 0.18
+	elite_variant_policy.curse_chance = 0.12
+	boss_variant_policy = VariantPolicy.new()
+	boss_variant_policy.shield_chance = 0.4
+	boss_variant_policy.regen_chance = 0.35
+	boss_variant_policy.curse_chance = 0.25
 
 func load_configs_from_dir(path: String) -> void:
 	config_library.clear()
@@ -85,7 +99,8 @@ func _build_bricks(config: EncounterConfig, on_brick_destroyed: Callable, on_bri
 			if not pattern_registry.allows(row, col, config.rows, config.cols, config.pattern_id):
 				continue
 			var hp_value: int = config.base_hp + int(row / 2.0)
-			_spawn_brick(row, col, config.rows, config.cols, hp_value, _row_color(row), _roll_variants(config.variant_policy), on_brick_destroyed, on_brick_damaged)
+			var policy := config.variant_policy if config.variant_policy != null else normal_variant_policy
+			_spawn_brick(row, col, config.rows, config.cols, hp_value, _row_color(row), policy.roll_variants(), on_brick_destroyed, on_brick_damaged)
 
 func _spawn_brick(row: int, col: int, _rows: int, cols: int, hp_value: int, color: Color, data: Dictionary, on_brick_destroyed: Callable, on_brick_damaged: Callable) -> void:
 	if bricks_root == null or brick_scene == null:
@@ -124,22 +139,6 @@ func _row_color(row: int) -> Color:
 		return Color(1, 1, 1)
 	return row_palette[row % row_palette.size()]
 
-func _roll_variants(policy: VariantPolicy) -> Dictionary:
-	var data: Dictionary = {}
-	var shield_chance: float = policy.shield_chance if policy != null else 0.1
-	var regen_chance: float = policy.regen_chance if policy != null else 0.1
-	var curse_chance: float = policy.curse_chance if policy != null else 0.08
-	if randf() < shield_chance:
-		var sides: Array[String] = ["left", "right", "top", "bottom"]
-		sides.shuffle()
-		data["shielded_sides"] = [sides[0]]
-	if randf() < regen_chance:
-		data["regen_on_drop"] = true
-		data["regen_amount"] = 1
-	if randf() < curse_chance:
-		data["is_cursed"] = true
-	return data
-
 func _clear_bricks() -> void:
 	if bricks_root == null:
 		return
@@ -159,16 +158,11 @@ func _roll_speed_boost(floor_index: int, is_boss: bool) -> bool:
 	return randf() < (0.15 + 0.05 * difficulty)
 
 func _variant_policy_for_floor(floor_index: int, is_elite: bool, is_boss: bool) -> VariantPolicy:
-	var policy := VariantPolicy.new()
 	if is_boss:
-		policy.shield_chance = 0.4
-		policy.regen_chance = 0.35
-		policy.curse_chance = 0.25
-	elif floor_index >= 3 or is_elite:
-		policy.shield_chance = 0.2
-		policy.regen_chance = 0.18
-		policy.curse_chance = 0.12
-	return policy
+		return boss_variant_policy.duplicate() as VariantPolicy
+	if floor_index >= 3 or is_elite:
+		return elite_variant_policy.duplicate() as VariantPolicy
+	return normal_variant_policy.duplicate() as VariantPolicy
 
 func _build_fallback_config(floor_index: int, is_elite: bool, is_boss: bool) -> EncounterConfig:
 	var config := EncounterConfig.new()
