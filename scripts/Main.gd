@@ -617,6 +617,12 @@ func _show_shop() -> void:
 func _build_shop_buttons() -> void:
 	if shop_cards_buttons == null or shop_buffs_buttons == null or shop_ball_mods_buttons == null:
 		return
+	_clear_shop_buttons()
+	_build_shop_card_buttons()
+	_build_shop_buff_buttons()
+	_build_shop_mod_buttons()
+
+func _clear_shop_buttons() -> void:
 	for child in shop_cards_buttons.get_children():
 		child.queue_free()
 	for child in shop_buffs_buttons.get_children():
@@ -624,6 +630,7 @@ func _build_shop_buttons() -> void:
 	for child in shop_ball_mods_buttons.get_children():
 		child.queue_free()
 
+func _build_shop_card_buttons() -> void:
 	for _i in range(2):
 		var card_id: String = card_pool.pick_random()
 		var shop_card_id := card_id
@@ -650,6 +657,7 @@ func _build_shop_buttons() -> void:
 	)
 	shop_cards_buttons.add_child(remove)
 
+func _build_shop_buff_buttons() -> void:
 	var upgrade := Button.new()
 	upgrade.text = "Upgrade starting hand (+%d) (%dg)" % [shop_upgrade_hand_bonus, shop_upgrade_price]
 	upgrade.pressed.connect(func() -> void:
@@ -682,6 +690,7 @@ func _build_shop_buttons() -> void:
 	)
 	shop_buffs_buttons.add_child(vitality_buff)
 
+func _build_shop_mod_buttons() -> void:
 	for mod_id in ball_mod_order:
 		var count: int = int(ball_mod_counts.get(mod_id, 0))
 		var mod: Dictionary = ball_mod_data[mod_id]
