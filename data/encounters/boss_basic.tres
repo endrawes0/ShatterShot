@@ -1,0 +1,23 @@
+[gd_resource type="Resource" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/EncounterConfig.gd" id=1]
+[ext_resource type="Resource" path="res://data/variant_policies/variant_boss.tres" id=2]
+
+[resource]
+script = ExtResource("1")
+id = "boss_basic"
+encounter_kind = "boss"
+min_floor = 1
+max_floor = 99
+weight = 1
+rows = 6
+cols = 10
+base_hp = 4
+base_threat = 0
+pattern_id = "ring"
+speed_boost_chance = 1.0
+speed_boost = true
+is_boss = true
+boss_core = true
+boss_core_hp_bonus = 2
+variant_policy = ExtResource("2")

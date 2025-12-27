@@ -1,8 +1,10 @@
 extends Node
 class_name EncounterManager
 
+const ENCOUNTER_CONFIG_SCRIPT := preload("res://scripts/data/EncounterConfig.gd")
+const VARIANT_POLICY_SCRIPT := preload("res://scripts/data/VariantPolicy.gd")
+
 signal encounter_started(config: EncounterConfig)
-signal encounter_finished(is_boss: bool)
 
 var bricks_root: Node2D
 var brick_scene: PackedScene
@@ -12,6 +14,23 @@ var top_margin: float
 var row_palette: Array[Color] = []
 
 var pattern_registry: PatternRegistry = PatternRegistry.new()
+var config_library: Array[EncounterConfig] = []
+
+func load_configs_from_dir(path: String) -> void:
+	config_library.clear()
+	var dir := DirAccess.open(path)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var file_name := dir.get_next()
+	while file_name != "":
+		if not dir.current_is_dir() and file_name.ends_with(".tres"):
+			var resource_path := path.path_join(file_name)
+			var resource := ResourceLoader.load(resource_path)
+			if resource is EncounterConfig:
+				config_library.append(resource)
+		file_name = dir.get_next()
+	dir.list_dir_end()
 
 func setup(root: Node2D, scene: PackedScene, size: Vector2, gap: Vector2, margin: float, palette: Array[Color]) -> void:
 	bricks_root = root
@@ -22,23 +41,15 @@ func setup(root: Node2D, scene: PackedScene, size: Vector2, gap: Vector2, margin
 	row_palette = palette
 
 func build_config_from_floor(floor_index: int, is_elite: bool, is_boss: bool) -> EncounterConfig:
-	var config := EncounterConfig.new()
-	config.is_boss = is_boss
-	config.pattern_id = _pick_pattern(floor_index, is_boss)
-	config.speed_boost = _roll_speed_boost(floor_index, is_boss)
-	config.variant_policy = _variant_policy_for_floor(floor_index, is_elite, is_boss)
+	var kind := "combat"
 	if is_boss:
-		config.rows = 6 + int(floor_index / 2)
-		config.cols = 10
-		config.base_hp = 4 + int(floor_index / 2)
-		config.base_threat = 0
-		config.boss_core = true
-	else:
-		config.rows = (5 if is_elite else 4) + int(floor_index / 2)
-		config.cols = 9 if is_elite else 8
-		config.base_hp = (2 if is_elite else 1) + int(floor_index / 3)
-		config.base_threat = 0
-	return config
+		kind = "boss"
+	elif is_elite:
+		kind = "elite"
+	var base_config := _select_config(floor_index, kind)
+	if base_config == null:
+		return _build_fallback_config(floor_index, is_elite, is_boss)
+	return _materialize_config(base_config, floor_index, is_elite, is_boss)
 
 func start_encounter(config: EncounterConfig, on_brick_destroyed: Callable, on_brick_damaged: Callable) -> void:
 	_clear_bricks()
@@ -73,10 +84,10 @@ func _build_bricks(config: EncounterConfig, on_brick_destroyed: Callable, on_bri
 		for col in range(config.cols):
 			if not pattern_registry.allows(row, col, config.rows, config.cols, config.pattern_id):
 				continue
-			var hp_value: int = config.base_hp + int(row / 2)
+			var hp_value: int = config.base_hp + int(row / 2.0)
 			_spawn_brick(row, col, config.rows, config.cols, hp_value, _row_color(row), _roll_variants(config.variant_policy), on_brick_destroyed, on_brick_damaged)
 
-func _spawn_brick(row: int, col: int, rows: int, cols: int, hp_value: int, color: Color, data: Dictionary, on_brick_destroyed: Callable, on_brick_damaged: Callable) -> void:
+func _spawn_brick(row: int, col: int, _rows: int, cols: int, hp_value: int, color: Color, data: Dictionary, on_brick_destroyed: Callable, on_brick_damaged: Callable) -> void:
 	if bricks_root == null or brick_scene == null:
 		return
 	var brick: Node = brick_scene.instantiate()
@@ -96,8 +107,8 @@ func _spawn_brick(row: int, col: int, rows: int, cols: int, hp_value: int, color
 	brick.setup(hp_value, 1, color, data)
 
 func _spawn_boss_core(config: EncounterConfig, on_brick_destroyed: Callable, on_brick_damaged: Callable) -> void:
-	var center_row: int = int(config.rows / 2)
-	var center_col: int = int(config.cols / 2)
+	var center_row: int = int(config.rows / 2.0)
+	var center_col: int = int(config.cols / 2.0)
 	for row in range(center_row - 1, center_row + 1):
 		for col in range(center_col - 1, center_col + 1):
 			var data: Dictionary = {
@@ -158,3 +169,79 @@ func _variant_policy_for_floor(floor_index: int, is_elite: bool, is_boss: bool) 
 		policy.regen_chance = 0.18
 		policy.curse_chance = 0.12
 	return policy
+
+func _build_fallback_config(floor_index: int, is_elite: bool, is_boss: bool) -> EncounterConfig:
+	var config := EncounterConfig.new()
+	config.is_boss = is_boss
+	config.encounter_kind = "boss" if is_boss else ("elite" if is_elite else "combat")
+	config.pattern_id = _pick_pattern(floor_index, is_boss)
+	config.speed_boost = _roll_speed_boost(floor_index, is_boss)
+	config.variant_policy = _variant_policy_for_floor(floor_index, is_elite, is_boss)
+	if is_boss:
+		config.rows = 6 + int(floor_index / 2.0)
+		config.cols = 10
+		config.base_hp = 4 + int(floor_index / 2.0)
+		config.base_threat = 0
+		config.boss_core = true
+	else:
+		config.rows = (5 if is_elite else 4) + int(floor_index / 2.0)
+		config.cols = 9 if is_elite else 8
+		config.base_hp = (2 if is_elite else 1) + int(floor_index / 3.0)
+		config.base_threat = 0
+	return config
+
+func _select_config(floor_index: int, kind: String) -> EncounterConfig:
+	var candidates: Array[EncounterConfig] = []
+	for config in config_library:
+		if config == null:
+			continue
+		var config_kind := config.encounter_kind.strip_edges().to_lower()
+		if config_kind == "":
+			config_kind = "boss" if config.is_boss else "combat"
+		if config_kind != kind:
+			continue
+		if floor_index < config.min_floor or floor_index > config.max_floor:
+			continue
+		candidates.append(config)
+	if candidates.is_empty():
+		return null
+	return _weighted_pick(candidates)
+
+func _weighted_pick(candidates: Array[EncounterConfig]) -> EncounterConfig:
+	var total_weight: int = 0
+	for candidate in candidates:
+		total_weight += max(1, candidate.weight)
+	var roll: int = randi() % total_weight
+	var cumulative: int = 0
+	for candidate in candidates:
+		cumulative += max(1, candidate.weight)
+		if roll < cumulative:
+			return candidate
+	return candidates[0]
+
+func _materialize_config(base_config: EncounterConfig, floor_index: int, is_elite: bool, is_boss: bool) -> EncounterConfig:
+	var config := EncounterConfig.new()
+	config.id = base_config.id
+	config.encounter_kind = base_config.encounter_kind
+	config.min_floor = base_config.min_floor
+	config.max_floor = base_config.max_floor
+	config.weight = base_config.weight
+	config.rows = base_config.rows
+	config.cols = base_config.cols
+	config.base_hp = base_config.base_hp
+	config.base_threat = base_config.base_threat
+	config.pattern_id = base_config.pattern_id
+	config.speed_boost_chance = base_config.speed_boost_chance
+	config.speed_boost = base_config.speed_boost
+	config.is_boss = base_config.is_boss or is_boss
+	config.boss_core = base_config.boss_core
+	config.boss_core_hp_bonus = base_config.boss_core_hp_bonus
+	config.variant_policy = base_config.variant_policy
+
+	if config.pattern_id == "auto":
+		config.pattern_id = _pick_pattern(floor_index, config.is_boss)
+	if not config.speed_boost:
+		config.speed_boost = randf() < config.speed_boost_chance
+	if config.variant_policy == null:
+		config.variant_policy = _variant_policy_for_floor(floor_index, is_elite, is_boss)
+	return config

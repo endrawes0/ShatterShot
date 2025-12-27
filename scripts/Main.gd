@@ -32,6 +32,8 @@ const ROW_PALETTE: Array[Color] = [
 const CARD_BUTTON_SIZE: Vector2 = Vector2(110, 154)
 const BASE_STARTING_HAND_SIZE: int = 4
 const BALL_SPAWN_OFFSET: Vector2 = Vector2(0, -32)
+const ENCOUNTER_CONFIG_DIR: String = "res://data/encounters"
+const FLOOR_PLAN_PATH: String = "res://data/floor_plans/basic.tres"
 
 const BALL_MOD_DATA: Dictionary = {
 	"explosive": {"name": "Explosives", "desc": "Explode bricks on hit.", "cost": 50},
@@ -179,8 +181,12 @@ func _ready() -> void:
 	encounter_manager = EncounterManager.new()
 	add_child(encounter_manager)
 	encounter_manager.setup(bricks_root, brick_scene, brick_size, brick_gap, top_margin, ROW_PALETTE)
+	encounter_manager.load_configs_from_dir(ENCOUNTER_CONFIG_DIR)
 	map_manager = MapManager.new()
 	add_child(map_manager)
+	var floor_plan_resource := load(FLOOR_PLAN_PATH)
+	if floor_plan_resource != null:
+		map_manager.floor_plan = floor_plan_resource
 	deck_manager = DeckManager.new()
 	add_child(deck_manager)
 	hud_controller = HudController.new()
@@ -340,6 +346,7 @@ func _start_run() -> void:
 	for child in bricks_root.get_children():
 		child.queue_free()
 	deck_manager.setup(STARTING_DECK)
+	map_manager.reset_run()
 	floor_index = 1
 	_start_encounter(false)
 
@@ -380,12 +387,16 @@ func _apply_persist_checkbox_style() -> void:
 func _build_map_buttons() -> void:
 	for child in map_buttons.get_children():
 		child.queue_free()
-	var choices: Array[String] = map_manager.build_room_choices(floor_index, max_combat_floors)
-	for room_type in choices:
+	var choices: Array[Dictionary] = map_manager.build_room_choices(floor_index, max_combat_floors)
+	for choice in choices:
+		var room_type: String = String(choice.get("type", "combat"))
+		var room_id: String = String(choice.get("id", ""))
 		var selected_room_type := room_type
+		var selected_room_id := room_id
 		var button := Button.new()
 		button.text = map_manager.room_label(selected_room_type)
 		button.pressed.connect(func() -> void:
+			map_manager.advance_to_room(selected_room_id)
 			_enter_room(selected_room_type)
 		)
 		map_buttons.add_child(button)
