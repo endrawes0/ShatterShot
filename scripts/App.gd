@@ -27,38 +27,23 @@ func start_new_run() -> void:
 		run_instance.queue_free()
 	run_instance = RUN_SCENE.instantiate()
 	get_tree().root.add_child(run_instance)
-	run_instance.process_mode = Node.PROCESS_MODE_INHERIT
-	run_instance.visible = true
 	if run_instance.has_method("on_menu_closed"):
 		run_instance.on_menu_closed()
-	if menu_instance and is_instance_valid(menu_instance):
-		menu_instance.visible = false
-		menu_instance.process_mode = Node.PROCESS_MODE_DISABLED
-	get_tree().current_scene = run_instance
+	_switch_to_scene(run_instance)
 
 func continue_run() -> void:
 	if not has_run():
 		return
-	run_instance.visible = true
-	run_instance.process_mode = Node.PROCESS_MODE_INHERIT
 	if run_instance.has_method("on_menu_closed"):
 		run_instance.on_menu_closed()
-	if menu_instance and is_instance_valid(menu_instance):
-		menu_instance.visible = false
-		menu_instance.process_mode = Node.PROCESS_MODE_DISABLED
-	get_tree().current_scene = run_instance
+	_switch_to_scene(run_instance)
 
 func show_menu() -> void:
 	_ensure_menu()
 	if run_instance and is_instance_valid(run_instance):
 		if run_instance.has_method("on_menu_opened"):
 			run_instance.on_menu_opened()
-		run_instance.visible = false
-		run_instance.process_mode = Node.PROCESS_MODE_DISABLED
-	_hide_aux_scenes()
-	menu_instance.visible = true
-	menu_instance.process_mode = Node.PROCESS_MODE_INHERIT
-	get_tree().current_scene = menu_instance
+	_switch_to_scene(menu_instance)
 
 func _ensure_menu() -> void:
 	if menu_instance == null or not is_instance_valid(menu_instance):
@@ -67,33 +52,30 @@ func _ensure_menu() -> void:
 
 func show_help() -> void:
 	_ensure_help()
-	_show_aux_scene(help_instance)
+	_switch_to_scene(help_instance)
 
 func show_graphics() -> void:
 	_ensure_graphics()
-	_show_aux_scene(graphics_instance)
+	_switch_to_scene(graphics_instance)
 
 func show_test_lab() -> void:
 	_ensure_test_lab()
-	_show_aux_scene(test_instance)
+	_switch_to_scene(scene_instance)
 
-func _show_aux_scene(scene_instance: Node) -> void:
-	if run_instance and is_instance_valid(run_instance):
-		run_instance.visible = false
-		run_instance.process_mode = Node.PROCESS_MODE_DISABLED
-	if menu_instance and is_instance_valid(menu_instance):
-		menu_instance.visible = false
-		menu_instance.process_mode = Node.PROCESS_MODE_DISABLED
-	_hide_aux_scenes()
-	scene_instance.visible = true
-	scene_instance.process_mode = Node.PROCESS_MODE_INHERIT
-	get_tree().current_scene = scene_instance
+func _switch_to_scene(scene_instance: Node) -> void:
+	for instance in _all_scene_instances():
+		if instance == null or not is_instance_valid(instance):
+			continue
+		_set_scene_active(instance, instance == scene_instance)
+	if scene_instance and is_instance_valid(scene_instance):
+		get_tree().current_scene = scene_instance
 
-func _hide_aux_scenes() -> void:
-	for scene_instance in [help_instance, graphics_instance, test_instance]:
-		if scene_instance and is_instance_valid(scene_instance):
-			scene_instance.visible = false
-			scene_instance.process_mode = Node.PROCESS_MODE_DISABLED
+func _set_scene_active(scene_instance: Node, active: bool) -> void:
+	scene_instance.visible = active
+	scene_instance.process_mode = Node.PROCESS_MODE_INHERIT if active else Node.PROCESS_MODE_DISABLED
+
+func _all_scene_instances() -> Array[Node]:
+	return [menu_instance, run_instance, help_instance, graphics_instance, test_instance]
 
 func _ensure_help() -> void:
 	if help_instance == null or not is_instance_valid(help_instance):
