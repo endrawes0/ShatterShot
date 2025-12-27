@@ -169,21 +169,6 @@ offset_right = 114.0
 offset_bottom = 158.0
 color = Color(0.24, 0.24, 0.24, 1)
 
-[node name="DeckCountLabel" type="Label" parent="HUD/HandBar/DeckStack"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -2.0
-offset_top = 50.0
-offset_right = -2.0
-offset_bottom = 100.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "0"
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="DeckButton" type="Button" parent="HUD/HandBar/DeckStack"]
 layout_mode = 1
 anchors_preset = 15
@@ -243,21 +228,6 @@ offset_top = 12.0
 offset_right = 122.0
 offset_bottom = 166.0
 color = Color(0.23921569, 0.23921569, 0.23921569, 1)
-
-[node name="DiscardCountLabel" type="Label" parent="HUD/HandBar/DiscardStack"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -2.0
-offset_top = -9.0
-offset_right = -2.0
-offset_bottom = 3.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "0"
-horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="DiscardButton" type="Button" parent="HUD/HandBar/DiscardStack"]
 layout_mode = 1

@@ -3,9 +3,9 @@ class_name HudController
 
 var energy_label: Label
 var deck_label: Label
-var deck_count_label: Label
 var discard_label: Label
-var discard_count_label: Label
+var deck_button: Button
+var discard_button: Button
 var hp_label: Label
 var gold_label: Label
 var shop_gold_label: Label
@@ -28,9 +28,9 @@ var card_art_textures: Dictionary = {}
 func setup(hud_nodes: Dictionary, data: Dictionary, type_colors: Dictionary, button_size: Vector2, art_textures: Dictionary) -> void:
 	energy_label = hud_nodes.get("energy_label")
 	deck_label = hud_nodes.get("deck_label")
-	deck_count_label = hud_nodes.get("deck_count_label")
 	discard_label = hud_nodes.get("discard_label")
-	discard_count_label = hud_nodes.get("discard_count_label")
+	deck_button = hud_nodes.get("deck_button")
+	discard_button = hud_nodes.get("discard_button")
 	hp_label = hud_nodes.get("hp_label")
 	gold_label = hud_nodes.get("gold_label")
 	shop_gold_label = hud_nodes.get("shop_gold_label")
@@ -64,12 +64,12 @@ func update_labels(energy: int, max_energy: int, draw_count: int, discard_count:
 		energy_label.text = "Energy: %d/%d" % [energy, max_energy]
 	if deck_label:
 		deck_label.text = "Draw: %d" % draw_count
-	if deck_count_label:
-		deck_count_label.text = "%d" % draw_count
 	if discard_label:
 		discard_label.text = "Discard: %d" % discard_count
-	if discard_count_label:
-		discard_count_label.text = "%d" % discard_count
+	if deck_button:
+		deck_button.text = "%d" % draw_count
+	if discard_button:
+		discard_button.text = "%d" % discard_count
 	if hp_label:
 		hp_label.text = "HP: %d/%d" % [hp, max_hp]
 	if gold_label:

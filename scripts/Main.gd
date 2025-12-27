@@ -70,10 +70,8 @@ const CARD_POOL: Array[String] = [
 @onready var hand_container: HBoxContainer = $HUD/HandBar/HandContainer
 @onready var energy_label: Label = $HUD/TopBar/EnergyLabel
 @onready var deck_label: Label = $HUD/TopBar/DeckLabel
-@onready var deck_count_label: Label = $HUD/HandBar/DeckStack/DeckCountLabel
 @onready var deck_stack: Control = $HUD/HandBar/DeckStack
 @onready var discard_stack: Control = $HUD/HandBar/DiscardStack
-@onready var discard_count_label: Label = $HUD/HandBar/DiscardStack/DiscardCountLabel
 @onready var discard_label: Label = $HUD/TopBar/DiscardLabel
 @onready var hp_label: Label = $HUD/TopBar/HpLabel
 @onready var gold_label: Label = $HUD/TopBar/GoldLabel
@@ -194,9 +192,9 @@ func _ready() -> void:
 	hud_controller.setup({
 		"energy_label": energy_label,
 		"deck_label": deck_label,
-		"deck_count_label": deck_count_label,
 		"discard_label": discard_label,
-		"discard_count_label": discard_count_label,
+		"deck_button": deck_button,
+		"discard_button": discard_button,
 		"hp_label": hp_label,
 		"gold_label": gold_label,
 		"shop_gold_label": shop_gold_label,
@@ -284,16 +282,10 @@ func _set_hud_tooltips() -> void:
 	energy_label.tooltip_text = "Energy is spent to play cards each turn."
 	deck_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	deck_label.tooltip_text = "Cards left in your draw pile."
-	if deck_count_label:
-		deck_count_label.mouse_filter = Control.MOUSE_FILTER_STOP
-		deck_count_label.tooltip_text = "Cards left in your draw pile."
 	if deck_button:
 		deck_button.tooltip_text = "View your deck."
 	discard_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	discard_label.tooltip_text = "Cards that were played this fight."
-	if discard_count_label:
-		discard_count_label.mouse_filter = Control.MOUSE_FILTER_STOP
-		discard_count_label.tooltip_text = "Cards in your discard pile."
 	hp_label.mouse_filter = Control.MOUSE_FILTER_STOP
 	hp_label.tooltip_text = "Your health. If it reaches 0, the run ends."
 	gold_label.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -614,16 +606,7 @@ func _build_reward_buttons() -> void:
 
 func _show_shop() -> void:
 	state = GameState.SHOP
-	hud_controller.hide_all_panels()
-	if map_panel:
-		map_panel.visible = false
-	if reward_panel:
-		reward_panel.visible = false
-	if deck_panel:
-		deck_panel.visible = false
-	if gameover_panel:
-		gameover_panel.visible = false
-	shop_panel.visible = true
+	_show_single_panel(shop_panel)
 	info_label.text = ""
 	_build_shop_buttons()
 	_refresh_mod_buttons()
@@ -943,9 +926,12 @@ func _is_persist_enabled() -> bool:
 		return mods_persist_checkbox.button_pressed
 	return persist_ball_mods
 
-func _show_deck_panel() -> void:
-	if state == GameState.GAME_OVER or state == GameState.VICTORY:
-		return
+func _show_single_panel(panel: Control) -> void:
+	hud_controller.hide_all_panels()
+	if panel:
+		panel.visible = true
+
+func _capture_deck_return_context() -> void:
 	deck_return_panel = ""
 	if map_panel.visible:
 		deck_return_panel = "map"
@@ -956,44 +942,28 @@ func _show_deck_panel() -> void:
 	elif gameover_panel.visible:
 		deck_return_panel = "gameover"
 	deck_return_info = info_label.text
-	hud_controller.hide_all_panels()
-	deck_panel.visible = true
+
+func _show_deck_panel() -> void:
+	if state == GameState.GAME_OVER or state == GameState.VICTORY:
+		return
+	_capture_deck_return_context()
+	_show_single_panel(deck_panel)
 	info_label.text = "Deck contents."
 	hud_controller.populate_card_container(deck_list, deck_manager.deck, Callable(), false, 4)
 
 func _show_discard_panel() -> void:
 	if state == GameState.GAME_OVER or state == GameState.VICTORY:
 		return
-	deck_return_panel = ""
-	if map_panel.visible:
-		deck_return_panel = "map"
-	elif reward_panel.visible:
-		deck_return_panel = "reward"
-	elif shop_panel.visible:
-		deck_return_panel = "shop"
-	elif gameover_panel.visible:
-		deck_return_panel = "gameover"
-	deck_return_info = info_label.text
-	hud_controller.hide_all_panels()
-	deck_panel.visible = true
+	_capture_deck_return_context()
+	_show_single_panel(deck_panel)
 	info_label.text = "Discard contents."
 	hud_controller.populate_card_container(deck_list, deck_manager.discard_pile, Callable(), false, 5)
 
 func _show_remove_card_panel() -> void:
 	if state == GameState.GAME_OVER or state == GameState.VICTORY:
 		return
-	deck_return_panel = ""
-	if map_panel.visible:
-		deck_return_panel = "map"
-	elif reward_panel.visible:
-		deck_return_panel = "reward"
-	elif shop_panel.visible:
-		deck_return_panel = "shop"
-	elif gameover_panel.visible:
-		deck_return_panel = "gameover"
-	deck_return_info = info_label.text
-	hud_controller.hide_all_panels()
-	deck_panel.visible = true
+	_capture_deck_return_context()
+	_show_single_panel(deck_panel)
 	info_label.text = "Choose a card to remove."
 	hud_controller.populate_card_container(deck_list, deck_manager.deck, Callable(self, "_on_remove_card_selected"), false, 5)
 
