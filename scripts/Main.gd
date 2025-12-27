@@ -2,19 +2,6 @@ extends Node2D
 
 enum GameState { MAP, PLANNING, VOLLEY, REWARD, SHOP, REST, GAME_OVER, VICTORY }
 
-const CARD_DATA: Dictionary = {
-	"punch": {"name": "Punch", "cost": 1, "desc": "+1 volley damage.", "type": "offense"},
-	"twin": {"name": "Twin Launch", "cost": 1, "desc": "Gain an extra launch this volley.", "type": "offense"},
-	"guard": {"name": "Guard", "cost": 1, "desc": "Gain 5 block. Block reduces threat damage this turn.", "type": "defense"},
-	"widen": {"name": "Widen Paddle", "cost": 1, "desc": "Widen paddle for 2 turns.", "type": "utility"},
-	"bomb": {"name": "Bomb", "cost": 2, "desc": "Destroy up to 3 random bricks.", "type": "offense"},
-	"rally": {"name": "Rally", "cost": 0, "desc": "Draw 2 cards.", "type": "utility"},
-	"focus": {"name": "Focus", "cost": 1, "desc": "+1 energy this turn.", "type": "utility"},
-	"haste": {"name": "Haste", "cost": 1, "desc": "Paddle moves faster for 2 turns.", "type": "utility"},
-	"slow": {"name": "Stasis", "cost": 1, "desc": "Slow balls this volley.", "type": "defense"},
-	"wound": {"name": "Wound", "cost": 1, "desc": "Pay 1 energy to remove it from your deck.", "type": "curse"}
-}
-
 const CARD_TYPE_COLORS: Dictionary = {
 	"offense": Color(1.0, 0.32, 0.02),
 	"defense": Color(0.05, 0.5, 1.0),
@@ -34,30 +21,7 @@ const BASE_STARTING_HAND_SIZE: int = 4
 const BALL_SPAWN_OFFSET: Vector2 = Vector2(0, -32)
 const ENCOUNTER_CONFIG_DIR: String = "res://data/encounters"
 const FLOOR_PLAN_PATH: String = "res://data/floor_plans/basic.tres"
-
-const BALL_MOD_DATA: Dictionary = {
-	"explosive": {"name": "Explosives", "desc": "Explode bricks on hit.", "cost": 50},
-	"spikes": {"name": "Spikes", "desc": "Ignore brick shields on hit.", "cost": 50},
-	"miracle": {"name": "Miracle", "desc": "One floor bounce per ball.", "cost": 60}
-}
-const BALL_MOD_ORDER: Array[String] = ["explosive", "spikes", "miracle"]
-const BALL_MOD_COLORS: Dictionary = {
-	"explosive": Color(0.95, 0.35, 0.35),
-	"spikes": Color(0.95, 0.85, 0.25),
-	"miracle": Color(0.45, 0.75, 1.0)
-}
-
-const STARTING_DECK: Array[String] = [
-	"punch", "punch", "punch", "punch",
-	"twin", "twin",
-	"guard", "guard",
-	"rally", "focus"
-]
-
-const CARD_POOL: Array[String] = [
-	"punch", "twin", "guard", "widen", "bomb", "rally", "focus",
-	"haste", "slow"
-]
+const BALANCE_DATA_PATH: String = "res://data/balance/basic.tres"
 
 @export var brick_size: Vector2 = Vector2(64, 24)
 @export var brick_gap: Vector2 = Vector2(8, 8)
@@ -108,18 +72,27 @@ const CARD_POOL: Array[String] = [
 
 var brick_scene: PackedScene = preload("res://scenes/Brick.tscn")
 var ball_scene: PackedScene = preload("res://scenes/Ball.tscn")
-var card_art_textures: Dictionary = {
-	"punch": preload("res://assets/cards/punch.png"),
-	"twin": preload("res://assets/cards/twin.png"),
-	"guard": preload("res://assets/cards/guard.png"),
-	"rally": preload("res://assets/cards/rally.png"),
-	"wound": preload("res://assets/cards/wound.png")
-}
+var card_art_textures: Dictionary = {}
 
 var encounter_manager: EncounterManager
 var map_manager: MapManager
 var deck_manager: DeckManager
 var hud_controller: HudController
+var balance_data: Resource
+
+var card_data: Dictionary = {}
+var card_pool: Array[String] = []
+var starting_deck: Array[String] = []
+var ball_mod_data: Dictionary = {}
+var ball_mod_order: Array[String] = []
+var ball_mod_colors: Dictionary = {}
+var shop_card_price: int = 0
+var shop_remove_price: int = 0
+var shop_upgrade_price: int = 0
+var shop_upgrade_hand_bonus: int = 0
+var shop_vitality_price: int = 0
+var shop_vitality_max_hp_bonus: int = 0
+var shop_vitality_heal: int = 0
 
 var state: GameState = GameState.MAP
 
@@ -171,6 +144,11 @@ func _update_reserve_indicator() -> void:
 
 func _ready() -> void:
 	randomize()
+	balance_data = load(BALANCE_DATA_PATH)
+	if balance_data == null:
+		push_error("Missing balance data at %s" % BALANCE_DATA_PATH)
+		return
+	_apply_balance_data(balance_data)
 	if get_viewport():
 		get_viewport().size_changed.connect(_fit_to_viewport)
 	_fit_to_viewport()
@@ -206,7 +184,7 @@ func _ready() -> void:
 		"deck_panel": deck_panel,
 		"gameover_panel": gameover_panel,
 		"hand_container": hand_container
-	}, CARD_DATA, CARD_TYPE_COLORS, CARD_BUTTON_SIZE, card_art_textures)
+	}, card_data, CARD_TYPE_COLORS, CARD_BUTTON_SIZE, card_art_textures)
 	# Buttons removed; use Space to launch and cards/turn flow for control.
 	if restart_button:
 		restart_button.pressed.connect(_start_run)
@@ -231,6 +209,30 @@ func _ready() -> void:
 		_apply_persist_checkbox_style()
 	_set_hud_tooltips()
 	_start_run()
+
+func _apply_balance_data(data: Resource) -> void:
+	card_data = data.card_data
+	card_pool = data.card_pool
+	starting_deck = data.starting_deck
+	ball_mod_data = data.ball_mod_data
+	ball_mod_order = data.ball_mod_order
+	ball_mod_colors = data.ball_mod_colors
+	shop_card_price = data.shop_card_price
+	shop_remove_price = data.shop_remove_price
+	shop_upgrade_price = data.shop_upgrade_price
+	shop_upgrade_hand_bonus = data.shop_upgrade_hand_bonus
+	shop_vitality_price = data.shop_vitality_price
+	shop_vitality_max_hp_bonus = data.shop_vitality_max_hp_bonus
+	shop_vitality_heal = data.shop_vitality_heal
+	card_art_textures.clear()
+	for card_id in card_data.keys():
+		var entry: Dictionary = card_data[card_id]
+		var art_path: String = String(entry.get("art_path", ""))
+		if art_path.is_empty():
+			continue
+		var texture := load(art_path)
+		if texture:
+			card_art_textures[card_id] = texture
 
 func _fit_to_viewport() -> void:
 	var size: Vector2 = get_viewport_rect().size
@@ -337,7 +339,7 @@ func _start_run() -> void:
 	active_balls.clear()
 	for child in bricks_root.get_children():
 		child.queue_free()
-	deck_manager.setup(STARTING_DECK)
+	deck_manager.setup(starting_deck)
 	map_manager.reset_run()
 	var start_room := map_manager.get_start_room_choice()
 	if start_room.is_empty():
@@ -595,7 +597,7 @@ func _build_reward_buttons() -> void:
 	for child in reward_buttons.get_children():
 		child.queue_free()
 	for _i in range(3):
-		var card_id: String = CARD_POOL.pick_random()
+		var card_id: String = card_pool.pick_random()
 		var reward_card_id := card_id
 		var button := hud_controller.create_card_button(card_id)
 		button.pressed.connect(func() -> void:
@@ -623,13 +625,13 @@ func _build_shop_buttons() -> void:
 		child.queue_free()
 
 	for _i in range(2):
-		var card_id: String = CARD_POOL.pick_random()
+		var card_id: String = card_pool.pick_random()
 		var shop_card_id := card_id
 		var button := hud_controller.create_card_button(card_id)
-		hud_controller.set_card_button_desc(button, "%s\nPrice: 40g" % CARD_DATA[card_id]["desc"])
+		hud_controller.set_card_button_desc(button, "%s\nPrice: %dg" % [card_data[card_id]["desc"], shop_card_price])
 		button.pressed.connect(func() -> void:
-			if gold >= 40:
-				gold -= 40
+			if gold >= shop_card_price:
+				gold -= shop_card_price
 				_add_card_to_deck(shop_card_id)
 				_show_map()
 			else:
@@ -637,10 +639,10 @@ func _build_shop_buttons() -> void:
 		)
 		shop_cards_buttons.add_child(button)
 	var remove := Button.new()
-	remove.text = "Remove a card (30g)"
+	remove.text = "Remove a card (%dg)" % shop_remove_price
 	remove.pressed.connect(func() -> void:
-		if gold >= 30 and deck_manager.deck.size() > 0:
-			gold -= 30
+		if gold >= shop_remove_price and deck_manager.deck.size() > 0:
+			gold -= shop_remove_price
 			_update_labels()
 			_show_remove_card_panel()
 		else:
@@ -649,11 +651,11 @@ func _build_shop_buttons() -> void:
 	shop_cards_buttons.add_child(remove)
 
 	var upgrade := Button.new()
-	upgrade.text = "Upgrade starting hand (+1) (60g)"
+	upgrade.text = "Upgrade starting hand (+%d) (%dg)" % [shop_upgrade_hand_bonus, shop_upgrade_price]
 	upgrade.pressed.connect(func() -> void:
-		if gold >= 60:
-			gold -= 60
-			starting_hand_size += 1
+		if gold >= shop_upgrade_price:
+			gold -= shop_upgrade_price
+			starting_hand_size += shop_upgrade_hand_bonus
 			info_label.text = "Starting hand increased to %d." % starting_hand_size
 			_show_map()
 		else:
@@ -662,12 +664,16 @@ func _build_shop_buttons() -> void:
 	shop_buffs_buttons.add_child(upgrade)
 
 	var vitality_buff := Button.new()
-	vitality_buff.text = "Vitality (+10 max HP, heal 10) (60g)"
+	vitality_buff.text = "Vitality (+%d max HP, heal %d) (%dg)" % [
+		shop_vitality_max_hp_bonus,
+		shop_vitality_heal,
+		shop_vitality_price
+	]
 	vitality_buff.pressed.connect(func() -> void:
-		if gold >= 60:
-			gold -= 60
-			max_hp += 10
-			hp = min(max_hp, hp + 10)
+		if gold >= shop_vitality_price:
+			gold -= shop_vitality_price
+			max_hp += shop_vitality_max_hp_bonus
+			hp = min(max_hp, hp + shop_vitality_heal)
 			info_label.text = "Max HP increased to %d." % max_hp
 			_update_labels()
 			_show_map()
@@ -676,9 +682,9 @@ func _build_shop_buttons() -> void:
 	)
 	shop_buffs_buttons.add_child(vitality_buff)
 
-	for mod_id in BALL_MOD_ORDER:
+	for mod_id in ball_mod_order:
 		var count: int = int(ball_mod_counts.get(mod_id, 0))
-		var mod: Dictionary = BALL_MOD_DATA[mod_id]
+		var mod: Dictionary = ball_mod_data[mod_id]
 		var shop_mod_id := mod_id
 		var shop_mod := mod
 		var button := Button.new()
@@ -687,8 +693,8 @@ func _build_shop_buttons() -> void:
 		else:
 			button.text = "%s x0 (+1) (%dg)" % [mod["name"], mod["cost"]]
 		button.tooltip_text = mod["desc"]
-		if BALL_MOD_COLORS.has(mod_id):
-			button.self_modulate = BALL_MOD_COLORS[mod_id]
+		if ball_mod_colors.has(mod_id):
+			button.self_modulate = ball_mod_colors[mod_id]
 		button.pressed.connect(func() -> void:
 			if gold >= int(shop_mod["cost"]):
 				gold -= int(shop_mod["cost"])
@@ -778,7 +784,7 @@ func _refresh_hand() -> void:
 func _play_card(card_id: String) -> void:
 	if state != GameState.PLANNING:
 		return
-	var cost: int = CARD_DATA[card_id]["cost"]
+	var cost: int = card_data[card_id]["cost"]
 	if energy < cost:
 		info_label.text = "Not enough energy."
 		return
@@ -874,7 +880,7 @@ func _refresh_mod_buttons() -> void:
 	for child in mods_buttons.get_children():
 		child.queue_free()
 	var has_buffs: bool = false
-	for mod_id in BALL_MOD_ORDER:
+	for mod_id in ball_mod_order:
 		if int(ball_mod_counts.get(mod_id, 0)) > 0:
 			has_buffs = true
 			break
@@ -883,17 +889,17 @@ func _refresh_mod_buttons() -> void:
 		label.text = "No buffs yet."
 		mods_buttons.add_child(label)
 		return
-	for mod_id in BALL_MOD_ORDER:
+	for mod_id in ball_mod_order:
 		var count: int = int(ball_mod_counts.get(mod_id, 0))
 		if count <= 0:
 			continue
-		var mod: Dictionary = BALL_MOD_DATA[mod_id]
+		var mod: Dictionary = ball_mod_data[mod_id]
 		var active_mod_id := mod_id
 		var button := Button.new()
 		button.text = "%s x%d" % [mod["name"], count]
 		button.tooltip_text = mod["desc"]
-		if BALL_MOD_COLORS.has(mod_id):
-			button.self_modulate = BALL_MOD_COLORS[mod_id]
+		if ball_mod_colors.has(mod_id):
+			button.self_modulate = ball_mod_colors[mod_id]
 		button.pressed.connect(func() -> void:
 			_select_ball_mod(active_mod_id)
 		)
@@ -970,7 +976,7 @@ func _show_remove_card_panel() -> void:
 func _on_remove_card_selected(card_id: String) -> void:
 	deck_manager.remove_card_from_all(card_id, true)
 	_refresh_hand()
-	var card_name: String = CARD_DATA[card_id]["name"]
+	var card_name: String = card_data[card_id]["name"]
 	deck_return_info = "Removed %s." % card_name
 	_close_deck_panel()
 
