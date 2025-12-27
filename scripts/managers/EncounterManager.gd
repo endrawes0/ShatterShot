@@ -94,13 +94,29 @@ func regen_bricks_on_drop() -> void:
 func _build_bricks(config: EncounterConfig, on_brick_destroyed: Callable, on_brick_damaged: Callable) -> void:
 	if bricks_root == null:
 		return
-	for row in range(config.rows):
-		for col in range(config.cols):
-			if not pattern_registry.allows(row, col, config.rows, config.cols, config.pattern_id):
+	for cell in _get_layout_cells(config.rows, config.cols, config.pattern_id):
+		var row: int = cell.x
+		var col: int = cell.y
+		var data := _roll_brick_data(row, config)
+		_spawn_brick(row, col, config.rows, config.cols, data.hp_value, data.color, data.variants, on_brick_destroyed, on_brick_damaged)
+
+func _get_layout_cells(rows: int, cols: int, pattern_id: String) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	for row in range(rows):
+		for col in range(cols):
+			if not pattern_registry.allows(row, col, rows, cols, pattern_id):
 				continue
-			var hp_value: int = config.base_hp + int(row / 2.0)
-			var policy := config.variant_policy if config.variant_policy != null else normal_variant_policy
-			_spawn_brick(row, col, config.rows, config.cols, hp_value, _row_color(row), policy.roll_variants(), on_brick_destroyed, on_brick_damaged)
+			cells.append(Vector2i(row, col))
+	return cells
+
+func _roll_brick_data(row: int, config: EncounterConfig) -> Dictionary:
+	var hp_value: int = config.base_hp + int(row / 2.0)
+	var policy := config.variant_policy if config.variant_policy != null else normal_variant_policy
+	return {
+		"hp_value": hp_value,
+		"color": _row_color(row),
+		"variants": policy.roll_variants()
+	}
 
 func _spawn_brick(row: int, col: int, _rows: int, cols: int, hp_value: int, color: Color, data: Dictionary, on_brick_destroyed: Callable, on_brick_damaged: Callable) -> void:
 	if bricks_root == null or brick_scene == null:
@@ -122,17 +138,31 @@ func _spawn_brick(row: int, col: int, _rows: int, cols: int, hp_value: int, colo
 	brick.setup(hp_value, 1, color, data)
 
 func _spawn_boss_core(config: EncounterConfig, on_brick_destroyed: Callable, on_brick_damaged: Callable) -> void:
-	var center_row: int = int(config.rows / 2.0)
-	var center_col: int = int(config.cols / 2.0)
+	var data := _boss_core_data()
+	for cell in _get_boss_core_cells(config.rows, config.cols):
+		var row: int = cell.x
+		var col: int = cell.y
+		_spawn_brick(row, col, config.rows, config.cols, config.base_hp + config.boss_core_hp_bonus, data.color, data.variants, on_brick_destroyed, on_brick_damaged)
+
+func _get_boss_core_cells(rows: int, cols: int) -> Array[Vector2i]:
+	var cells: Array[Vector2i] = []
+	var center_row: int = int(rows / 2.0)
+	var center_col: int = int(cols / 2.0)
 	for row in range(center_row - 1, center_row + 1):
 		for col in range(center_col - 1, center_col + 1):
-			var data: Dictionary = {
-				"shielded_sides": ["left", "right"],
-				"regen_on_drop": true,
-				"regen_amount": 2,
-				"is_cursed": true
-			}
-			_spawn_brick(row, col, config.rows, config.cols, config.base_hp + config.boss_core_hp_bonus, Color(0.85, 0.2, 0.2), data, on_brick_destroyed, on_brick_damaged)
+			cells.append(Vector2i(row, col))
+	return cells
+
+func _boss_core_data() -> Dictionary:
+	return {
+		"color": Color(0.85, 0.2, 0.2),
+		"variants": {
+			"shielded_sides": ["left", "right"],
+			"regen_on_drop": true,
+			"regen_amount": 2,
+			"is_cursed": true
+		}
+	}
 
 func _row_color(row: int) -> Color:
 	if row_palette.is_empty():
