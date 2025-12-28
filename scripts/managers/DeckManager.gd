@@ -10,6 +10,14 @@ var deck: Array[String] = []
 var draw_pile: Array[String] = []
 var discard_pile: Array[String] = []
 var hand: Array[String] = []
+var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
+func set_rng(rng_instance: RandomNumberGenerator) -> void:
+	if rng_instance != null:
+		rng = rng_instance
+	else:
+		rng = RandomNumberGenerator.new()
+		rng.randomize()
 
 func setup(starting_deck: Array[String]) -> void:
 	deck = starting_deck.duplicate()
@@ -47,7 +55,7 @@ func discard_card(card_id: String) -> void:
 func add_card(card_id: String) -> void:
 	deck.append(card_id)
 	draw_pile.append(card_id)
-	draw_pile.shuffle()
+	_shuffle_array(draw_pile)
 	_emit_piles_changed()
 
 func remove_card_from_all(card_id: String, remove_from_deck: bool = true) -> void:
@@ -69,7 +77,14 @@ func play_card(card_id: String) -> void:
 
 func _shuffle_into_draw(cards: Array) -> void:
 	draw_pile = cards.duplicate()
-	draw_pile.shuffle()
+	_shuffle_array(draw_pile)
+
+func _shuffle_array(values: Array) -> void:
+	for i in range(values.size() - 1, 0, -1):
+		var j: int = rng.randi_range(0, i)
+		var temp = values[i]
+		values[i] = values[j]
+		values[j] = temp
 
 func _remove_one_from_array(values: Array, target: String) -> void:
 	var index: int = values.find(target)

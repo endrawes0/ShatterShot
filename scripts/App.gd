@@ -24,10 +24,12 @@ func _ready() -> void:
 func has_run() -> bool:
 	return run_instance != null and is_instance_valid(run_instance)
 
-func start_new_run() -> void:
+func start_new_run(seed_value: int = 0) -> void:
 	if run_instance and is_instance_valid(run_instance):
 		run_instance.queue_free()
 	run_instance = RUN_SCENE.instantiate()
+	if run_instance.has_method("set_pending_seed"):
+		run_instance.set_pending_seed(seed_value)
 	get_tree().root.add_child(run_instance)
 	if run_instance.has_method("on_menu_closed"):
 		run_instance.on_menu_closed()

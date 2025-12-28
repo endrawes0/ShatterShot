@@ -28,7 +28,6 @@ const DEFAULT_MOD_COLOR: Color = Color(0.95, 0.95, 1, 1)
 var mod_colors: Dictionary = {}
 
 func _ready() -> void:
-	randomize()
 	base_damage = damage
 	_init_mod_effects()
 	_update_ball_color()
