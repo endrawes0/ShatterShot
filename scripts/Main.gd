@@ -563,7 +563,7 @@ func _restore_panels_for_state(target_state: int) -> void:
 func _update_map_graph(choices: Array[Dictionary]) -> void:
 	if map_graph == null or not map_graph.has_method("set_plan"):
 		return
-	var plan := map_manager.get_active_plan_summary()
+	var plan := map_manager.get_active_plan_summary(choices)
 	map_graph.call("set_plan", plan, choices)
 
 func _enter_room(room_type: String) -> void:

@@ -42,8 +42,9 @@ func generate(config: FloorPlanGeneratorConfig) -> Dictionary:
 			room_index[room_id] = rooms.size()
 			rooms.append(room)
 			floor_ids.append(room_id)
-		for prev_id in prev_ids:
-			_append_next(rooms, room_index, prev_id, floor_ids)
+		var prev_count: int = prev_ids.size()
+		for prev_index in range(prev_count):
+			_append_next_adjacent(rooms, room_index, prev_ids[prev_index], prev_index, floor_ids)
 		prev_ids = floor_ids
 
 	var boss_id := "boss"
@@ -53,6 +54,8 @@ func generate(config: FloorPlanGeneratorConfig) -> Dictionary:
 	for prev_id in prev_ids:
 		_append_next(rooms, room_index, prev_id, [boss_id])
 
+	_ensure_forward_edges(rooms, room_index)
+	_apply_hidden_edges(rooms, room_index, rng, config)
 	plan["rooms"] = rooms
 	return plan
 
@@ -117,3 +120,129 @@ func _append_next(rooms: Array[Dictionary], room_index: Dictionary, room_id: Str
 			next_list.append(next_id)
 	entry["next"] = next_list
 	rooms[index] = entry
+
+func _append_next_adjacent(rooms: Array[Dictionary], room_index: Dictionary, room_id: String, room_index_on_floor: int, next_ids: Array[String]) -> void:
+	if not room_index.has(room_id):
+		return
+	var index: int = int(room_index[room_id])
+	var entry: Dictionary = rooms[index]
+	var next_list: Array = entry.get("next", [])
+	for next_index in range(next_ids.size()):
+		if abs(next_index - room_index_on_floor) > 1:
+			continue
+		var next_id: String = next_ids[next_index]
+		if not next_list.has(next_id):
+			next_list.append(next_id)
+	entry["next"] = next_list
+	rooms[index] = entry
+
+func _ensure_forward_edges(rooms: Array[Dictionary], room_index: Dictionary) -> void:
+	var floor_map: Dictionary = {}
+	var max_floor: int = 0
+	for room in rooms:
+		var room_id := String(room.get("id", ""))
+		var floor_index := _parse_floor_index(room_id)
+		if floor_index < 0:
+			continue
+		max_floor = max(max_floor, floor_index)
+		if not floor_map.has(floor_index):
+			floor_map[floor_index] = []
+		floor_map[floor_index].append(room_id)
+	for floor_index in range(1, max_floor + 1):
+		var current_ids: Array = floor_map.get(floor_index, [])
+		for room_id in current_ids:
+			if not room_index.has(room_id):
+				continue
+			var idx: int = int(room_index[room_id])
+			var entry: Dictionary = rooms[idx]
+			var next_list: Array = entry.get("next", [])
+			if not next_list.is_empty():
+				continue
+			var room_index_on_floor := _parse_room_index(room_id)
+			if floor_index == max_floor:
+				if room_index.has("boss"):
+					next_list.append("boss")
+			else:
+				var next_floor_ids: Array = floor_map.get(floor_index + 1, [])
+				var target_id := _nearest_room_id_by_index(next_floor_ids, room_index_on_floor)
+				if target_id != "":
+					next_list.append(target_id)
+			if not next_list.is_empty():
+				entry["next"] = next_list
+				rooms[idx] = entry
+
+func _adjacent_room_id(floor_index: int, room_index_on_floor: int) -> String:
+	if floor_index <= 0 or room_index_on_floor <= 0:
+		return ""
+	return "f%d_%d" % [floor_index, room_index_on_floor]
+
+func _parse_floor_index(room_id: String) -> int:
+	if not room_id.begins_with("f"):
+		return -1
+	var parts := room_id.split("_")
+	if parts.size() != 2:
+		return -1
+	var floor_str := parts[0].substr(1, parts[0].length() - 1)
+	if not floor_str.is_valid_int():
+		return -1
+	return int(floor_str)
+
+func _parse_room_index(room_id: String) -> int:
+	if not room_id.begins_with("f"):
+		return -1
+	var parts := room_id.split("_")
+	if parts.size() != 2:
+		return -1
+	var idx_str := parts[1]
+	if not idx_str.is_valid_int():
+		return -1
+	return int(idx_str)
+
+func _nearest_room_id_by_index(room_ids: Array, room_index_on_floor: int) -> String:
+	var best_id := ""
+	var best_delta: int = 0
+	for room_id in room_ids:
+		var idx := _parse_room_index(String(room_id))
+		if idx <= 0:
+			continue
+		var delta: int = abs(idx - room_index_on_floor)
+		if best_id == "" or delta < best_delta:
+			best_id = String(room_id)
+			best_delta = delta
+	return best_id
+
+func _apply_hidden_edges(rooms: Array[Dictionary], room_index: Dictionary, rng: RandomNumberGenerator, config: FloorPlanGeneratorConfig) -> void:
+	if config.hidden_edge_chance <= 0.0:
+		return
+	for i in range(rooms.size()):
+		var room: Dictionary = rooms[i]
+		var from_id := String(room.get("id", ""))
+		if from_id == "":
+			continue
+		var next_entries: Array = room.get("next", [])
+		var next_list: Array[Dictionary] = []
+		var visible_count: int = 0
+		for entry in next_entries:
+			var next_id := ""
+			var pre_hidden: bool = false
+			if entry is Dictionary:
+				next_id = String(entry.get("id", ""))
+				pre_hidden = bool(entry.get("hidden", false))
+			else:
+				next_id = String(entry)
+			var next_room_type := ""
+			if room_index.has(next_id):
+				var next_room: Dictionary = rooms[int(room_index[next_id])]
+				next_room_type = String(next_room.get("type", ""))
+			var should_hide := pre_hidden or rng.randf() < config.hidden_edge_chance
+			if RESERVED_TYPES.has(next_room_type):
+				should_hide = false
+			if should_hide:
+				next_list.append({"id": next_id, "hidden": true})
+			else:
+				next_list.append({"id": next_id})
+				visible_count += 1
+		if visible_count == 0 and not next_list.is_empty():
+			next_list[0]["hidden"] = false
+		room["next"] = next_list
+		rooms[i] = room

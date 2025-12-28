@@ -9,6 +9,8 @@ var runtime_rooms: Array[Dictionary] = []
 var runtime_start_room_id: String = ""
 var runtime_seed: int = 0
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var discovered_rooms: Dictionary = {}
+var discovered_edges: Dictionary = {}
 
 func set_rng(rng_instance: RandomNumberGenerator) -> void:
 	if rng_instance != null:
@@ -20,6 +22,8 @@ func set_rng(rng_instance: RandomNumberGenerator) -> void:
 func reset_run() -> void:
 	current_room_id = ""
 	fallback_active = false
+	discovered_rooms.clear()
+	discovered_edges.clear()
 	_validate_active_floor_plan()
 
 func set_runtime_floor_plan(plan: Dictionary) -> void:
@@ -28,6 +32,8 @@ func set_runtime_floor_plan(plan: Dictionary) -> void:
 	runtime_seed = int(plan.get("seed", 0))
 	current_room_id = ""
 	fallback_active = false
+	discovered_rooms.clear()
+	discovered_edges.clear()
 	_validate_active_floor_plan()
 
 func get_start_room_choice() -> Dictionary:
@@ -48,8 +54,13 @@ func build_room_choices(floor_index: int, max_combat_floors: int) -> Array[Dicti
 	return _fallback_choices(floor_index, max_combat_floors)
 
 func advance_to_room(room_id: String) -> void:
-	if room_id != "":
-		current_room_id = room_id
+	if room_id == "":
+		return
+	var previous_room_id := current_room_id
+	current_room_id = room_id
+	discovered_rooms[room_id] = true
+	if previous_room_id != "":
+		discovered_edges[_edge_key(previous_room_id, room_id)] = true
 
 func room_label(room_type: String) -> String:
 	match room_type:
@@ -68,12 +79,16 @@ func room_label(room_type: String) -> String:
 		_:
 			return "???"
 
-func get_active_plan_summary() -> Dictionary:
+func get_active_plan_summary(choices: Array[Dictionary] = []) -> Dictionary:
+	var visible_graph := _build_visible_graph()
 	return {
 		"rooms": _active_rooms(),
 		"start_room_id": _active_start_room_id(),
 		"current_room_id": current_room_id,
-		"fallback_active": fallback_active
+		"fallback_active": fallback_active,
+		"visible_room_ids": visible_graph.get("room_ids", []),
+		"visible_edges": visible_graph.get("edges", []),
+		"has_visibility_data": true
 	}
 
 func _choices_from_active_plan(floor_index: int, max_combat_floors: int) -> Array[Dictionary]:
@@ -95,17 +110,21 @@ func _choices_from_active_plan(floor_index: int, max_combat_floors: int) -> Arra
 		fallback_active = true
 		current_room_id = ""
 		return _fallback_choices(floor_index, max_combat_floors)
-	var next_ids: Array = current_room.get("next", [])
-	if next_ids.is_empty():
+	var next_entries := _resolve_next_entries(current_room)
+	if next_entries.is_empty():
 		return [{"id": "", "type": "victory"}]
 	var choices: Array[Dictionary] = []
-	for next_id in next_ids:
-		var next_room := _find_room(String(next_id))
+	for entry in next_entries:
+		var next_id := String(entry.get("id", ""))
+		var hidden_edge: bool = bool(entry.get("hidden", false))
+		if hidden_edge:
+			continue
+		var next_room := _find_room(next_id)
 		if next_room.is_empty():
-			push_warning("Floor plan missing next room id '%s' from '%s'." % [String(next_id), current_room_id])
+			push_warning("Floor plan missing next room id '%s' from '%s'." % [next_id, current_room_id])
 			continue
 		choices.append({
-			"id": String(next_id),
+			"id": next_id,
 			"type": String(next_room.get("type", "combat"))
 		})
 	if choices.is_empty():
@@ -167,9 +186,12 @@ func _validate_active_floor_plan() -> void:
 		push_warning("Floor plan start_room_id '%s' not found in rooms." % start_room_id)
 	for room in rooms:
 		var room_id := String(room.get("id", ""))
-		for next_id in room.get("next", []):
-			if not seen.has(String(next_id)):
-				push_warning("Floor plan room '%s' references missing next id '%s'." % [room_id, String(next_id)])
+		for entry in _resolve_next_entries(room):
+			var next_id := String(entry.get("id", ""))
+			if next_id == "":
+				continue
+			if not seen.has(next_id):
+				push_warning("Floor plan room '%s' references missing next id '%s'." % [room_id, next_id])
 
 func _active_rooms() -> Array[Dictionary]:
 	if not runtime_rooms.is_empty():
@@ -189,3 +211,69 @@ func _has_active_floor_plan() -> bool:
 	if not runtime_rooms.is_empty():
 		return true
 	return floor_plan != null and floor_plan.rooms.size() > 0
+
+func _resolve_next_entries(room: Dictionary) -> Array[Dictionary]:
+	var entries: Array = room.get("next", [])
+	var resolved: Array[Dictionary] = []
+	for entry in entries:
+		if entry is Dictionary:
+			resolved.append({
+				"id": String(entry.get("id", "")),
+				"hidden": bool(entry.get("hidden", false))
+			})
+		else:
+			resolved.append({
+				"id": String(entry),
+				"hidden": false
+			})
+	return resolved
+
+func _build_visible_graph() -> Dictionary:
+	var rooms := _active_rooms()
+	var start_id := _active_start_room_id()
+	var edges: Array[Dictionary] = []
+	var outgoing: Dictionary = {}
+	for room in rooms:
+		var from_id := String(room.get("id", ""))
+		if from_id == "":
+			continue
+		for entry in _resolve_next_entries(room):
+			var to_id := String(entry.get("id", ""))
+			if to_id == "":
+				continue
+			var hidden_edge: bool = bool(entry.get("hidden", false))
+			if hidden_edge and not discovered_edges.has(_edge_key(from_id, to_id)):
+				continue
+			edges.append({"from": from_id, "to": to_id})
+			if not outgoing.has(from_id):
+				outgoing[from_id] = []
+			outgoing[from_id].append(to_id)
+	var reachable: Dictionary = {}
+	var queue: Array[String] = []
+	if start_id != "":
+		reachable[start_id] = true
+		queue.append(start_id)
+	while not queue.is_empty():
+		var room_id: String = String(queue.pop_front())
+		var next_list: Array = outgoing.get(room_id, [])
+		for next_id in next_list:
+			var next_room_id: String = String(next_id)
+			if next_room_id == "" or reachable.has(next_room_id):
+				continue
+			reachable[next_room_id] = true
+			queue.append(next_room_id)
+	if current_room_id != "" and not reachable.has(current_room_id):
+		reachable[current_room_id] = true
+	var room_ids: Array[String] = []
+	for room_id in reachable.keys():
+		room_ids.append(room_id)
+	var filtered_edges: Array[Dictionary] = []
+	for edge in edges:
+		var from_id := String(edge.get("from", ""))
+		var to_id := String(edge.get("to", ""))
+		if reachable.has(from_id) and reachable.has(to_id):
+			filtered_edges.append(edge)
+	return {"room_ids": room_ids, "edges": filtered_edges}
+
+func _edge_key(from_id: String, to_id: String) -> String:
+	return "%s|%s" % [from_id, to_id]

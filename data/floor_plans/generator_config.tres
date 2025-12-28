@@ -4,3 +4,5 @@
 
 [resource]
 script = ExtResource("1")
+max_choices = 3
+hidden_edge_chance = 0.25

@@ -14,7 +14,7 @@ rooms = Array[Dictionary]([{
 "type": "combat"
 }, {
 "id": "c2",
-"next": ["s1", "c3"],
+"next": [{"id": "s1", "hidden": true}, "c3"],
 "type": "combat"
 }, {
 "id": "r1",
