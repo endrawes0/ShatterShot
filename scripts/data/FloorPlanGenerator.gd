@@ -137,7 +137,45 @@ func _append_next_adjacent(rooms: Array[Dictionary], room_index: Dictionary, roo
 	rooms[index] = entry
 
 func _ensure_forward_edges(rooms: Array[Dictionary], room_index: Dictionary) -> void:
-	var floor_map: Dictionary = {}
+	# Make sure every floor room can advance at least once.
+	var floor_map := _build_floor_map(rooms)
+	var max_floor: int = int(floor_map.get("max_floor", 0))
+	var floors: Dictionary = floor_map.get("floors", {})
+	for floor_index in range(1, max_floor + 1):
+		var current_ids: Array = floors.get(floor_index, [])
+		for room_id in current_ids:
+			_ensure_room_forward_edge(rooms, room_index, floors, floor_index, room_id, max_floor)
+
+func _ensure_room_forward_edge(
+	rooms: Array[Dictionary],
+	room_index: Dictionary,
+	floors: Dictionary,
+	floor_index: int,
+	room_id: String,
+	max_floor: int
+) -> void:
+	if not room_index.has(room_id):
+		return
+	var idx: int = int(room_index[room_id])
+	var entry: Dictionary = rooms[idx]
+	var next_list: Array = entry.get("next", [])
+	if not next_list.is_empty():
+		return
+	var room_index_on_floor := _parse_room_index(room_id)
+	if floor_index == max_floor:
+		if room_index.has("boss"):
+			next_list.append("boss")
+	else:
+		var next_floor_ids: Array = floors.get(floor_index + 1, [])
+		var target_id := _nearest_room_id_by_index(next_floor_ids, room_index_on_floor)
+		if target_id != "":
+			next_list.append(target_id)
+	if not next_list.is_empty():
+		entry["next"] = next_list
+		rooms[idx] = entry
+
+func _build_floor_map(rooms: Array[Dictionary]) -> Dictionary:
+	var floors: Dictionary = {}
 	var max_floor: int = 0
 	for room in rooms:
 		var room_id := String(room.get("id", ""))
@@ -145,31 +183,10 @@ func _ensure_forward_edges(rooms: Array[Dictionary], room_index: Dictionary) -> 
 		if floor_index < 0:
 			continue
 		max_floor = max(max_floor, floor_index)
-		if not floor_map.has(floor_index):
-			floor_map[floor_index] = []
-		floor_map[floor_index].append(room_id)
-	for floor_index in range(1, max_floor + 1):
-		var current_ids: Array = floor_map.get(floor_index, [])
-		for room_id in current_ids:
-			if not room_index.has(room_id):
-				continue
-			var idx: int = int(room_index[room_id])
-			var entry: Dictionary = rooms[idx]
-			var next_list: Array = entry.get("next", [])
-			if not next_list.is_empty():
-				continue
-			var room_index_on_floor := _parse_room_index(room_id)
-			if floor_index == max_floor:
-				if room_index.has("boss"):
-					next_list.append("boss")
-			else:
-				var next_floor_ids: Array = floor_map.get(floor_index + 1, [])
-				var target_id := _nearest_room_id_by_index(next_floor_ids, room_index_on_floor)
-				if target_id != "":
-					next_list.append(target_id)
-			if not next_list.is_empty():
-				entry["next"] = next_list
-				rooms[idx] = entry
+		if not floors.has(floor_index):
+			floors[floor_index] = []
+		floors[floor_index].append(room_id)
+	return {"floors": floors, "max_floor": max_floor}
 
 func _adjacent_room_id(floor_index: int, room_index_on_floor: int) -> String:
 	if floor_index <= 0 or room_index_on_floor <= 0:
