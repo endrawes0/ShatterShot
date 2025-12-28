@@ -11,4 +11,11 @@ treasure_reward_weights = {
 "gold": 50,
 "mod": 25
 }
-mystery_room_chance = 0.2
+room_weights = {
+"combat": 3,
+"elite": 1,
+"mystery": 1,
+"rest": 1,
+"shop": 1,
+"treasure": 1
+}
