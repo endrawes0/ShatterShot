@@ -346,6 +346,44 @@ theme_override_constants/separation = 6
 layout_mode = 2
 text = "Skip"
 
+[node name="TreasurePanel" type="Panel" parent="HUD"]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -220.0
+offset_top = -140.0
+offset_right = 220.0
+offset_bottom = 140.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TreasureLabel" type="Label" parent="HUD/TreasurePanel"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 12.0
+offset_right = 408.0
+offset_bottom = 32.0
+text = "Treasure found"
+
+[node name="TreasureLayout" type="VBoxContainer" parent="HUD/TreasurePanel"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 48.0
+offset_right = 408.0
+offset_bottom = 216.0
+theme_override_constants/separation = 6
+
+[node name="TreasureRewards" type="VBoxContainer" parent="HUD/TreasurePanel/TreasureLayout"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="TreasureContinueButton" type="Button" parent="HUD/TreasurePanel/TreasureLayout"]
+layout_mode = 2
+text = "Continue"
+
 [node name="ShopPanel" parent="HUD" instance=ExtResource("4")]
 visible = false
 

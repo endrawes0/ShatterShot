@@ -14,6 +14,7 @@ var floor_label: Label
 
 var map_panel: Panel
 var reward_panel: Panel
+var treasure_panel: Panel
 var shop_panel: Panel
 var deck_panel: Panel
 var gameover_panel: Panel
@@ -40,6 +41,7 @@ func setup(hud_nodes: Dictionary, data: Dictionary, type_colors: Dictionary, but
 	floor_label = hud_nodes.get("floor_label")
 	map_panel = hud_nodes.get("map_panel")
 	reward_panel = hud_nodes.get("reward_panel")
+	treasure_panel = hud_nodes.get("treasure_panel")
 	shop_panel = hud_nodes.get("shop_panel")
 	deck_panel = hud_nodes.get("deck_panel")
 	gameover_panel = hud_nodes.get("gameover_panel")
@@ -54,6 +56,8 @@ func hide_all_panels() -> void:
 		map_panel.visible = false
 	if reward_panel:
 		reward_panel.visible = false
+	if treasure_panel:
+		treasure_panel.visible = false
 	if shop_panel:
 		shop_panel.visible = false
 	if deck_panel:

@@ -1,6 +1,6 @@
 extends Node2D
 
-enum GameState { MAP, PLANNING, VOLLEY, REWARD, SHOP, REST, GAME_OVER, VICTORY }
+enum GameState { MAP, PLANNING, VOLLEY, REWARD, TREASURE, SHOP, REST, GAME_OVER, VICTORY }
 
 const CARD_TYPE_COLORS: Dictionary = {
 	"offense": Color(1.0, 0.32, 0.02),
@@ -55,8 +55,13 @@ const BALANCE_DATA_PATH: String = "res://data/balance/basic.tres"
 @onready var map_buttons: HBoxContainer = $HUD/MapPanel/MapButtons
 @onready var map_seed_label: Label = $HUD/MapPanel/MapSeedLabel
 @onready var reward_panel: Panel = $HUD/RewardPanel
+@onready var reward_label: Label = $HUD/RewardPanel/RewardLabel
 @onready var reward_buttons: HBoxContainer = $HUD/RewardPanel/RewardLayout/RewardButtons
 @onready var reward_skip_button: Button = $HUD/RewardPanel/RewardLayout/RewardSkipButton
+@onready var treasure_panel: Panel = $HUD/TreasurePanel
+@onready var treasure_label: Label = $HUD/TreasurePanel/TreasureLabel
+@onready var treasure_rewards: VBoxContainer = $HUD/TreasurePanel/TreasureLayout/TreasureRewards
+@onready var treasure_continue_button: Button = $HUD/TreasurePanel/TreasureLayout/TreasureContinueButton
 @onready var shop_panel: Panel = $HUD/ShopPanel
 @onready var shop_cards_buttons: Container = $HUD/ShopPanel/ShopLayout/CardsPanel/CardsButtons
 @onready var shop_buffs_buttons: Container = $HUD/ShopPanel/ShopLayout/BuffsPanel/BuffsButtons
@@ -87,6 +92,7 @@ var run_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var run_seed: int = 0
 var map_preview_active: bool = false
 var map_preview_state: int = GameState.MAP
+var treasure_reward_entries: Array[Dictionary] = []
 
 var encounter_manager: EncounterManager
 var map_manager: MapManager
@@ -202,6 +208,7 @@ func _ready() -> void:
 		"floor_label": floor_label,
 		"map_panel": map_panel,
 		"reward_panel": reward_panel,
+		"treasure_panel": treasure_panel,
 		"shop_panel": shop_panel,
 		"deck_panel": deck_panel,
 		"gameover_panel": gameover_panel,
@@ -222,6 +229,8 @@ func _ready() -> void:
 		deck_close_button.pressed.connect(_close_deck_panel)
 	if reward_skip_button:
 		reward_skip_button.pressed.connect(_show_map)
+	if treasure_continue_button:
+		treasure_continue_button.pressed.connect(_show_map)
 	if shop_leave_button:
 		shop_leave_button.pressed.connect(_show_map)
 	if mods_persist_checkbox:
@@ -551,8 +560,10 @@ func _restore_panels_for_state(target_state: int) -> void:
 			_show_map()
 		GameState.SHOP:
 			_show_single_panel(shop_panel)
+		GameState.TREASURE:
+			_show_treasure_panel(false)
 		GameState.REWARD:
-			_show_single_panel(reward_panel)
+			_show_reward_panel()
 		GameState.GAME_OVER, GameState.VICTORY:
 			hud_controller.hide_all_panels()
 			if gameover_panel:
@@ -573,6 +584,8 @@ func _enter_room(room_type: String) -> void:
 	match room_type:
 		"rest":
 			_show_rest()
+		"treasure":
+			_show_treasure()
 		"shop":
 			_show_shop()
 		"elite":
@@ -753,16 +766,14 @@ func _end_encounter() -> void:
 	if current_is_boss:
 		_show_victory()
 		return
-	state = GameState.REWARD
-	reward_panel.visible = true
 	gold += 25
-	info_label.text = "Room cleared. Choose a reward."
-	_build_reward_buttons()
-	_update_labels()
+	_show_reward_panel()
 
 func _build_reward_buttons() -> void:
-	for child in reward_buttons.get_children():
-		child.queue_free()
+	_build_combat_reward_buttons()
+
+func _build_combat_reward_buttons() -> void:
+	_clear_reward_buttons()
 	for _i in range(3):
 		var card_id: String = _pick_random_card()
 		var reward_card_id := card_id
@@ -773,6 +784,12 @@ func _build_reward_buttons() -> void:
 		)
 		reward_buttons.add_child(button)
 
+func _clear_reward_buttons() -> void:
+	if reward_buttons == null:
+		return
+	for child in reward_buttons.get_children():
+		child.queue_free()
+
 func _show_shop() -> void:
 	state = GameState.SHOP
 	_show_single_panel(shop_panel)
@@ -780,6 +797,9 @@ func _show_shop() -> void:
 	_build_shop_buttons()
 	_refresh_mod_buttons()
 	_update_labels()
+
+func _show_treasure() -> void:
+	_show_treasure_panel()
 
 func _build_shop_buttons() -> void:
 	if shop_cards_buttons == null or shop_buffs_buttons == null or shop_ball_mods_buttons == null:
@@ -903,6 +923,135 @@ func _show_game_over() -> void:
 	gameover_label.text = "Game Over"
 	info_label.text = "Your run has ended."
 
+func _show_reward_panel() -> void:
+	state = GameState.REWARD
+	_show_single_panel(reward_panel)
+	if reward_label:
+		reward_label.text = "Choose a card"
+	if reward_skip_button:
+		reward_skip_button.text = "Skip"
+	info_label.text = "Room cleared. Choose a reward."
+	_build_reward_buttons()
+	_update_labels()
+
+func _show_treasure_panel(reroll: bool = true) -> void:
+	state = GameState.TREASURE
+	_show_single_panel(treasure_panel)
+	if treasure_label:
+		treasure_label.text = "Treasure found"
+	if reroll or treasure_reward_entries.is_empty():
+		treasure_reward_entries = _roll_treasure_rewards()
+		_apply_treasure_rewards(treasure_reward_entries)
+	_render_treasure_rewards(treasure_reward_entries)
+	info_label.text = "Treasure claimed."
+	_update_labels()
+
+func _roll_treasure_rewards() -> Array[Dictionary]:
+	var rewards: Array[Dictionary] = []
+	var count: int = run_rng.randi_range(1, 3)
+	var weights := _treasure_reward_weights()
+	var reward_types := _pick_weighted_unique_types(weights, count)
+	for reward_type in reward_types:
+		match reward_type:
+			"gold":
+				var amount: int = 50
+				rewards.append({
+					"type": "gold",
+					"amount": amount,
+					"label": "Gold Cache (+%dg)" % amount
+				})
+			"mod":
+				var mod_id := _pick_random_mod()
+				if mod_id == "":
+					continue
+				var mod: Dictionary = ball_mod_data.get(mod_id, {})
+				rewards.append({
+					"type": "mod",
+					"mod_id": mod_id,
+					"label": "%s (+1)" % String(mod.get("name", mod_id))
+				})
+			"card":
+				var card_id := _pick_random_card()
+				if card_id == "":
+					continue
+				var card: Dictionary = card_data.get(card_id, {})
+				rewards.append({
+					"type": "card",
+					"card_id": card_id,
+					"label": "%s added" % String(card.get("name", card_id))
+				})
+	return rewards
+
+func _treasure_reward_weights() -> Dictionary:
+	var default_weights: Dictionary = {
+		"gold": 50,
+		"mod": 25,
+		"card": 25
+	}
+	if floor_plan_generator_config is FLOOR_PLAN_GENERATOR_CONFIG:
+		var weights: Dictionary = floor_plan_generator_config.treasure_reward_weights
+		if weights != null and not weights.is_empty():
+			return weights
+	return default_weights
+
+func _pick_weighted_unique_types(weights: Dictionary, count: int) -> Array[String]:
+	var pool: Array[String] = []
+	for key in weights.keys():
+		var type_id := String(key)
+		var weight: int = int(weights[key])
+		if type_id == "" or weight <= 0:
+			continue
+		pool.append(type_id)
+	var picks: Array[String] = []
+	var remaining: Dictionary = weights.duplicate()
+	for _i in range(min(count, pool.size())):
+		var pick := _pick_weighted_type(remaining)
+		if pick == "":
+			break
+		picks.append(pick)
+		remaining.erase(pick)
+	return picks
+
+func _pick_weighted_type(weights: Dictionary) -> String:
+	var total: int = 0
+	for key in weights.keys():
+		total += max(0, int(weights[key]))
+	if total <= 0:
+		return ""
+	var roll: int = run_rng.randi_range(1, total)
+	var cumulative: int = 0
+	for key in weights.keys():
+		cumulative += max(0, int(weights[key]))
+		if roll <= cumulative:
+			return String(key)
+	return ""
+
+func _apply_treasure_rewards(rewards: Array[Dictionary]) -> void:
+	for reward in rewards:
+		var reward_type := String(reward.get("type", ""))
+		match reward_type:
+			"gold":
+				gold += int(reward.get("amount", 0))
+			"mod":
+				var mod_id := String(reward.get("mod_id", ""))
+				if mod_id != "":
+					ball_mod_counts[mod_id] = int(ball_mod_counts.get(mod_id, 0)) + 1
+			"card":
+				var card_id := String(reward.get("card_id", ""))
+				if card_id != "":
+					_add_card_to_deck(card_id)
+	_refresh_mod_buttons()
+
+func _render_treasure_rewards(rewards: Array[Dictionary]) -> void:
+	if treasure_rewards == null:
+		return
+	for child in treasure_rewards.get_children():
+		child.queue_free()
+	for reward in rewards:
+		var label := Label.new()
+		label.text = String(reward.get("label", "Treasure"))
+		treasure_rewards.add_child(label)
+
 func _show_victory() -> void:
 	state = GameState.VICTORY
 	_clear_active_balls()
@@ -1022,6 +1171,19 @@ func _pick_random_card() -> String:
 		return ""
 	var index: int = run_rng.randi_range(0, card_pool.size() - 1)
 	return String(card_pool[index])
+
+func _pick_random_mod() -> String:
+	if ball_mod_order.is_empty():
+		return ""
+	var index: int = run_rng.randi_range(0, ball_mod_order.size() - 1)
+	return String(ball_mod_order[index])
+
+func _pick_random_mods(count: int) -> Array[String]:
+	var mods: Array[String] = ball_mod_order.duplicate()
+	_shuffle_array(mods)
+	if mods.is_empty():
+		return []
+	return mods.slice(0, min(count, mods.size()))
 
 func _shuffle_array(values: Array) -> void:
 	for i in range(values.size() - 1, 0, -1):

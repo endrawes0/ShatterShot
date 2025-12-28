@@ -72,6 +72,8 @@ func room_label(room_type: String) -> String:
 			return "Rest"
 		"shop":
 			return "Shop"
+		"treasure":
+			return "Treasure"
 		"boss":
 			return "Boss"
 		"victory":

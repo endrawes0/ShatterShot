@@ -6,3 +6,8 @@
 script = ExtResource("1")
 max_choices = 5
 hidden_edge_chance = 0.25
+treasure_reward_weights = {
+"card": 25,
+"gold": 50,
+"mod": 25
+}

@@ -7,11 +7,17 @@ class_name FloorPlanGeneratorConfig
 @export var min_choices: int = 2
 @export var max_choices: int = 2
 @export var hidden_edge_chance: float = 0.0
+@export var treasure_reward_weights: Dictionary = {
+	"gold": 50,
+	"mod": 25,
+	"card": 25
+}
 @export var room_weights: Dictionary = {
 	"combat": 3,
 	"rest": 1,
 	"shop": 1,
-	"elite": 1
+	"elite": 1,
+	"treasure": 1
 }
 # Acts can override floors/weights/choices per segment.
 # Each entry may contain: floors (int), room_weights (Dictionary), min_choices (int), max_choices (int).

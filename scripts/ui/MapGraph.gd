@@ -5,6 +5,7 @@ const TYPE_COLORS: Dictionary = {
 	"elite": Color(0.86, 0.52, 0.12),
 	"rest": Color(0.26, 0.62, 0.36),
 	"shop": Color(0.22, 0.54, 0.84),
+	"treasure": Color(0.9, 0.78, 0.2),
 	"boss": Color(0.62, 0.22, 0.72),
 	"victory": Color(0.9, 0.9, 0.9)
 }
@@ -13,6 +14,7 @@ const TYPE_LABELS: Dictionary = {
 	"elite": "☠️",
 	"rest": "⛺",
 	"shop": "💰",
+	"treasure": "💎",
 	"boss": "👹",
 	"victory": "V"
 }
@@ -21,6 +23,7 @@ const TYPE_NAMES: Dictionary = {
 	"elite": "Elite",
 	"rest": "Rest",
 	"shop": "Shop",
+	"treasure": "Treasure",
 	"boss": "Boss",
 	"victory": "Victory"
 }
