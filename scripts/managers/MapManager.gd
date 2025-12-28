@@ -60,6 +60,14 @@ func room_label(room_type: String) -> String:
 		_:
 			return "???"
 
+func get_active_plan_summary() -> Dictionary:
+	return {
+		"rooms": _active_rooms(),
+		"start_room_id": _active_start_room_id(),
+		"current_room_id": current_room_id,
+		"fallback_active": fallback_active
+	}
+
 func _choices_from_active_plan(floor_index: int, max_combat_floors: int) -> Array[Dictionary]:
 	if current_room_id == "":
 		current_room_id = _active_start_room_id()

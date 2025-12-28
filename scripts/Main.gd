@@ -51,6 +51,7 @@ const BALANCE_DATA_PATH: String = "res://data/balance/basic.tres"
 @onready var mods_buttons: VBoxContainer = $HUD/ModsPanel/ModsButtons
 @onready var mods_persist_checkbox: CheckBox = $HUD/ModsPanel/ModsPersist
 @onready var map_panel: Panel = $HUD/MapPanel
+@onready var map_graph: Control = $HUD/MapPanel/MapGraph
 @onready var map_buttons: HBoxContainer = $HUD/MapPanel/MapButtons
 @onready var reward_panel: Panel = $HUD/RewardPanel
 @onready var reward_buttons: HBoxContainer = $HUD/RewardPanel/RewardLayout/RewardButtons
@@ -124,6 +125,8 @@ var volley_piercing: bool = false
 var volley_ball_speed_multiplier: float = 1.0
 var reserve_launch_cooldown: float = 0.0
 enum ReturnPanel { NONE, MAP, REWARD, SHOP, GAMEOVER }
+
+var hud_layer_cache: int = 0
 
 var base_paddle_half_width: float = 50.0
 var paddle_buff_turns: int = 0
@@ -404,7 +407,8 @@ func _show_map() -> void:
 	state = GameState.MAP
 	hud_controller.hide_all_panels()
 	map_panel.visible = true
-	_build_map_buttons()
+	var choices := _build_map_buttons()
+	_update_map_graph(choices)
 	var display_floor: int = min(floor_index + 1, max_floors)
 	floor_label.text = "Floor %d/%d" % [display_floor, max_floors]
 
@@ -441,7 +445,7 @@ func _apply_persist_checkbox_style() -> void:
 	mods_persist_checkbox.add_theme_icon_override("unchecked", unchecked_tex)
 	mods_persist_checkbox.add_theme_icon_override("checked", checked_tex)
 
-func _build_map_buttons() -> void:
+func _build_map_buttons() -> Array[Dictionary]:
 	for child in map_buttons.get_children():
 		child.queue_free()
 	var choices: Array[Dictionary] = map_manager.build_room_choices(floor_index, max_combat_floors)
@@ -457,6 +461,13 @@ func _build_map_buttons() -> void:
 			_enter_room(selected_room_type)
 		)
 		map_buttons.add_child(button)
+	return choices
+
+func _update_map_graph(choices: Array[Dictionary]) -> void:
+	if map_graph == null or not map_graph.has_method("set_plan"):
+		return
+	var plan := map_manager.get_active_plan_summary()
+	map_graph.call("set_plan", plan, choices)
 
 func _enter_room(room_type: String) -> void:
 	if room_type == "victory":
@@ -694,12 +705,15 @@ func _build_shop_card_buttons() -> void:
 		var card_id: String = card_pool.pick_random()
 		var shop_card_id := card_id
 		var button := hud_controller.create_card_button(card_id)
+		var card_button := button
 		hud_controller.set_card_button_desc(button, "%s\nPrice: %dg" % [card_data[card_id]["desc"], shop_card_price])
 		button.pressed.connect(func() -> void:
 			if gold >= shop_card_price:
 				gold -= shop_card_price
 				_add_card_to_deck(shop_card_id)
-				_show_map()
+				info_label.text = "Purchased %s." % card_data[shop_card_id]["name"]
+				_update_labels()
+				card_button.queue_free()
 			else:
 				info_label.text = "Not enough gold."
 		)
@@ -724,7 +738,7 @@ func _build_shop_buff_buttons() -> void:
 			gold -= shop_upgrade_price
 			starting_hand_size += shop_upgrade_hand_bonus
 			info_label.text = "Starting hand increased to %d." % starting_hand_size
-			_show_map()
+			_update_labels()
 		else:
 			info_label.text = "Not enough gold."
 	)
@@ -743,7 +757,6 @@ func _build_shop_buff_buttons() -> void:
 			hp = min(max_hp, hp + shop_vitality_heal)
 			info_label.text = "Max HP increased to %d." % max_hp
 			_update_labels()
-			_show_map()
 		else:
 			info_label.text = "Not enough gold."
 	)
@@ -766,11 +779,12 @@ func _build_shop_mod_buttons() -> void:
 		button.pressed.connect(func() -> void:
 			if gold >= int(shop_mod["cost"]):
 				gold -= int(shop_mod["cost"])
-				ball_mod_counts[shop_mod_id] = int(ball_mod_counts.get(shop_mod_id, 0)) + 1
+				var new_count: int = int(ball_mod_counts.get(shop_mod_id, 0)) + 1
+				ball_mod_counts[shop_mod_id] = new_count
 				info_label.text = "%s buff acquired." % shop_mod["name"]
 				_refresh_mod_buttons()
 				_update_labels()
-				_show_shop()
+				button.text = "%s x%d (+1) (%dg)" % [shop_mod["name"], new_count, shop_mod["cost"]]
 			else:
 				info_label.text = "Not enough gold."
 		)
@@ -804,17 +818,22 @@ func _go_to_menu() -> void:
 	App.show_menu()
 
 func on_menu_opened() -> void:
-	for node in [paddle, bricks_root, hud]:
+	process_mode = Node.PROCESS_MODE_DISABLED
+	if hud:
+		hud_layer_cache = hud.layer
+		hud.layer = -5
+	for node in [paddle, bricks_root, playfield]:
 		if node:
 			node.visible = false
-	process_mode = Node.PROCESS_MODE_DISABLED
 
 func on_menu_closed() -> void:
-	for node in [paddle, bricks_root, hud]:
+	for node in [paddle, bricks_root, playfield, hud]:
 		if node:
 			node.visible = true
 	process_mode = Node.PROCESS_MODE_INHERIT
 	_fit_to_viewport()
+	if hud:
+		hud.layer = hud_layer_cache
 
 func _clear_active_balls() -> void:
 	for ball in active_balls:

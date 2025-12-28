@@ -17,6 +17,11 @@ func _ready() -> void:
 	visibility_changed.connect(_update_continue_button)
 	_update_continue_button()
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel") and App.has_run():
+		App.continue_run()
+		get_viewport().set_input_as_handled()
+
 func _start_game() -> void:
 	App.start_new_run()
 
