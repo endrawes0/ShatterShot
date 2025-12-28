@@ -113,6 +113,10 @@ var shop_upgrade_hand_bonus: int = 0
 var shop_vitality_price: int = 0
 var shop_vitality_max_hp_bonus: int = 0
 var shop_vitality_heal: int = 0
+var shop_reroll_base_price: int = 0
+var shop_reroll_multiplier: float = 1.0
+var shop_reroll_count: int = 0
+var shop_card_offers: Array[String] = []
 
 var state: GameState = GameState.MAP
 
@@ -274,6 +278,8 @@ func _apply_balance_data(data: Resource) -> void:
 	shop_vitality_price = data.shop_vitality_price
 	shop_vitality_max_hp_bonus = data.shop_vitality_max_hp_bonus
 	shop_vitality_heal = data.shop_vitality_heal
+	shop_reroll_base_price = data.shop_reroll_base_price
+	shop_reroll_multiplier = data.shop_reroll_multiplier
 	card_art_textures.clear()
 	for card_id in card_data.keys():
 		var entry: Dictionary = card_data[card_id]
@@ -806,6 +812,7 @@ func _show_shop() -> void:
 	state = GameState.SHOP
 	_show_single_panel(shop_panel)
 	info_label.text = ""
+	_reset_shop_offers()
 	_build_shop_buttons()
 	_refresh_mod_buttons()
 	_update_labels()
@@ -830,8 +837,10 @@ func _clear_shop_buttons() -> void:
 		child.queue_free()
 
 func _build_shop_card_buttons() -> void:
-	for _i in range(2):
-		var card_id: String = _pick_random_card()
+	_clear_shop_card_buttons()
+	if shop_card_offers.is_empty():
+		_reset_shop_offers()
+	for card_id in shop_card_offers:
 		var shop_card_id := card_id
 		var button := hud_controller.create_card_button(card_id)
 		var card_button := button
@@ -858,6 +867,18 @@ func _build_shop_card_buttons() -> void:
 			info_label.text = "Cannot remove."
 	)
 	shop_cards_buttons.add_child(remove)
+	var reroll := Button.new()
+	reroll.text = "Reroll Cards (%dg)" % _shop_reroll_price()
+	reroll.pressed.connect(func() -> void:
+		_reroll_shop_cards()
+	)
+	shop_cards_buttons.add_child(reroll)
+
+func _clear_shop_card_buttons() -> void:
+	if shop_cards_buttons == null:
+		return
+	for child in shop_cards_buttons.get_children():
+		child.queue_free()
 
 func _build_shop_buff_buttons() -> void:
 	var upgrade := Button.new()
@@ -918,6 +939,33 @@ func _build_shop_mod_buttons() -> void:
 				info_label.text = "Not enough gold."
 		)
 		shop_ball_mods_buttons.add_child(button)
+
+func _reset_shop_offers() -> void:
+	shop_reroll_count = 0
+	shop_card_offers = _roll_shop_card_offers()
+
+func _reroll_shop_cards() -> void:
+	var price: int = _shop_reroll_price()
+	if gold < price:
+		info_label.text = "Not enough gold."
+		return
+	gold -= price
+	shop_reroll_count += 1
+	shop_card_offers = _roll_shop_card_offers()
+	_build_shop_card_buttons()
+	_update_labels()
+
+func _roll_shop_card_offers() -> Array[String]:
+	var offers: Array[String] = []
+	for _i in range(2):
+		var card_id: String = _pick_random_card()
+		if card_id != "":
+			offers.append(card_id)
+	return offers
+
+func _shop_reroll_price() -> int:
+	var multiplier: float = pow(shop_reroll_multiplier, shop_reroll_count)
+	return int(round(float(shop_reroll_base_price) * multiplier))
 
 func _show_rest() -> void:
 	state = GameState.REST

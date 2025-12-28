@@ -103,3 +103,5 @@ shop_upgrade_hand_bonus = 1
 shop_vitality_price = 60
 shop_vitality_max_hp_bonus = 10
 shop_vitality_heal = 10
+shop_reroll_base_price = 20
+shop_reroll_multiplier = 1.8

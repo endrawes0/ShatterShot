@@ -16,3 +16,5 @@ class_name BalanceData
 @export var shop_vitality_price: int = 60
 @export var shop_vitality_max_hp_bonus: int = 10
 @export var shop_vitality_heal: int = 10
+@export var shop_reroll_base_price: int = 20
+@export var shop_reroll_multiplier: float = 1.8
