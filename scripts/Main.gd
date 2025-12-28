@@ -53,6 +53,7 @@ const BALANCE_DATA_PATH: String = "res://data/balance/basic.tres"
 @onready var map_panel: Panel = $HUD/MapPanel
 @onready var map_graph: Control = $HUD/MapPanel/MapGraph
 @onready var map_buttons: HBoxContainer = $HUD/MapPanel/MapButtons
+@onready var map_seed_label: Label = $HUD/MapPanel/MapSeedLabel
 @onready var reward_panel: Panel = $HUD/RewardPanel
 @onready var reward_buttons: HBoxContainer = $HUD/RewardPanel/RewardLayout/RewardButtons
 @onready var reward_skip_button: Button = $HUD/RewardPanel/RewardLayout/RewardSkipButton
@@ -80,6 +81,12 @@ var brick_scene: PackedScene = preload("res://scenes/Brick.tscn")
 var ball_scene: PackedScene = preload("res://scenes/Ball.tscn")
 var card_art_textures: Dictionary = {}
 var floor_plan_generator_config: Resource
+var pending_seed: int = 0
+var has_pending_seed_override: bool = false
+var run_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var run_seed: int = 0
+var map_preview_active: bool = false
+var map_preview_state: int = GameState.MAP
 
 var encounter_manager: EncounterManager
 var map_manager: MapManager
@@ -153,7 +160,6 @@ func _update_reserve_indicator() -> void:
 			paddle.set_reserve_count(volley_ball_reserve)
 
 func _ready() -> void:
-	randomize()
 	balance_data = load(BALANCE_DATA_PATH)
 	if balance_data == null:
 		push_error("Missing balance data at %s" % BALANCE_DATA_PATH)
@@ -176,6 +182,9 @@ func _ready() -> void:
 	var generator_config_resource := load(FLOOR_PLAN_GENERATOR_CONFIG_PATH)
 	if generator_config_resource is FLOOR_PLAN_GENERATOR_CONFIG:
 		floor_plan_generator_config = generator_config_resource
+		if has_pending_seed_override:
+			floor_plan_generator_config.seed = pending_seed
+			has_pending_seed_override = false
 	deck_manager = DeckManager.new()
 	add_child(deck_manager)
 	hud_controller = HudController.new()
@@ -200,7 +209,7 @@ func _ready() -> void:
 	}, card_data, CARD_TYPE_COLORS, CARD_BUTTON_SIZE, card_art_textures)
 	# Buttons removed; use Space to launch and cards/turn flow for control.
 	if restart_button:
-		restart_button.pressed.connect(_start_run)
+		restart_button.pressed.connect(_restart_run_same_seed)
 	if menu_button:
 		menu_button.pressed.connect(_go_to_menu)
 	if forfeit_dialog:
@@ -222,6 +231,25 @@ func _ready() -> void:
 		_apply_persist_checkbox_style()
 	_set_hud_tooltips()
 	_start_run()
+
+func set_pending_seed(seed_value: int) -> void:
+	pending_seed = seed_value
+	has_pending_seed_override = true
+
+func _reset_run_rng() -> void:
+	var seed_value: int = 0
+	if floor_plan_generator_config == null or not floor_plan_generator_config.enabled:
+		run_rng.randomize()
+		run_seed = 0
+		return
+	if map_manager:
+		seed_value = map_manager.runtime_seed
+	if seed_value > 0:
+		run_rng.seed = seed_value
+		run_seed = seed_value
+	else:
+		run_rng.randomize()
+		run_seed = run_rng.seed
 
 func _apply_balance_data(data: Resource) -> void:
 	card_data = data.card_data
@@ -351,10 +379,19 @@ func _set_hud_tooltips() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
+		if map_preview_active:
+			_toggle_map_preview()
+			return
 		if deck_panel and deck_panel.visible:
 			_close_deck_panel()
 			return
 		App.show_menu()
+	if event is InputEventKey and event.is_pressed() and not event.is_echo():
+		var preview_key: InputEventKey = event
+		if preview_key.keycode == KEY_M:
+			_toggle_map_preview()
+			get_viewport().set_input_as_handled()
+			return
 	if event is InputEventKey and event.is_pressed() and not event.is_echo():
 		var key_event: InputEventKey = event
 		if key_event.keycode in [KEY_ENTER, KEY_KP_ENTER]:
@@ -392,16 +429,25 @@ func _start_run() -> void:
 	active_balls.clear()
 	for child in bricks_root.get_children():
 		child.queue_free()
-	deck_manager.setup(starting_deck)
 	_generate_floor_plan_if_needed()
+	_reset_run_rng()
+	if deck_manager:
+		deck_manager.set_rng(run_rng)
+	if encounter_manager:
+		encounter_manager.set_rng(run_rng)
+	if map_manager:
+		map_manager.set_rng(run_rng)
+	deck_manager.setup(starting_deck)
 	map_manager.reset_run()
-	var start_room := map_manager.get_start_room_choice()
-	if start_room.is_empty():
-		floor_index = 1
-		_start_encounter(false)
-		return
-	map_manager.advance_to_room(String(start_room.get("id", "")))
-	_enter_room(String(start_room.get("type", "combat")))
+	_show_map()
+
+func _restart_run_same_seed() -> void:
+	if floor_plan_generator_config is FLOOR_PLAN_GENERATOR_CONFIG:
+		var seed_value: int = 0
+		if map_manager:
+			seed_value = map_manager.runtime_seed
+		floor_plan_generator_config.seed = seed_value if seed_value > 0 else 0
+	_start_run()
 
 func _show_map() -> void:
 	state = GameState.MAP
@@ -411,6 +457,27 @@ func _show_map() -> void:
 	_update_map_graph(choices)
 	var display_floor: int = min(floor_index + 1, max_floors)
 	floor_label.text = "Floor %d/%d" % [display_floor, max_floors]
+	_update_seed_display()
+	map_preview_active = false
+
+func _show_map_preview() -> void:
+	if map_panel == null:
+		return
+	hud_controller.hide_all_panels()
+	map_panel.visible = true
+	_clear_map_buttons()
+	_update_map_graph([])
+	_update_seed_display()
+
+func _toggle_map_preview() -> void:
+	if map_preview_active:
+		map_preview_active = false
+		map_panel.visible = false
+		_restore_panels_for_state(map_preview_state)
+		return
+	map_preview_active = true
+	map_preview_state = state
+	_show_map_preview()
 
 func _generate_floor_plan_if_needed() -> void:
 	if floor_plan_generator_config == null or not floor_plan_generator_config.enabled:
@@ -420,6 +487,15 @@ func _generate_floor_plan_if_needed() -> void:
 	if plan.is_empty():
 		return
 	map_manager.set_runtime_floor_plan(plan)
+	_update_seed_display()
+
+func _update_seed_display() -> void:
+	if map_seed_label == null:
+		return
+	if run_seed > 0:
+		map_seed_label.text = "Seed: %d" % run_seed
+	else:
+		map_seed_label.text = "Seed: N/A"
 
 func _apply_persist_checkbox_style() -> void:
 	if mods_persist_checkbox == null:
@@ -446,8 +522,7 @@ func _apply_persist_checkbox_style() -> void:
 	mods_persist_checkbox.add_theme_icon_override("checked", checked_tex)
 
 func _build_map_buttons() -> Array[Dictionary]:
-	for child in map_buttons.get_children():
-		child.queue_free()
+	_clear_map_buttons()
 	var choices: Array[Dictionary] = map_manager.build_room_choices(floor_index, max_combat_floors)
 	for choice in choices:
 		var room_type: String = String(choice.get("type", "combat"))
@@ -462,6 +537,28 @@ func _build_map_buttons() -> Array[Dictionary]:
 		)
 		map_buttons.add_child(button)
 	return choices
+
+func _clear_map_buttons() -> void:
+	if map_buttons == null:
+		return
+	for child in map_buttons.get_children():
+		child.queue_free()
+
+func _restore_panels_for_state(target_state: int) -> void:
+	state = target_state
+	match target_state:
+		GameState.MAP:
+			_show_map()
+		GameState.SHOP:
+			_show_single_panel(shop_panel)
+		GameState.REWARD:
+			_show_single_panel(reward_panel)
+		GameState.GAME_OVER, GameState.VICTORY:
+			hud_controller.hide_all_panels()
+			if gameover_panel:
+				gameover_panel.visible = true
+		_:
+			hud_controller.hide_all_panels()
 
 func _update_map_graph(choices: Array[Dictionary]) -> void:
 	if map_graph == null or not map_graph.has_method("set_plan"):
@@ -667,7 +764,7 @@ func _build_reward_buttons() -> void:
 	for child in reward_buttons.get_children():
 		child.queue_free()
 	for _i in range(3):
-		var card_id: String = card_pool.pick_random()
+		var card_id: String = _pick_random_card()
 		var reward_card_id := card_id
 		var button := hud_controller.create_card_button(card_id)
 		button.pressed.connect(func() -> void:
@@ -702,7 +799,7 @@ func _clear_shop_buttons() -> void:
 
 func _build_shop_card_buttons() -> void:
 	for _i in range(2):
-		var card_id: String = card_pool.pick_random()
+		var card_id: String = _pick_random_card()
 		var shop_card_id := card_id
 		var button := hud_controller.create_card_button(card_id)
 		var card_button := button
@@ -914,11 +1011,24 @@ func _apply_card_effect(card_id: String) -> void:
 
 func _destroy_random_bricks(amount: int) -> void:
 	var bricks: Array = bricks_root.get_children()
-	bricks.shuffle()
+	_shuffle_array(bricks)
 	for i in range(min(amount, bricks.size())):
 		var brick: Node = bricks[i]
 		if brick.has_method("apply_damage"):
 			brick.apply_damage(999)
+
+func _pick_random_card() -> String:
+	if card_pool.is_empty():
+		return ""
+	var index: int = run_rng.randi_range(0, card_pool.size() - 1)
+	return String(card_pool[index])
+
+func _shuffle_array(values: Array) -> void:
+	for i in range(values.size() - 1, 0, -1):
+		var j: int = run_rng.randi_range(0, i)
+		var temp = values[i]
+		values[i] = values[j]
+		values[j] = temp
 
 func _apply_paddle_buffs() -> void:
 	if paddle_buff_turns > 0:

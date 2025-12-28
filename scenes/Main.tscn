@@ -281,6 +281,15 @@ offset_right = 520.0
 offset_bottom = 32.0
 text = "Next room"
 
+[node name="MapSeedLabel" type="Label" parent="HUD/MapPanel"]
+layout_mode = 0
+offset_left = 300.0
+offset_top = 12.0
+offset_right = 504.0
+offset_bottom = 32.0
+horizontal_alignment = 2
+text = "Seed: -"
+
 [node name="MapGraph" type="Control" parent="HUD/MapPanel"]
 anchors_preset = 0
 offset_left = 16.0
@@ -296,6 +305,7 @@ offset_left = 16.0
 offset_top = 512.0
 offset_right = 520.0
 offset_bottom = 548.0
+alignment = 1
 theme_override_constants/separation = 12
 
 [node name="RewardPanel" type="Panel" parent="HUD"]

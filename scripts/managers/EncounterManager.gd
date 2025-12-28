@@ -18,6 +18,14 @@ var config_library: Array[EncounterConfig] = []
 var normal_variant_policy: VariantPolicy
 var elite_variant_policy: VariantPolicy
 var boss_variant_policy: VariantPolicy
+var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
+func set_rng(rng_instance: RandomNumberGenerator) -> void:
+	if rng_instance != null:
+		rng = rng_instance
+	else:
+		rng = RandomNumberGenerator.new()
+		rng.randomize()
 
 func _init() -> void:
 	normal_variant_policy = VariantPolicy.new()
@@ -115,7 +123,7 @@ func _roll_brick_data(row: int, config: EncounterConfig) -> Dictionary:
 	return {
 		"hp_value": hp_value,
 		"color": _row_color(row),
-		"variants": policy.roll_variants()
+		"variants": policy.roll_variants(rng)
 	}
 
 func _spawn_brick(row: int, col: int, _rows: int, cols: int, hp_value: int, color: Color, data: Dictionary, on_brick_destroyed: Callable, on_brick_damaged: Callable) -> void:
@@ -187,7 +195,7 @@ func _roll_speed_boost(floor_index: int, is_boss: bool) -> bool:
 	if is_boss:
 		return true
 	var difficulty: int = max(1, floor_index)
-	return randf() < (0.15 + 0.05 * difficulty)
+	return rng.randf() < (0.15 + 0.05 * difficulty)
 
 func _variant_policy_for_floor(floor_index: int, is_elite: bool, is_boss: bool) -> VariantPolicy:
 	if is_boss:
@@ -237,7 +245,7 @@ func _weighted_pick(candidates: Array[EncounterConfig]) -> EncounterConfig:
 	var total_weight: int = 0
 	for candidate in candidates:
 		total_weight += max(1, candidate.weight)
-	var roll: int = randi() % total_weight
+	var roll: int = rng.randi_range(0, total_weight - 1)
 	var cumulative: int = 0
 	for candidate in candidates:
 		cumulative += max(1, candidate.weight)
@@ -267,7 +275,7 @@ func _materialize_config(base_config: EncounterConfig, floor_index: int, is_elit
 	if config.pattern_id == "auto":
 		config.pattern_id = _pick_pattern(floor_index, config.is_boss)
 	if not config.speed_boost:
-		config.speed_boost = randf() < config.speed_boost_chance
+		config.speed_boost = rng.randf() < config.speed_boost_chance
 	if config.variant_policy == null:
 		config.variant_policy = _variant_policy_for_floor(floor_index, is_elite, is_boss)
 	return config

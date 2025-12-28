@@ -8,6 +8,14 @@ var fallback_active: bool = false
 var runtime_rooms: Array[Dictionary] = []
 var runtime_start_room_id: String = ""
 var runtime_seed: int = 0
+var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
+func set_rng(rng_instance: RandomNumberGenerator) -> void:
+	if rng_instance != null:
+		rng = rng_instance
+	else:
+		rng = RandomNumberGenerator.new()
+		rng.randomize()
 
 func reset_run() -> void:
 	current_room_id = ""
@@ -70,7 +78,17 @@ func get_active_plan_summary() -> Dictionary:
 
 func _choices_from_active_plan(floor_index: int, max_combat_floors: int) -> Array[Dictionary]:
 	if current_room_id == "":
-		current_room_id = _active_start_room_id()
+		var start_id := _active_start_room_id()
+		if start_id == "":
+			return _fallback_choices(floor_index, max_combat_floors)
+		var start_room := _find_room(start_id)
+		if start_room.is_empty():
+			push_warning("Floor plan missing start room id '%s'. Falling back to random choices." % start_id)
+			return _fallback_choices(floor_index, max_combat_floors)
+		return [{
+			"id": String(start_room.get("id", "")),
+			"type": String(start_room.get("type", "combat"))
+		}]
 	var current_room := _find_room(current_room_id)
 	if current_room.is_empty():
 		push_warning("Floor plan missing room id '%s'. Falling back to random choices." % current_room_id)
@@ -101,18 +119,24 @@ func _fallback_choices(floor_index: int, max_combat_floors: int) -> Array[Dictio
 	if floor_index >= max_combat_floors:
 		return [{"id": "", "type": "boss"}]
 	var pool: Array[String] = ["combat", "combat", "combat", "rest", "shop", "elite"]
-	var first_choice: String = pool.pick_random()
+	var first_choice: String = _pick_random(pool)
 	var filtered_pool: Array[String] = []
 	for entry in pool:
 		if entry != first_choice:
 			filtered_pool.append(entry)
 	var second_choice: String = first_choice
 	if not filtered_pool.is_empty():
-		second_choice = filtered_pool.pick_random()
+		second_choice = _pick_random(filtered_pool)
 	return [
 		{"id": "", "type": first_choice},
 		{"id": "", "type": second_choice}
 	]
+
+func _pick_random(values: Array[String]) -> String:
+	if values.is_empty():
+		return ""
+	var index: int = rng.randi_range(0, values.size() - 1)
+	return values[index]
 
 func _find_room(room_id: String) -> Dictionary:
 	var rooms := _active_rooms()
