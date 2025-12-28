@@ -705,12 +705,15 @@ func _build_shop_card_buttons() -> void:
 		var card_id: String = card_pool.pick_random()
 		var shop_card_id := card_id
 		var button := hud_controller.create_card_button(card_id)
+		var card_button := button
 		hud_controller.set_card_button_desc(button, "%s\nPrice: %dg" % [card_data[card_id]["desc"], shop_card_price])
 		button.pressed.connect(func() -> void:
 			if gold >= shop_card_price:
 				gold -= shop_card_price
 				_add_card_to_deck(shop_card_id)
-				_show_map()
+				info_label.text = "Purchased %s." % card_data[shop_card_id]["name"]
+				_update_labels()
+				card_button.queue_free()
 			else:
 				info_label.text = "Not enough gold."
 		)
@@ -735,7 +738,7 @@ func _build_shop_buff_buttons() -> void:
 			gold -= shop_upgrade_price
 			starting_hand_size += shop_upgrade_hand_bonus
 			info_label.text = "Starting hand increased to %d." % starting_hand_size
-			_show_map()
+			_update_labels()
 		else:
 			info_label.text = "Not enough gold."
 	)
@@ -754,7 +757,6 @@ func _build_shop_buff_buttons() -> void:
 			hp = min(max_hp, hp + shop_vitality_heal)
 			info_label.text = "Max HP increased to %d." % max_hp
 			_update_labels()
-			_show_map()
 		else:
 			info_label.text = "Not enough gold."
 	)
@@ -777,11 +779,12 @@ func _build_shop_mod_buttons() -> void:
 		button.pressed.connect(func() -> void:
 			if gold >= int(shop_mod["cost"]):
 				gold -= int(shop_mod["cost"])
-				ball_mod_counts[shop_mod_id] = int(ball_mod_counts.get(shop_mod_id, 0)) + 1
+				var new_count: int = int(ball_mod_counts.get(shop_mod_id, 0)) + 1
+				ball_mod_counts[shop_mod_id] = new_count
 				info_label.text = "%s buff acquired." % shop_mod["name"]
 				_refresh_mod_buttons()
 				_update_labels()
-				_show_shop()
+				button.text = "%s x%d (+1) (%dg)" % [shop_mod["name"], new_count, shop_mod["cost"]]
 			else:
 				info_label.text = "Not enough gold."
 		)
