@@ -3,6 +3,9 @@ extends StaticBody2D
 signal destroyed(brick: Node)
 signal damaged(brick: Node)
 
+const HIT_PARTICLE_SCENE := preload("res://scenes/HitParticle.tscn")
+const BOUNCE_BALL_SCENE := preload("res://scenes/BounceBall.tscn")
+
 @onready var rect: ColorRect = $Rect
 @onready var hp_label: Label = $Rect/HpLabel
 @onready var curse_label: Label = $Rect/CurseLabel
@@ -19,6 +22,10 @@ var regen_on_drop: bool = false
 var regen_amount: int = 1
 var is_cursed: bool = false
 var suppress_curse_on_destroy: bool = false
+var particle_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+
+func _ready() -> void:
+	particle_rng.randomize()
 
 func setup(new_hp: int, new_threat: int, color: Color, data: Dictionary = {}) -> void:
 	if rect == null:
@@ -63,10 +70,13 @@ func apply_damage_with_overkill(amount: int, normal: Vector2 = Vector2.ZERO, ign
 	var hp_before: int = hp
 	hp -= damage
 	if hp <= 0:
+		_spawn_hit_particles(_destroy_particle_count(damage))
+		_spawn_bounce_particle()
 		emit_signal("destroyed", self)
 		queue_free()
 		return max(0, damage - hp_before)
 	emit_signal("damaged", self)
+	_spawn_hit_particles(_damage_particle_count(damage))
 	_update_label()
 	return 0
 
@@ -109,3 +119,58 @@ func _update_shield_visuals() -> void:
 
 func suppress_curse() -> void:
 	suppress_curse_on_destroy = true
+
+func _spawn_hit_particles(count: int) -> void:
+	if rect == null:
+		return
+	var parent_node := get_parent()
+	if parent_node == null:
+		return
+	for _i in range(count):
+		var particle := HIT_PARTICLE_SCENE.instantiate()
+		if particle == null:
+			continue
+		parent_node.add_child(particle)
+		if particle is Node2D:
+			var node: Node2D = particle as Node2D
+			var offset := Vector2(
+				particle_rng.randf_range(-10.0, 10.0),
+				particle_rng.randf_range(-8.0, 8.0)
+			)
+			node.global_position = global_position + offset
+		if particle.has_method("setup"):
+			var velocity := Vector2(
+				particle_rng.randf_range(-120.0, 120.0),
+				particle_rng.randf_range(-320.0, -140.0)
+			)
+			particle.call("setup", rect.color, velocity)
+
+func _spawn_bounce_particle() -> void:
+	if rect == null:
+		return
+	if particle_rng.randf() > 0.1:
+		return
+	var parent_node := get_parent()
+	if parent_node == null:
+		return
+	var particle := BOUNCE_BALL_SCENE.instantiate()
+	if particle == null:
+		return
+	parent_node.add_child(particle)
+	if particle is Node2D:
+		var node: Node2D = particle as Node2D
+		node.global_position = global_position
+	if particle.has_method("setup"):
+		var velocity := Vector2(
+			particle_rng.randf_range(-160.0, 160.0),
+			particle_rng.randf_range(-420.0, -220.0)
+		)
+		particle.call("setup", rect.color, velocity)
+	if particle.has_method("set"):
+		particle.set("paddle_path_override", "Paddle")
+
+func _damage_particle_count(damage: int) -> int:
+	return clamp(6 + damage * 2, 6, 36)
+
+func _destroy_particle_count(damage: int) -> int:
+	return clamp(12 + damage * 4, 12, 60)

@@ -11,7 +11,7 @@ signal mod_consumed(mod_id: String)
 @export var speed: float = 320.0
 @export var paddle_path: NodePath
 
-@onready var paddle: Node2D = get_node(paddle_path) as Node2D
+@onready var paddle: Node2D = _resolve_paddle()
 @onready var rect: ColorRect = $Rect
 
 var launched: bool = false
@@ -34,6 +34,10 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	if not launched:
+		if paddle == null:
+			paddle = _resolve_paddle()
+			if paddle == null:
+				return
 		global_position = paddle.global_position + OFFSET
 		return
 
@@ -102,6 +106,14 @@ func set_ball_mod(mod_id: String) -> void:
 func set_mod_colors(colors: Dictionary) -> void:
 	mod_colors = colors
 	_update_ball_color()
+
+func _resolve_paddle() -> Node2D:
+	if paddle_path != NodePath(""):
+		var node := get_node_or_null(paddle_path)
+		if node is Node2D:
+			return node
+	var fallback := get_tree().root.find_child("Paddle", true, false)
+	return fallback if fallback is Node2D else null
 
 func _update_ball_color() -> void:
 	if rect == null:
