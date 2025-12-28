@@ -45,6 +45,8 @@ func show_menu() -> void:
 	if run_instance and is_instance_valid(run_instance):
 		if run_instance.has_method("on_menu_opened"):
 			run_instance.on_menu_opened()
+		_show_menu_overlay()
+		return
 	_switch_to_scene(menu_instance)
 
 func _ensure_menu() -> void:
@@ -75,6 +77,18 @@ func _switch_to_scene(scene_instance: Node) -> void:
 func _set_scene_active(scene_instance: Node, active: bool) -> void:
 	scene_instance.visible = active
 	scene_instance.process_mode = Node.PROCESS_MODE_INHERIT if active else Node.PROCESS_MODE_DISABLED
+
+func _show_menu_overlay() -> void:
+	if menu_instance == null or not is_instance_valid(menu_instance):
+		return
+	menu_instance.visible = true
+	menu_instance.process_mode = Node.PROCESS_MODE_INHERIT
+	if run_instance and is_instance_valid(run_instance):
+		run_instance.visible = true
+		run_instance.process_mode = Node.PROCESS_MODE_DISABLED
+	if get_tree() and get_tree().root:
+		var root := get_tree().root
+		root.move_child(menu_instance, root.get_child_count() - 1)
 
 func _all_scene_instances() -> Array[Node]:
 	return [menu_instance, run_instance, help_instance, graphics_instance, test_instance]

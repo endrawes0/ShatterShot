@@ -51,6 +51,7 @@ const BALANCE_DATA_PATH: String = "res://data/balance/basic.tres"
 @onready var mods_buttons: VBoxContainer = $HUD/ModsPanel/ModsButtons
 @onready var mods_persist_checkbox: CheckBox = $HUD/ModsPanel/ModsPersist
 @onready var map_panel: Panel = $HUD/MapPanel
+@onready var map_graph: Control = $HUD/MapPanel/MapGraph
 @onready var map_buttons: HBoxContainer = $HUD/MapPanel/MapButtons
 @onready var reward_panel: Panel = $HUD/RewardPanel
 @onready var reward_buttons: HBoxContainer = $HUD/RewardPanel/RewardLayout/RewardButtons
@@ -124,6 +125,8 @@ var volley_piercing: bool = false
 var volley_ball_speed_multiplier: float = 1.0
 var reserve_launch_cooldown: float = 0.0
 enum ReturnPanel { NONE, MAP, REWARD, SHOP, GAMEOVER }
+
+var hud_layer_cache: int = 0
 
 var base_paddle_half_width: float = 50.0
 var paddle_buff_turns: int = 0
@@ -404,7 +407,8 @@ func _show_map() -> void:
 	state = GameState.MAP
 	hud_controller.hide_all_panels()
 	map_panel.visible = true
-	_build_map_buttons()
+	var choices := _build_map_buttons()
+	_update_map_graph(choices)
 	var display_floor: int = min(floor_index + 1, max_floors)
 	floor_label.text = "Floor %d/%d" % [display_floor, max_floors]
 
@@ -441,7 +445,7 @@ func _apply_persist_checkbox_style() -> void:
 	mods_persist_checkbox.add_theme_icon_override("unchecked", unchecked_tex)
 	mods_persist_checkbox.add_theme_icon_override("checked", checked_tex)
 
-func _build_map_buttons() -> void:
+func _build_map_buttons() -> Array[Dictionary]:
 	for child in map_buttons.get_children():
 		child.queue_free()
 	var choices: Array[Dictionary] = map_manager.build_room_choices(floor_index, max_combat_floors)
@@ -457,6 +461,13 @@ func _build_map_buttons() -> void:
 			_enter_room(selected_room_type)
 		)
 		map_buttons.add_child(button)
+	return choices
+
+func _update_map_graph(choices: Array[Dictionary]) -> void:
+	if map_graph == null or not map_graph.has_method("set_plan"):
+		return
+	var plan := map_manager.get_active_plan_summary()
+	map_graph.call("set_plan", plan, choices)
 
 func _enter_room(room_type: String) -> void:
 	if room_type == "victory":
@@ -804,17 +815,22 @@ func _go_to_menu() -> void:
 	App.show_menu()
 
 func on_menu_opened() -> void:
-	for node in [paddle, bricks_root, hud]:
+	process_mode = Node.PROCESS_MODE_DISABLED
+	if hud:
+		hud_layer_cache = hud.layer
+		hud.layer = -5
+	for node in [paddle, bricks_root, playfield]:
 		if node:
 			node.visible = false
-	process_mode = Node.PROCESS_MODE_DISABLED
 
 func on_menu_closed() -> void:
-	for node in [paddle, bricks_root, hud]:
+	for node in [paddle, bricks_root, playfield, hud]:
 		if node:
 			node.visible = true
 	process_mode = Node.PROCESS_MODE_INHERIT
 	_fit_to_viewport()
+	if hud:
+		hud.layer = hud_layer_cache
 
 func _clear_active_balls() -> void:
 	for ball in active_balls:

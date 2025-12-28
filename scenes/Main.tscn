@@ -1,8 +1,9 @@
-[gd_scene load_steps=10 format=3 uid="uid://dhnntcfxs4lg0"]
+[gd_scene load_steps=12 format=3 uid="uid://dhnntcfxs4lg0"]
 
 [ext_resource type="PackedScene" path="res://scenes/Paddle.tscn" id="1"]
 [ext_resource type="Script" uid="uid://b8nul2np1du6b" path="res://scripts/Main.gd" id="3"]
 [ext_resource type="PackedScene" uid="uid://cfnto8it2e26m" path="res://scenes/Shop.tscn" id="4"]
+[ext_resource type="Script" uid="uid://bncgwbo12t5vj" path="res://scripts/ui/MapGraph.gd" id="5"]
 
 [sub_resource type="RectangleShape2D" id="1"]
 size = Vector2(20, 600)
@@ -12,6 +13,9 @@ size = Vector2(800, 20)
 
 [sub_resource type="StyleBoxFlat" id="3"]
 bg_color = Color(0.85, 0.85, 0.85, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c01mt"]
+bg_color = Color(0.2051174, 0.20511746, 0.20511732, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0bbpv"]
 bg_color = Color(0.12225222, 0.12225225, 0.12225217, 1)
@@ -256,31 +260,42 @@ grow_vertical = 2
 flat = true
 
 [node name="MapPanel" type="Panel" parent="HUD"]
-visible = false
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -220.0
-offset_top = -70.0
-offset_right = 220.0
-offset_bottom = 70.0
+offset_left = -260.0
+offset_top = -340.0
+offset_right = 260.0
+offset_bottom = 259.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_c01mt")
 
 [node name="MapLabel" type="Label" parent="HUD/MapPanel"]
 layout_mode = 0
 offset_left = 16.0
 offset_top = 12.0
-offset_right = 420.0
+offset_right = 520.0
 offset_bottom = 32.0
 text = "Next room"
+
+[node name="MapGraph" type="Control" parent="HUD/MapPanel"]
+anchors_preset = 0
+offset_left = 16.0
+offset_top = 40.0
+offset_right = 520.0
+offset_bottom = 500.0
+mouse_filter = 2
+script = ExtResource("5")
 
 [node name="MapButtons" type="HBoxContainer" parent="HUD/MapPanel"]
 layout_mode = 0
 offset_left = 16.0
-offset_top = 52.0
-offset_right = 420.0
-offset_bottom = 100.0
+offset_top = 512.0
+offset_right = 520.0
+offset_bottom = 548.0
 theme_override_constants/separation = 12
 
 [node name="RewardPanel" type="Panel" parent="HUD"]
