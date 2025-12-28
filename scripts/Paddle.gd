@@ -13,7 +13,7 @@ const RESERVE_GAP: float = 6.0
 const RESERVE_COLOR: Color = Color(1, 1, 1, 1)
 
 func _ready() -> void:
-	locked_y = global_position.y
+	locked_y = position.y
 
 func _physics_process(_delta: float) -> void:
 	var right_strength: float = float(Input.get_action_strength("ui_right"))
@@ -24,10 +24,10 @@ func _physics_process(_delta: float) -> void:
 	velocity.y = 0.0
 	move_and_slide()
 
-	var viewport_width: float = get_viewport_rect().size.x
-	var clamped_x: float = clamp(global_position.x, half_width, viewport_width - half_width)
-	global_position.x = clamped_x
-	global_position.y = locked_y
+	var layout_width: float = _get_layout_size().x
+	var clamped_x: float = clamp(position.x, half_width, layout_width - half_width)
+	position.x = clamped_x
+	position.y = locked_y
 
 func _draw() -> void:
 	if reserve_count <= 0:
@@ -55,3 +55,9 @@ func set_locked_y(value: float) -> void:
 func set_reserve_count(value: int) -> void:
 	reserve_count = max(0, value)
 	queue_redraw()
+
+func _get_layout_size() -> Vector2:
+	var base: Vector2i = App.get_layout_resolution()
+	if base.x > 0 and base.y > 0:
+		return Vector2(base)
+	return get_viewport_rect().size

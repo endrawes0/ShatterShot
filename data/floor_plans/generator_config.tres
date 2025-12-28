@@ -1,18 +1,6 @@
 [gd_resource type="Resource" script_class="FloorPlanGeneratorConfig" load_steps=2 format=3 uid="uid://clx6pyc8q0u0m"]
 
-[ext_resource type="Script" uid="uid://k0ax1em2y0un" path="res://scripts/data/FloorPlanGeneratorConfig.gd" id="1"]
+[ext_resource type="Script" uid="uid://cki70xhpsbpo1" path="res://scripts/data/FloorPlanGeneratorConfig.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
-enabled = true
-seed = 0
-floors = 6
-min_choices = 2
-max_choices = 2
-room_weights = {
-"combat": 3,
-"rest": 1,
-"shop": 1,
-"elite": 1
-}
-acts = Array[Dictionary]([])

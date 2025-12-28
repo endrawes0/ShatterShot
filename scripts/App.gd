@@ -6,6 +6,8 @@ const HELP_SCENE: PackedScene = preload("res://scenes/Help.tscn")
 const GRAPHICS_SCENE: PackedScene = preload("res://scenes/Graphics.tscn")
 const TEST_SCENE: PackedScene = preload("res://scenes/TestLab.tscn")
 const SETTINGS_PATH: String = "user://settings.cfg"
+const FALLBACK_BASE_RESOLUTION: Vector2i = Vector2i(800, 600)
+const UI_SCALE: float = 0.75
 
 var menu_instance: Node = null
 var run_instance: Node = null
@@ -108,4 +110,34 @@ func _apply_saved_graphics() -> void:
 		DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_RESIZE_DISABLED, false)
 		DisplayServer.window_set_size(resolution)
 	if get_tree() and get_tree().root:
-		get_tree().root.content_scale_size = Vector2(resolution)
+		var root := get_tree().root
+		root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+		root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+		root.content_scale_size = Vector2(get_layout_resolution())
+
+func get_base_resolution() -> Vector2i:
+	var width: int = int(ProjectSettings.get_setting(
+		"display/window/size/window_width_override",
+		FALLBACK_BASE_RESOLUTION.x
+	))
+	var height: int = int(ProjectSettings.get_setting(
+		"display/window/size/window_height_override",
+		FALLBACK_BASE_RESOLUTION.y
+	))
+	if width <= 0 or height <= 0:
+		width = int(ProjectSettings.get_setting(
+			"display/window/size/viewport_width",
+			FALLBACK_BASE_RESOLUTION.x
+		))
+		height = int(ProjectSettings.get_setting(
+			"display/window/size/viewport_height",
+			FALLBACK_BASE_RESOLUTION.y
+		))
+	if width <= 0 or height <= 0:
+		return FALLBACK_BASE_RESOLUTION
+	return Vector2i(width, height)
+
+func get_layout_resolution() -> Vector2i:
+	var base: Vector2i = get_base_resolution()
+	var scale: float = max(0.1, UI_SCALE)
+	return Vector2i(int(round(base.x / scale)), int(round(base.y / scale)))

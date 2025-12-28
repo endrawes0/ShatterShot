@@ -32,6 +32,8 @@ const BALANCE_DATA_PATH: String = "res://data/balance/basic.tres"
 
 @onready var paddle: CharacterBody2D = $Paddle
 @onready var bricks_root: Node2D = $Bricks
+@onready var playfield: Polygon2D = $Playfield
+@onready var backdrop_rect: ColorRect = $Backdrop/BackdropRect
 @onready var hud: CanvasLayer = $HUD
 @onready var hand_bar: Control = $HUD/HandBar
 @onready var hand_container: HBoxContainer = $HUD/HandBar/HandContainer
@@ -243,10 +245,13 @@ func _apply_balance_data(data: Resource) -> void:
 			card_art_textures[card_id] = texture
 
 func _fit_to_viewport() -> void:
-	var size: Vector2 = get_viewport_rect().size
-	paddle.global_position = Vector2(size.x * 0.5, size.y - 240.0)
+	var size: Vector2 = _get_layout_size()
+	_apply_world_offset(size)
+	_update_playfield_background(size)
+	paddle.position = Vector2(size.x * 0.5, size.y - 240.0)
 	if paddle.has_method("set_locked_y"):
-		paddle.set_locked_y(paddle.global_position.y)
+		paddle.set_locked_y(paddle.position.y)
+	call_deferred("_layout_hand_container")
 	if left_wall and left_wall.shape is RectangleShape2D:
 		var left_shape: RectangleShape2D = left_wall.shape as RectangleShape2D
 		left_shape.size = Vector2(20.0, size.y + 200.0)
@@ -268,7 +273,6 @@ func _center_bricks_in_viewport() -> void:
 	if bricks_root == null or bricks_root.get_child_count() == 0:
 		return
 	var half_w: float = brick_size.x * 0.5
-	var half_h: float = brick_size.y * 0.5
 	var min_x: float = INF
 	var max_x: float = -INF
 	for brick in bricks_root.get_children():
@@ -279,13 +283,54 @@ func _center_bricks_in_viewport() -> void:
 	if min_x == INF or max_x == -INF:
 		return
 	var center_x: float = (min_x + max_x) * 0.5
-	var target_x: float = get_viewport_rect().size.x * 0.5
+	var target_x: float = _get_layout_size().x * 0.5
 	var offset_x: float = target_x - center_x
 	if absf(offset_x) < 0.5:
 		return
 	for brick in bricks_root.get_children():
 		if brick is Node2D:
 			(brick as Node2D).position.x += offset_x
+
+func _get_layout_size() -> Vector2:
+	var base: Vector2i = App.get_layout_resolution()
+	if base.x > 0 and base.y > 0:
+		return Vector2(base)
+	return get_viewport_rect().size
+
+func _apply_world_offset(layout_size: Vector2) -> void:
+	var viewport_size: Vector2 = get_viewport_rect().size
+	var offset := Vector2(
+		max(0.0, (viewport_size.x - layout_size.x) * 0.5),
+		max(0.0, (viewport_size.y - layout_size.y) * 0.5)
+	)
+	position = offset
+
+func _update_playfield_background(layout_size: Vector2) -> void:
+	if playfield == null:
+		return
+	var half := layout_size * 0.5
+	playfield.position = half
+	playfield.polygon = PackedVector2Array([
+		Vector2(-half.x, -half.y),
+		Vector2(half.x, -half.y),
+		Vector2(half.x, half.y),
+		Vector2(-half.x, half.y)
+	])
+
+func _layout_hand_container() -> void:
+	if hand_bar == null or hand_container == null or deck_stack == null or discard_stack == null:
+		return
+	var hand_bar_rect: Rect2 = hand_bar.get_global_rect()
+	var deck_rect: Rect2 = deck_stack.get_global_rect()
+	var discard_rect: Rect2 = discard_stack.get_global_rect()
+	var left_edge: float = (deck_rect.position.x + deck_rect.size.x) - hand_bar_rect.position.x + 12.0
+	var right_edge: float = discard_rect.position.x - hand_bar_rect.position.x - 12.0
+	var hand_width: float = max(0.0, right_edge - left_edge)
+	hand_container.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	hand_container.position = Vector2(left_edge, 8.0)
+	hand_container.size = Vector2(hand_width, hand_bar.size.y - 16.0)
+	if hand_container is BoxContainer:
+		(hand_container as BoxContainer).alignment = BoxContainer.ALIGNMENT_CENTER
 
 func _set_hud_tooltips() -> void:
 	energy_label.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -309,6 +354,9 @@ func _set_hud_tooltips() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
+		if deck_panel and deck_panel.visible:
+			_close_deck_panel()
+			return
 		App.show_menu()
 	if event is InputEventKey and event.is_pressed() and not event.is_echo():
 		var key_event: InputEventKey = event

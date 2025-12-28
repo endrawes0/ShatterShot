@@ -123,7 +123,8 @@ func _spawn_brick(row: int, col: int, _rows: int, cols: int, hp_value: int, colo
 		return
 	var brick: Node = brick_scene.instantiate()
 	var total_width: float = cols * brick_size.x + (cols - 1) * brick_gap.x
-	var start_x: float = (bricks_root.get_viewport_rect().size.x - total_width) * 0.5
+	var layout_size: Vector2 = _get_layout_size()
+	var start_x: float = (layout_size.x - total_width) * 0.5
 	var start_y: float = top_margin
 	var x: float = start_x + col * (brick_size.x + brick_gap.x) + brick_size.x * 0.5
 	var y: float = start_y + row * (brick_size.y + brick_gap.y) + brick_size.y * 0.5
@@ -136,6 +137,14 @@ func _spawn_brick(row: int, col: int, _rows: int, cols: int, hp_value: int, colo
 	if on_brick_damaged.is_valid():
 		brick.damaged.connect(on_brick_damaged)
 	brick.setup(hp_value, 1, color, data)
+
+func _get_layout_size() -> Vector2:
+	var base: Vector2i = App.get_layout_resolution()
+	if base.x > 0 and base.y > 0:
+		return Vector2(base)
+	if bricks_root:
+		return bricks_root.get_viewport_rect().size
+	return Vector2.ZERO
 
 func _spawn_boss_core(config: EncounterConfig, on_brick_destroyed: Callable, on_brick_damaged: Callable) -> void:
 	var data := _boss_core_data()

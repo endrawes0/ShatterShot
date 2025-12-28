@@ -47,6 +47,7 @@ func _apply_window_mode(index: int) -> void:
 			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 			DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_BORDERLESS, false)
 			DisplayServer.window_set_flag(DisplayServer.WINDOW_FLAG_RESIZE_DISABLED, false)
+	_apply_content_scale()
 	_update_resolution_enabled()
 	_save_graphics_settings()
 
@@ -60,8 +61,7 @@ func _apply_resolution(index: int) -> void:
 		return
 	var size: Vector2i = resolution_sizes[index]
 	DisplayServer.window_set_size(size)
-	if get_tree() and get_tree().root:
-		get_tree().root.content_scale_size = Vector2(size)
+	_apply_content_scale()
 	_save_graphics_settings()
 
 func _sync_resolution() -> void:
@@ -123,3 +123,10 @@ func _save_graphics_settings() -> void:
 	config.set_value("graphics", "window_mode", DisplayServer.window_get_mode())
 	config.set_value("graphics", "resolution", DisplayServer.window_get_size())
 	config.save(SETTINGS_PATH)
+
+func _apply_content_scale() -> void:
+	if get_tree() and get_tree().root:
+		var root := get_tree().root
+		root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+		root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+		root.content_scale_size = Vector2(App.get_layout_resolution())

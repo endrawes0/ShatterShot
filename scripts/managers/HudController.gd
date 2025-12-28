@@ -24,6 +24,8 @@ var card_data: Dictionary = {}
 var card_type_colors: Dictionary = {}
 var card_button_size: Vector2 = Vector2(110, 154)
 var card_art_textures: Dictionary = {}
+const HAND_HOVER_SCALE: float = 1.18
+const HAND_HOVER_TIME: float = 0.08
 
 func setup(hud_nodes: Dictionary, data: Dictionary, type_colors: Dictionary, button_size: Vector2, art_textures: Dictionary) -> void:
 	energy_label = hud_nodes.get("energy_label")
@@ -116,6 +118,7 @@ func create_card_button(card_id: String) -> Button:
 	button.clip_text = false
 	_apply_card_style(button, card_id)
 	_apply_card_button_size(button)
+	_wire_hand_hover(button)
 
 	var layout := VBoxContainer.new()
 	layout.name = "CardLayout"
@@ -211,6 +214,7 @@ func _apply_card_style(button: Button, card_id: String) -> void:
 
 func _apply_card_button_size(button: Button) -> void:
 	button.custom_minimum_size = card_button_size
+	button.pivot_offset = card_button_size * 0.5
 
 func _get_card_art(card_id: String) -> Texture2D:
 	if card_art_textures.has(card_id):
@@ -220,3 +224,25 @@ func _get_card_art(card_id: String) -> Texture2D:
 func _clear_container(container: Node) -> void:
 	for child in container.get_children():
 		child.queue_free()
+
+func _wire_hand_hover(button: Button) -> void:
+	button.z_as_relative = true
+	button.mouse_entered.connect(func() -> void:
+		button.z_index = 10
+		_tween_card_scale(button, Vector2.ONE * HAND_HOVER_SCALE)
+	)
+	button.mouse_exited.connect(func() -> void:
+		button.z_index = 0
+		_tween_card_scale(button, Vector2.ONE)
+	)
+
+func _tween_card_scale(button: Button, target: Vector2) -> void:
+	if button.has_meta("hover_tween"):
+		var existing: Variant = button.get_meta("hover_tween")
+		if existing is Tween:
+			(existing as Tween).kill()
+	var tween := button.create_tween()
+	tween.set_trans(Tween.TRANS_QUAD)
+	tween.set_ease(Tween.EASE_OUT)
+	tween.tween_property(button, "scale", target, HAND_HOVER_TIME)
+	button.set_meta("hover_tween", tween)
