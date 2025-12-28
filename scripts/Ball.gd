@@ -68,7 +68,7 @@ func _physics_process(delta: float) -> void:
 			velocity = velocity.bounce(collision.get_normal())
 
 	velocity = velocity.normalized() * speed
-	if global_position.y > App.get_layout_size().y + 40:
+	if position.y > App.get_layout_size().y + 40:
 		var mod_effect: BallModEffect = active_mod_effect
 		if mod_effect != null and mod_effect.on_ball_lost(self):
 			return
