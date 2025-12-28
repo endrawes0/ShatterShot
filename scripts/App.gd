@@ -141,3 +141,6 @@ func get_layout_resolution() -> Vector2i:
 	var base: Vector2i = get_base_resolution()
 	var scale: float = max(0.1, UI_SCALE)
 	return Vector2i(int(round(base.x / scale)), int(round(base.y / scale)))
+
+func get_layout_size() -> Vector2:
+	return Vector2(get_layout_resolution())

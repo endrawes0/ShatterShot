@@ -245,7 +245,7 @@ func _apply_balance_data(data: Resource) -> void:
 			card_art_textures[card_id] = texture
 
 func _fit_to_viewport() -> void:
-	var size: Vector2 = _get_layout_size()
+	var size: Vector2 = App.get_layout_size()
 	_apply_world_offset(size)
 	_update_playfield_background(size)
 	paddle.position = Vector2(size.x * 0.5, size.y - 240.0)
@@ -283,19 +283,13 @@ func _center_bricks_in_viewport() -> void:
 	if min_x == INF or max_x == -INF:
 		return
 	var center_x: float = (min_x + max_x) * 0.5
-	var target_x: float = _get_layout_size().x * 0.5
+	var target_x: float = App.get_layout_size().x * 0.5
 	var offset_x: float = target_x - center_x
 	if absf(offset_x) < 0.5:
 		return
 	for brick in bricks_root.get_children():
 		if brick is Node2D:
 			(brick as Node2D).position.x += offset_x
-
-func _get_layout_size() -> Vector2:
-	var base: Vector2i = App.get_layout_resolution()
-	if base.x > 0 and base.y > 0:
-		return Vector2(base)
-	return get_viewport_rect().size
 
 func _apply_world_offset(layout_size: Vector2) -> void:
 	var viewport_size: Vector2 = get_viewport_rect().size

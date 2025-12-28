@@ -24,7 +24,7 @@ func _physics_process(_delta: float) -> void:
 	velocity.y = 0.0
 	move_and_slide()
 
-	var layout_width: float = _get_layout_size().x
+	var layout_width: float = App.get_layout_size().x
 	var clamped_x: float = clamp(position.x, half_width, layout_width - half_width)
 	position.x = clamped_x
 	position.y = locked_y
@@ -55,9 +55,3 @@ func set_locked_y(value: float) -> void:
 func set_reserve_count(value: int) -> void:
 	reserve_count = max(0, value)
 	queue_redraw()
-
-func _get_layout_size() -> Vector2:
-	var base: Vector2i = App.get_layout_resolution()
-	if base.x > 0 and base.y > 0:
-		return Vector2(base)
-	return get_viewport_rect().size

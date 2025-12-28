@@ -68,7 +68,7 @@ func _physics_process(delta: float) -> void:
 			velocity = velocity.bounce(collision.get_normal())
 
 	velocity = velocity.normalized() * speed
-	if global_position.y > _get_layout_size().y + 40:
+	if global_position.y > App.get_layout_size().y + 40:
 		var mod_effect: BallModEffect = active_mod_effect
 		if mod_effect != null and mod_effect.on_ball_lost(self):
 			return
@@ -135,9 +135,3 @@ func _init_mod_effects() -> void:
 		"spikes": SpikesMod.new(),
 		"miracle": MiracleMod.new()
 	}
-
-func _get_layout_size() -> Vector2:
-	var base: Vector2i = App.get_layout_resolution()
-	if base.x > 0 and base.y > 0:
-		return Vector2(base)
-	return get_viewport_rect().size
