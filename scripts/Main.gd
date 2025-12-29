@@ -833,11 +833,13 @@ func _apply_hud_theme() -> void:
 	var theme := App.get_global_theme()
 	if theme == null:
 		return
-	for child in hud.get_children():
-		if child is Control:
-			var control := child as Control
-			if control.theme == null:
-				control.theme = theme
+	_apply_theme_recursive(hud, theme)
+
+func _apply_theme_recursive(node: Node, theme: Theme) -> void:
+	if node is Control:
+		(node as Control).theme = theme
+	for child in node.get_children():
+		_apply_theme_recursive(child, theme)
 
 func _show_treasure() -> void:
 	_show_treasure_panel()
