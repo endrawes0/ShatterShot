@@ -578,6 +578,40 @@ func _focus_map_buttons() -> void:
 			button.focus_previous = prev.get_path()
 	buttons[0].grab_focus()
 
+func _focus_shop_buttons() -> void:
+	if shop_panel == null:
+		return
+	var buttons: Array[BaseButton] = []
+	_collect_buttons(shop_panel, buttons)
+	_apply_focus_chain(buttons)
+
+func _collect_buttons(node: Node, buttons: Array[BaseButton]) -> void:
+	for child in node.get_children():
+		if child is BaseButton:
+			buttons.append(child as BaseButton)
+		_collect_buttons(child, buttons)
+
+func _apply_focus_chain(buttons: Array[BaseButton]) -> void:
+	if buttons.is_empty():
+		return
+	var ordered: Array[BaseButton] = []
+	for button in buttons:
+		if button == null or not button.visible:
+			continue
+		button.focus_mode = Control.FOCUS_ALL
+		ordered.append(button)
+	if ordered.is_empty():
+		return
+	var count := ordered.size()
+	for i in range(count):
+		var button := ordered[i]
+		if count > 1:
+			var next := ordered[(i + 1) % count]
+			var prev := ordered[(i - 1 + count) % count]
+			button.focus_next = next.get_path()
+			button.focus_previous = prev.get_path()
+	ordered[0].grab_focus()
+
 func _clear_map_buttons() -> void:
 	if map_buttons == null:
 		return
@@ -848,6 +882,7 @@ func _show_shop() -> void:
 	info_label.text = ""
 	_reset_shop_offers()
 	_build_shop_buttons()
+	_focus_shop_buttons()
 	_refresh_mod_buttons()
 	_update_labels()
 
