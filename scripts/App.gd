@@ -16,8 +16,10 @@ var graphics_instance: Node = null
 var test_instance: Node = null
 var _layout_resolution_cache: Vector2i = Vector2i.ZERO
 var _layout_size_cache: Vector2 = Vector2.ZERO
+var _global_theme: Theme = null
 
 func _ready() -> void:
+	_apply_global_theme()
 	_apply_saved_graphics()
 	_refresh_layout_cache()
 	_connect_window_signals()
@@ -134,6 +136,20 @@ func _apply_saved_graphics() -> void:
 		root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 		root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 		root.content_scale_size = Vector2(get_layout_resolution())
+
+func _apply_global_theme() -> void:
+	if get_tree() == null or get_tree().root == null:
+		return
+	var theme_path := String(ProjectSettings.get_setting("gui/theme/custom", ""))
+	if theme_path.is_empty():
+		return
+	var loaded := ResourceLoader.load(theme_path, "", ResourceLoader.CACHE_MODE_IGNORE)
+	if loaded is Theme:
+		_global_theme = loaded
+		get_tree().root.theme = loaded
+
+func get_global_theme() -> Theme:
+	return _global_theme
 
 func get_base_resolution() -> Vector2i:
 	var width: int = int(ProjectSettings.get_setting(

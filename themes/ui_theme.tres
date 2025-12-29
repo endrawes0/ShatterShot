@@ -1,0 +1,51 @@
+[gd_resource type="Theme" load_steps=6 format=3]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pgyi5"]
+content_margin_left = 10.0
+content_margin_top = 6.0
+content_margin_right = 10.0
+content_margin_bottom = 6.0
+bg_color = Color(0.12, 0.12, 0.14, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_xxbg1"]
+content_margin_left = 10.0
+content_margin_top = 6.0
+content_margin_right = 10.0
+content_margin_bottom = 6.0
+bg_color = Color(0.18, 0.18, 0.22, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gfhtu"]
+content_margin_left = 10.0
+content_margin_top = 6.0
+content_margin_right = 10.0
+content_margin_bottom = 6.0
+bg_color = Color(0.14, 0.14, 0.16, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qa7hf"]
+content_margin_left = 10.0
+content_margin_top = 6.0
+content_margin_right = 10.0
+content_margin_bottom = 6.0
+bg_color = Color(0.25, 0.2, 0.12, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jkgan"]
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+bg_color = Color(0.11, 0.11, 0.13, 1)
+
+[resource]
+default_font_size = 14
+Button/colors/font_color = Color(0.96, 0.96, 0.98, 1)
+Button/colors/font_disabled_color = Color(0.6, 0.6, 0.65, 1)
+Button/colors/font_hover_color = Color(1, 1, 1, 1)
+Button/colors/font_pressed_color = Color(1, 1, 1, 1)
+Button/styles/disabled = SubResource("StyleBoxFlat_pgyi5")
+Button/styles/hover = SubResource("StyleBoxFlat_xxbg1")
+Button/styles/normal = SubResource("StyleBoxFlat_gfhtu")
+Button/styles/pressed = SubResource("StyleBoxFlat_qa7hf")
+Label/colors/font_color = Color(0.94, 0.94, 0.98, 1)
+Panel/styles/panel = SubResource("StyleBoxFlat_jkgan")
+PanelContainer/styles/panel = SubResource("StyleBoxFlat_jkgan")
+PopupPanel/styles/panel = SubResource("StyleBoxFlat_jkgan")
