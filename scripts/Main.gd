@@ -561,6 +561,8 @@ func _build_map_buttons() -> Array[Dictionary]:
 func _focus_map_buttons() -> void:
 	if map_buttons == null:
 		return
+	if get_viewport():
+		get_viewport().gui_release_focus()
 	var buttons: Array[Button] = []
 	for child in map_buttons.get_children():
 		if child is Button:
