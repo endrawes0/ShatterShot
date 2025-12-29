@@ -11,6 +11,7 @@ extends Control
 @onready var seed_status: Label = $SeedDialog/SeedDialogPanel/SeedStatus
 
 var suppress_seed_validation: bool = false
+var test_lab_unlocked: bool = false
 
 func _ready() -> void:
 	start_button.pressed.connect(_open_seed_dialog)
@@ -28,12 +29,30 @@ func _ready() -> void:
 			ok_button.pressed.connect(_start_game)
 	if seed_input:
 		seed_input.text_changed.connect(_on_seed_text_changed)
+	_lock_test_lab()
 	_update_continue_button()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and App.has_run():
 		App.continue_run()
 		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventKey:
+		_try_unlock_test_lab(event as InputEventKey)
+
+func _lock_test_lab() -> void:
+	test_lab_unlocked = false
+	if test_button:
+		test_button.visible = false
+
+func _try_unlock_test_lab(event: InputEventKey) -> void:
+	if test_lab_unlocked or test_button == null:
+		return
+	if not event.pressed or event.echo:
+		return
+	if event.keycode == KEY_T and event.alt_pressed and event.ctrl_pressed and event.shift_pressed:
+		test_lab_unlocked = true
+		test_button.visible = true
 
 func _open_seed_dialog() -> void:
 	if seed_dialog == null:

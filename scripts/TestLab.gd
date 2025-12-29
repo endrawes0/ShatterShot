@@ -3,7 +3,7 @@ extends Control
 @onready var main: Node = $Main
 
 func _ready() -> void:
-	_apply_debug_font_size(10)
+	_apply_debug_font_size(9)
 	_connect_button("DebugPanel/VBox/StartCombat", func() -> void:
 		main.floor_index = 1
 		main._start_encounter(false)
