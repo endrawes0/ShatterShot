@@ -31,6 +31,10 @@ window/size/window_height_override=600
 stretch/mode="canvas_items"
 stretch/aspect="expand"
 
+[gui]
+
+theme/custom="res://themes/ui_theme.tres"
+
 [rendering]
 
 textures/vram_compression/import_etc2_astc=true
