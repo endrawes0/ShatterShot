@@ -1330,23 +1330,16 @@ func _spawn_outcome_particles(color: Color, is_victory: bool, index: int = 0, to
 			particle.call("setup", color, velocity)
 
 func _go_to_menu() -> void:
-	_hide_outcome_overlays()
-	if gameover_panel:
-		gameover_panel.visible = false
-	_hide_all_panels()
-	if hud:
-		hud.visible = false
-	if hand_bar:
-		hand_bar.visible = false
-	if mods_panel:
-		mods_panel.visible = false
 	App.show_menu()
 
 func on_menu_opened() -> void:
 	process_mode = Node.PROCESS_MODE_DISABLED
+	_hide_outcome_overlays()
+	_hide_all_panels()
 	if hud:
 		hud_layer_cache = hud.layer
 		hud.layer = -5
+		hud.visible = false
 	for node in [paddle, bricks_root, playfield]:
 		if node:
 			node.visible = false
