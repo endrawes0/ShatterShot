@@ -25,6 +25,11 @@ const FLOOR_PLAN_GENERATOR_CONFIG_PATH: String = "res://data/floor_plans/generat
 const FLOOR_PLAN_GENERATOR := preload("res://scripts/data/FloorPlanGenerator.gd")
 const FLOOR_PLAN_GENERATOR_CONFIG := preload("res://scripts/data/FloorPlanGeneratorConfig.gd")
 const BALANCE_DATA_PATH: String = "res://data/balance/basic.tres"
+const OUTCOME_PARTICLE_SCENE: PackedScene = preload("res://scenes/HitParticle.tscn")
+const OUTCOME_PARTICLE_COUNT: int = 18
+const OUTCOME_PARTICLE_SPEED_X: Vector2 = Vector2(-80.0, 80.0)
+const OUTCOME_PARTICLE_SPEED_Y_VICTORY: Vector2 = Vector2(-220.0, -60.0)
+const OUTCOME_PARTICLE_SPEED_Y_DEFEAT: Vector2 = Vector2(40.0, 200.0)
 
 @export var brick_size: Vector2 = Vector2(64, 24)
 @export var brick_gap: Vector2 = Vector2(8, 8)
@@ -47,6 +52,8 @@ const BALANCE_DATA_PATH: String = "res://data/balance/basic.tres"
 @onready var threat_label: Label = $HUD/TopBar/ThreatLabel
 @onready var floor_label: Label = $HUD/TopBar/FloorLabel
 @onready var info_label: Label = $HUD/InfoLabel
+@onready var victory_overlay: ColorRect = $HUD/VictoryOverlay
+@onready var defeat_overlay: ColorRect = $HUD/DefeatOverlay
 @onready var mods_panel: Panel = $HUD/ModsPanel
 @onready var mods_buttons: VBoxContainer = $HUD/ModsPanel/ModsButtons
 @onready var mods_persist_checkbox: CheckBox = $HUD/ModsPanel/ModsPersist
@@ -90,6 +97,7 @@ var pending_seed: int = 0
 var has_pending_seed_override: bool = false
 var run_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var run_seed: int = 0
+var outcome_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var map_preview_active: bool = false
 var map_preview_state: int = GameState.MAP
 var treasure_reward_entries: Array[Dictionary] = []
@@ -175,6 +183,7 @@ func _ready() -> void:
 		push_error("Missing balance data at %s" % BALANCE_DATA_PATH)
 		return
 	_apply_balance_data(balance_data)
+	outcome_rng.randomize()
 	if get_viewport():
 		get_viewport().size_changed.connect(_fit_to_viewport)
 	_fit_to_viewport()
@@ -468,7 +477,7 @@ func _restart_run_same_seed() -> void:
 
 func _show_map() -> void:
 	state = GameState.MAP
-	hud_controller.hide_all_panels()
+	_hide_all_panels()
 	map_panel.visible = true
 	if get_viewport():
 		get_viewport().gui_release_focus()
@@ -483,11 +492,16 @@ func _show_map() -> void:
 func _show_map_preview() -> void:
 	if map_panel == null:
 		return
-	hud_controller.hide_all_panels()
+	_hide_all_panels()
 	map_panel.visible = true
 	_clear_map_buttons()
 	_update_map_graph([])
 	_update_seed_display()
+
+func _hide_all_panels() -> void:
+	if hud_controller:
+		hud_controller.hide_all_panels()
+	_hide_outcome_overlays()
 
 func _toggle_map_preview() -> void:
 	if map_preview_active:
@@ -636,11 +650,11 @@ func _restore_panels_for_state(target_state: int) -> void:
 		GameState.REWARD:
 			_show_reward_panel()
 		GameState.GAME_OVER, GameState.VICTORY:
-			hud_controller.hide_all_panels()
+			_hide_all_panels()
 			if gameover_panel:
 				gameover_panel.visible = true
 		_:
-			hud_controller.hide_all_panels()
+			_hide_all_panels()
 
 func _update_map_graph(choices: Array[Dictionary]) -> void:
 	if map_graph == null or not map_graph.has_method("set_plan"):
@@ -683,7 +697,7 @@ func _reveal_mystery_room() -> String:
 
 func _start_encounter(is_elite: bool) -> void:
 	state = GameState.PLANNING
-	hud_controller.hide_all_panels()
+	_hide_all_panels()
 	info_label.text = "Plan your volley, then launch."
 	_clear_active_balls()
 	_reset_deck_for_next_floor()
@@ -702,7 +716,7 @@ func _start_encounter(is_elite: bool) -> void:
 
 func _start_boss() -> void:
 	state = GameState.PLANNING
-	hud_controller.hide_all_panels()
+	_hide_all_panels()
 	info_label.text = "Boss fight. Plan carefully."
 	_clear_active_balls()
 	_reset_deck_for_next_floor()
@@ -846,7 +860,7 @@ func _on_ball_mod_consumed(mod_id: String) -> void:
 	_refresh_mod_buttons()
 
 func _end_encounter() -> void:
-	hud_controller.hide_all_panels()
+	_hide_all_panels()
 	_clear_active_balls()
 	_reset_deck_for_next_floor()
 	if current_is_boss:
@@ -1080,7 +1094,7 @@ func _shop_reroll_price() -> int:
 
 func _show_rest() -> void:
 	state = GameState.REST
-	hud_controller.hide_all_panels()
+	_hide_all_panels()
 	info_label.text = "Rest to heal."
 	hp = min(max_hp, hp + 20)
 	_update_labels()
@@ -1089,10 +1103,11 @@ func _show_rest() -> void:
 func _show_game_over() -> void:
 	state = GameState.GAME_OVER
 	_clear_active_balls()
-	hud_controller.hide_all_panels()
+	_hide_all_panels()
 	gameover_panel.visible = true
 	gameover_label.text = "Game Over"
 	info_label.text = "Your run has ended."
+	_show_outcome_overlay(false)
 
 func _show_reward_panel() -> void:
 	state = GameState.REWARD
@@ -1222,10 +1237,52 @@ func _render_treasure_rewards(rewards: Array[Dictionary]) -> void:
 func _show_victory() -> void:
 	state = GameState.VICTORY
 	_clear_active_balls()
-	hud_controller.hide_all_panels()
+	_hide_all_panels()
 	gameover_panel.visible = true
 	gameover_label.text = "Victory!"
 	info_label.text = "You cleared the run."
+	_show_outcome_overlay(true)
+
+func _hide_outcome_overlays() -> void:
+	if victory_overlay:
+		victory_overlay.visible = false
+	if defeat_overlay:
+		defeat_overlay.visible = false
+
+func _show_outcome_overlay(is_victory: bool) -> void:
+	_hide_outcome_overlays()
+	if is_victory and victory_overlay:
+		victory_overlay.visible = true
+		_spawn_outcome_particles(Color(0.95, 0.85, 0.25, 1), true)
+	elif not is_victory and defeat_overlay:
+		defeat_overlay.visible = true
+		_spawn_outcome_particles(Color(0.35, 0.1, 0.1, 1), false)
+
+func _spawn_outcome_particles(color: Color, is_victory: bool) -> void:
+	if OUTCOME_PARTICLE_COUNT <= 0:
+		return
+	var parent_node: Node = hud if hud != null else get_tree().root
+	if parent_node == null:
+		return
+	var screen := App.get_layout_size()
+	for _i in range(OUTCOME_PARTICLE_COUNT):
+		var particle := OUTCOME_PARTICLE_SCENE.instantiate()
+		if particle == null:
+			continue
+		parent_node.add_child(particle)
+		if particle is Node2D:
+			var node := particle as Node2D
+			node.global_position = Vector2(
+				outcome_rng.randf_range(0.0, screen.x),
+				outcome_rng.randf_range(0.0, screen.y * 0.7)
+			)
+		if particle.has_method("setup"):
+			var speed_y := OUTCOME_PARTICLE_SPEED_Y_VICTORY if is_victory else OUTCOME_PARTICLE_SPEED_Y_DEFEAT
+			var velocity := Vector2(
+				outcome_rng.randf_range(OUTCOME_PARTICLE_SPEED_X.x, OUTCOME_PARTICLE_SPEED_X.y),
+				outcome_rng.randf_range(speed_y.x, speed_y.y)
+			)
+			particle.call("setup", color, velocity)
 
 func _go_to_menu() -> void:
 	App.show_menu()
@@ -1465,7 +1522,7 @@ func _is_persist_enabled() -> bool:
 	return persist_ball_mods
 
 func _show_single_panel(panel: Control) -> void:
-	hud_controller.hide_all_panels()
+	_hide_all_panels()
 	if panel:
 		panel.visible = true
 
@@ -1513,7 +1570,7 @@ func _on_remove_card_selected(card_id: String) -> void:
 	_close_deck_panel()
 
 func _close_deck_panel() -> void:
-	hud_controller.hide_all_panels()
+	_hide_all_panels()
 	match deck_return_panel:
 		ReturnPanel.MAP:
 			map_panel.visible = true
