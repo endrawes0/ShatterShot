@@ -28,14 +28,19 @@ const EXPLOSION_RADIUS: float = 80.0
 const DEFAULT_MOD_COLOR: Color = Color(0.95, 0.95, 1, 1)
 const BOUNCE_BASE_FREQ: float = 200.0
 const BOUNCE_FREQ_VARIANCE: float = 20.0
+const GHOST_SPACING: float = 10.0
+const GHOST_LIFETIME: float = 0.22
+const GHOST_ALPHA: float = 0.45
 var mod_colors: Dictionary = {}
 static var _bounce_stream: AudioStreamWAV = null
+var _ghost_last_pos: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	base_damage = damage
 	_ensure_bounce_stream()
 	_init_mod_effects()
 	_update_ball_color()
+	_ghost_last_pos = position
 
 func _physics_process(delta: float) -> void:
 	if not launched:
@@ -44,6 +49,7 @@ func _physics_process(delta: float) -> void:
 			if paddle == null:
 				return
 		global_position = paddle.global_position + OFFSET
+		_ghost_last_pos = position
 		return
 
 	var collision: KinematicCollision2D = move_and_collide(velocity * delta)
@@ -77,6 +83,7 @@ func _physics_process(delta: float) -> void:
 			velocity = velocity.bounce(collision.get_normal())
 
 	velocity = velocity.normalized() * speed
+	_update_ghosts()
 	if position.y > App.get_layout_size().y + 40:
 		var mod_effect: BallModEffect = active_mod_effect
 		if mod_effect != null and mod_effect.on_ball_lost(self):
@@ -101,6 +108,7 @@ func _bounce_from_paddle(paddle_node: Node2D) -> void:
 func _reset() -> void:
 	launched = false
 	velocity = Vector2.ZERO
+	_ghost_last_pos = position
 
 func set_ball_mod(mod_id: String) -> void:
 	if mod_effects.is_empty():
@@ -140,6 +148,36 @@ func _update_ball_color() -> void:
 	if not mod_colors.is_empty():
 		color = mod_colors.get(ball_mod, mod_colors.get("", DEFAULT_MOD_COLOR))
 	rect.color = color
+
+func _update_ghosts() -> void:
+	if _ghost_last_pos == Vector2.ZERO:
+		_ghost_last_pos = position
+		return
+	if _ghost_last_pos.distance_to(position) < GHOST_SPACING:
+		return
+	_ghost_last_pos = position
+	_spawn_ghost()
+
+func _spawn_ghost() -> void:
+	var parent_node := get_parent()
+	if parent_node == null:
+		return
+	var ghost := Node2D.new()
+	ghost.position = position
+	ghost.z_index = rect.z_index if rect else 0
+	parent_node.add_child(ghost)
+	var ghost_rect := rect.duplicate() if rect else ColorRect.new()
+	var base_color := rect.color if rect else DEFAULT_MOD_COLOR
+	base_color.a = GHOST_ALPHA
+	ghost_rect.color = base_color
+	ghost_rect.position = rect.position if rect else Vector2(-8, -8)
+	ghost_rect.size = rect.size if rect else Vector2(16, 16)
+	ghost_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ghost_rect.z_index = rect.z_index if rect else 0
+	ghost.add_child(ghost_rect)
+	var tween := ghost.create_tween()
+	tween.tween_property(ghost_rect, "color", Color(base_color.r, base_color.g, base_color.b, 0.0), GHOST_LIFETIME)
+	tween.tween_callback(ghost.queue_free)
 
 func _trigger_explosion(center: Vector2) -> void:
 	var bricks: Array = get_tree().get_nodes_in_group("bricks")
