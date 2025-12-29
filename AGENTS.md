@@ -5,6 +5,8 @@
 Prereqs:
 - Godot 4.5.1 installed.
 - Export templates installed at `~/.local/share/godot/export_templates/4.5.1.stable/`.
+- Template download: https://downloads.godotengine.org/?version=4.5.1&flavor=stable&slug=export_templates.tpz&platform=templates
+- Tools available: `zip` (or Python 3 for zipping if `zip` is missing).
 - Export presets live in `export_presets.cfg`.
 
 Build commands (from repo root, update the Godot path if needed):

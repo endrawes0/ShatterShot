@@ -3,6 +3,7 @@
 .import/
 .export/
 .export-presets.cfg
+*.uid
 
 # Mono
 .mono/
