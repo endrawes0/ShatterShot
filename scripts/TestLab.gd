@@ -85,6 +85,8 @@ func _ready() -> void:
 			main._end_encounter()
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/BackMenu", func() -> void:
+		if main and main.has_method("on_menu_opened"):
+			main.on_menu_opened()
 		App.show_menu()
 	)
 
