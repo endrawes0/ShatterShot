@@ -1266,8 +1266,39 @@ func _spawn_victory_particles() -> void:
 		Color(0.45, 0.78, 0.36, 1),
 		Color(0.26, 0.62, 0.96, 1)
 	]
+	var screen: Vector2 = App.get_layout_size()
+	var total: int = OUTCOME_PARTICLE_COUNT * 3
+	var per_color: int = max(1, int(ceil(float(total) / float(palette.size()))))
 	for i in range(palette.size()):
-		_spawn_outcome_particles(palette[i], true, i, palette.size())
+		var center := Vector2(
+			outcome_rng.randf_range(screen.x * 0.15, screen.x * 0.85),
+			outcome_rng.randf_range(screen.y * 0.1, screen.y * 0.55)
+		)
+		_spawn_outcome_particle_cluster(palette[i], per_color, center, 70.0, true)
+
+func _spawn_outcome_particle_cluster(color: Color, count: int, center: Vector2, radius: float, is_victory: bool) -> void:
+	if count <= 0:
+		return
+	var parent_node: Node = hud if hud != null else get_tree().root
+	if parent_node == null:
+		return
+	for _i in range(count):
+		var particle := OUTCOME_PARTICLE_SCENE.instantiate()
+		if particle == null:
+			continue
+		parent_node.add_child(particle)
+		if particle is Node2D:
+			var node := particle as Node2D
+			var angle := outcome_rng.randf_range(0.0, TAU)
+			var distance := outcome_rng.randf_range(0.0, radius)
+			node.global_position = center + Vector2(cos(angle), sin(angle)) * distance
+		if particle.has_method("setup"):
+			var speed_y: Vector2 = OUTCOME_PARTICLE_SPEED_Y_VICTORY if is_victory else OUTCOME_PARTICLE_SPEED_Y_DEFEAT
+			var velocity := Vector2(
+				outcome_rng.randf_range(OUTCOME_PARTICLE_SPEED_X.x, OUTCOME_PARTICLE_SPEED_X.y),
+				outcome_rng.randf_range(speed_y.x, speed_y.y)
+			)
+			particle.call("setup", color, velocity)
 
 func _spawn_outcome_particles(color: Color, is_victory: bool, index: int = 0, total: int = 1) -> void:
 	if OUTCOME_PARTICLE_COUNT <= 0:
@@ -1275,8 +1306,8 @@ func _spawn_outcome_particles(color: Color, is_victory: bool, index: int = 0, to
 	var parent_node: Node = hud if hud != null else get_tree().root
 	if parent_node == null:
 		return
-	var screen := App.get_layout_size()
-	var per_color := max(1, int(ceil(float(OUTCOME_PARTICLE_COUNT) / float(total))))
+	var screen: Vector2 = App.get_layout_size()
+	var per_color: int = max(1, int(ceil(float(OUTCOME_PARTICLE_COUNT) / float(total))))
 	for _i in range(per_color):
 		var particle := OUTCOME_PARTICLE_SCENE.instantiate()
 		if particle == null:
@@ -1289,7 +1320,7 @@ func _spawn_outcome_particles(color: Color, is_victory: bool, index: int = 0, to
 				outcome_rng.randf_range(0.0, screen.y * 0.7)
 			)
 		if particle.has_method("setup"):
-			var speed_y := OUTCOME_PARTICLE_SPEED_Y_VICTORY if is_victory else OUTCOME_PARTICLE_SPEED_Y_DEFEAT
+			var speed_y: Vector2 = OUTCOME_PARTICLE_SPEED_Y_VICTORY if is_victory else OUTCOME_PARTICLE_SPEED_Y_DEFEAT
 			var velocity := Vector2(
 				outcome_rng.randf_range(OUTCOME_PARTICLE_SPEED_X.x, OUTCOME_PARTICLE_SPEED_X.y),
 				outcome_rng.randf_range(speed_y.x, speed_y.y)
