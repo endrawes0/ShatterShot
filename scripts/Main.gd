@@ -853,7 +853,7 @@ func _apply_hud_button_exclusions() -> void:
 		discard_button.theme = blank
 		discard_button.add_to_group(App.UI_PARTICLE_IGNORE_GROUP)
 	if mods_persist_checkbox:
-		App.apply_neutral_button_style(mods_persist_checkbox)
+		App.apply_neutral_button_style_no_hover(mods_persist_checkbox)
 		mods_persist_checkbox.add_to_group(App.UI_PARTICLE_IGNORE_GROUP)
 func _show_treasure() -> void:
 	_show_treasure_panel()

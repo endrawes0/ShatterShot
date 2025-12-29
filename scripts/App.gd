@@ -243,6 +243,14 @@ func apply_neutral_button_style(button: BaseButton) -> void:
 	button.add_theme_stylebox_override("hover", _make_button_box(NEUTRAL_BUTTON_HOVER))
 	button.add_theme_stylebox_override("pressed", _make_button_box(NEUTRAL_BUTTON_PRESSED))
 
+func apply_neutral_button_style_no_hover(button: BaseButton) -> void:
+	if button == null:
+		return
+	var normal := _make_button_box(NEUTRAL_BUTTON_NORMAL)
+	button.add_theme_stylebox_override("normal", normal)
+	button.add_theme_stylebox_override("hover", normal)
+	button.add_theme_stylebox_override("pressed", _make_button_box(NEUTRAL_BUTTON_PRESSED))
+
 func _make_button_box(color: Color) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
 	box.bg_color = color
