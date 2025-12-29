@@ -12,6 +12,14 @@ extends Control
 
 var suppress_seed_validation: bool = false
 var test_lab_unlocked: bool = false
+var _menu_palette: Array[Color] = [
+	Color(0.86, 0.32, 0.26),
+	Color(0.95, 0.60, 0.20),
+	Color(0.95, 0.85, 0.25),
+	Color(0.45, 0.78, 0.36),
+	Color(0.26, 0.62, 0.96),
+	Color(0.72, 0.46, 0.86)
+]
 
 func _ready() -> void:
 	start_button.pressed.connect(_open_seed_dialog)
@@ -30,6 +38,7 @@ func _ready() -> void:
 	if seed_input:
 		seed_input.text_changed.connect(_on_seed_text_changed)
 	_lock_test_lab()
+	_apply_menu_palette()
 	_update_continue_button()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -53,6 +62,7 @@ func _try_unlock_test_lab(event: InputEventKey) -> void:
 	if event.keycode == KEY_T and event.alt_pressed and event.ctrl_pressed and event.shift_pressed:
 		test_lab_unlocked = true
 		test_button.visible = true
+		_apply_menu_palette()
 
 func _open_seed_dialog() -> void:
 	if seed_dialog == null:
@@ -123,3 +133,42 @@ func _set_seed_status(message: String) -> void:
 	if seed_status == null:
 		return
 	seed_status.text = message
+
+func _apply_menu_palette() -> void:
+	var buttons := _menu_buttons()
+	var palette_size := _menu_palette.size()
+	for i in range(buttons.size()):
+		var button := buttons[i]
+		if button == null:
+			continue
+		var color := _menu_palette[i % palette_size]
+		var hover := color.darkened(0.12)
+		var pressed := color.darkened(0.22)
+		button.add_theme_stylebox_override("normal", _make_button_box(color))
+		button.add_theme_stylebox_override("hover", _make_button_box(hover))
+		button.add_theme_stylebox_override("pressed", _make_button_box(pressed))
+
+func _menu_buttons() -> Array[Button]:
+	var buttons: Array[Button] = []
+	if start_button:
+		buttons.append(start_button)
+	if continue_button:
+		buttons.append(continue_button)
+	if help_button:
+		buttons.append(help_button)
+	if graphics_button:
+		buttons.append(graphics_button)
+	if test_button and test_button.visible:
+		buttons.append(test_button)
+	if quit_button:
+		buttons.append(quit_button)
+	return buttons
+
+func _make_button_box(color: Color) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = color
+	box.content_margin_left = 10
+	box.content_margin_top = 6
+	box.content_margin_right = 10
+	box.content_margin_bottom = 6
+	return box
