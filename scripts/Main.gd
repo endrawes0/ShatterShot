@@ -1267,16 +1267,16 @@ func _spawn_victory_particles() -> void:
 		Color(0.26, 0.62, 0.96, 1)
 	]
 	var screen: Vector2 = App.get_layout_size()
-	var total: int = OUTCOME_PARTICLE_COUNT * 3
+	var total: int = OUTCOME_PARTICLE_COUNT * 9
 	var clusters_per_color: int = 3
 	var per_cluster: int = max(1, int(ceil(float(total) / float(palette.size() * clusters_per_color))))
 	for i in range(palette.size()):
 		for _cluster in range(clusters_per_color):
 			var center := Vector2(
-				outcome_rng.randf_range(screen.x * 0.15, screen.x * 0.85),
-				outcome_rng.randf_range(screen.y * 0.1, screen.y * 0.55)
+				outcome_rng.randf_range(screen.x * 0.1, screen.x*1.1),
+				outcome_rng.randf_range(screen.y * 0.1, screen.y * 0.5)
 			)
-			_spawn_outcome_particle_cluster(palette[i], per_cluster, center, 70.0, true)
+			_spawn_outcome_particle_cluster(palette[i], per_cluster, center, 20.0, true)
 
 func _spawn_outcome_particle_cluster(color: Color, count: int, center: Vector2, radius: float, is_victory: bool) -> void:
 	if count <= 0:
@@ -1330,6 +1330,9 @@ func _spawn_outcome_particles(color: Color, is_victory: bool, index: int = 0, to
 			particle.call("setup", color, velocity)
 
 func _go_to_menu() -> void:
+	_hide_outcome_overlays()
+	if gameover_panel:
+		gameover_panel.visible = false
 	App.show_menu()
 
 func on_menu_opened() -> void:
