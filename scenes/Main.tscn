@@ -1,4 +1,4 @@
-[gd_scene load_steps=12 format=3 uid="uid://dhnntcfxs4lg0"]
+[gd_scene load_steps=7 format=3 uid="uid://dhnntcfxs4lg0"]
 
 [ext_resource type="PackedScene" path="res://scenes/Paddle.tscn" id="1"]
 [ext_resource type="Script" uid="uid://b8nul2np1du6b" path="res://scripts/Main.gd" id="3"]
@@ -131,21 +131,21 @@ text = "Choose your next room."
 
 [node name="VictoryOverlay" type="ColorRect" parent="HUD"]
 visible = false
+z_index = -1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 color = Color(0.95, 0.85, 0.25, 0.12)
-z_index = -1
 
 [node name="DefeatOverlay" type="ColorRect" parent="HUD"]
 visible = false
+z_index = -1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
 color = Color(0.22, 0.06, 0.06, 0.26)
-z_index = -1
 
 [node name="HandBar" type="Panel" parent="HUD"]
 anchors_preset = 12
