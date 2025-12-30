@@ -11,16 +11,16 @@ Prereqs:
 
 Build commands (from repo root, update the Godot path if needed):
 ```bash
-../Godot_v4.5.1 --headless --export-release "Windows Desktop" builds/windows/BlockBreaker.exe
-../Godot_v4.5.1 --headless --export-release "Linux/X11" builds/linux/BlockBreaker.x86_64
-../Godot_v4.5.1 --headless --export-release "macOS" builds/mac/BlockBreaker.app
+../Godot_v4.5.1 --headless --export-release "Windows Desktop" builds/windows/ShatterShot.exe
+../Godot_v4.5.1 --headless --export-release "Linux/X11" builds/linux/ShatterShot.x86_64
+../Godot_v4.5.1 --headless --export-release "macOS" builds/mac/ShatterShot.app
 ```
 
 Zip artifacts for release:
 ```bash
-zip -r builds/BlockBreaker-windows.zip builds/windows
-zip -r builds/BlockBreaker-linux.zip builds/linux
-zip -r builds/BlockBreaker-mac.zip builds/mac
+zip -r builds/ShatterShot-windows.zip builds/windows
+zip -r builds/ShatterShot-linux.zip builds/linux
+zip -r builds/ShatterShot-mac.zip builds/mac
 ```
 
 Notes:
@@ -40,7 +40,7 @@ git push origin v0.1.0
 Create release and upload assets (requires `gh` auth):
 ```bash
 gh release create v0.1.0 --title "Alpha" --generate-notes \
-  builds/BlockBreaker-windows.zip \
-  builds/BlockBreaker-linux.zip \
-  builds/BlockBreaker-mac.zip
+  builds/ShatterShot-windows.zip \
+  builds/ShatterShot-linux.zip \
+  builds/ShatterShot-mac.zip
 ```

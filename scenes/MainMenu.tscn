@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://5dhdft0ohhet"]
+[gd_scene load_steps=3 format=3 uid="uid://5dhdft0ohhet"]
 
 [ext_resource type="Script" uid="uid://dqfdq6li4w8rt" path="res://scripts/MainMenu.gd" id="1"]
+[ext_resource type="Texture2D" uid="uid://dmp34l8axflyt" path="res://assets/ShatterShot-Logo.png" id="2"]
 
 [node name="MainMenu" type="Control"]
 layout_mode = 3
@@ -26,37 +27,47 @@ anchor_bottom = 1.0
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="Title" type="Label" parent="Center/VBox"]
+[node name="Logo" type="TextureRect" parent="Center/VBox"]
+custom_minimum_size = Vector2(600, 200)
 layout_mode = 2
-text = "Blockbreaker Deck Run"
-horizontal_alignment = 1
+size_flags_horizontal = 3
+size_flags_vertical = 3
+texture = ExtResource("2")
+expand_mode = 1
+stretch_mode = 5
 
 [node name="Subtitle" type="Label" parent="Center/VBox"]
 layout_mode = 2
 text = "Roguelike deckbuilder + paddle combat"
 horizontal_alignment = 1
 
-[node name="StartButton" type="Button" parent="Center/VBox"]
+[node name="Buttons" type="VBoxContainer" parent="Center/VBox"]
+custom_minimum_size = Vector2(260, 0)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 10
+
+[node name="StartButton" type="Button" parent="Center/VBox/Buttons"]
 layout_mode = 2
 text = "Start Run"
 
-[node name="ContinueButton" type="Button" parent="Center/VBox"]
+[node name="ContinueButton" type="Button" parent="Center/VBox/Buttons"]
 layout_mode = 2
 text = "Continue Run"
 
-[node name="HelpButton" type="Button" parent="Center/VBox"]
+[node name="HelpButton" type="Button" parent="Center/VBox/Buttons"]
 layout_mode = 2
 text = "How To Play"
 
-[node name="SettingsButton" type="Button" parent="Center/VBox"]
+[node name="SettingsButton" type="Button" parent="Center/VBox/Buttons"]
 layout_mode = 2
 text = "Settings"
 
-[node name="TestButton" type="Button" parent="Center/VBox"]
+[node name="TestButton" type="Button" parent="Center/VBox/Buttons"]
 layout_mode = 2
 text = "Test Lab"
 
-[node name="QuitButton" type="Button" parent="Center/VBox"]
+[node name="QuitButton" type="Button" parent="Center/VBox/Buttons"]
 layout_mode = 2
 text = "Quit"
 

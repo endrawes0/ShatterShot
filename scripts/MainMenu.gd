@@ -1,11 +1,11 @@
 extends Control
 
-@onready var start_button: Button = $Center/VBox/StartButton
-@onready var continue_button: Button = $Center/VBox/ContinueButton
-@onready var help_button: Button = $Center/VBox/HelpButton
-@onready var settings_button: Button = $Center/VBox/SettingsButton
-@onready var test_button: Button = $Center/VBox/TestButton
-@onready var quit_button: Button = $Center/VBox/QuitButton
+@onready var start_button: Button = $Center/VBox/Buttons/StartButton
+@onready var continue_button: Button = $Center/VBox/Buttons/ContinueButton
+@onready var help_button: Button = $Center/VBox/Buttons/HelpButton
+@onready var settings_button: Button = $Center/VBox/Buttons/SettingsButton
+@onready var test_button: Button = $Center/VBox/Buttons/TestButton
+@onready var quit_button: Button = $Center/VBox/Buttons/QuitButton
 @onready var seed_dialog: ConfirmationDialog = $SeedDialog
 @onready var seed_input: LineEdit = $SeedDialog/SeedDialogPanel/SeedInput
 @onready var seed_status: Label = $SeedDialog/SeedDialogPanel/SeedStatus

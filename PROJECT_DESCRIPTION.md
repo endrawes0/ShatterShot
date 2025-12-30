@@ -1,4 +1,4 @@
-# Block Breaker Roguelike Deck Builder
+# ShatterShot Roguelike Deck Builder
 
 ## Overview
 A single-player Godot project that fuses Breakout-style paddle/ball action with a roguelike deck-builder loop. Each room is a short combat encounter where you plan a volley by playing cards, then launch balls to clear a brick formation before threat damage wears you down.
