@@ -1,3 +1,5 @@
+![ShatterShot Logo](https://github.com/endrawes0/BlockBreaker/blob/main/assets/ShatterShot-Logo.png?raw=true)
+
 # ShatterShot Roguelike Deck Builder
 
 ## Overview
