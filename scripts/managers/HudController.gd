@@ -88,7 +88,7 @@ func update_labels(energy: int, max_energy: int, draw_count: int, discard_count:
 		var display_floor: int = min(max(1, floor_index), max_floors)
 		floor_label.text = "Floor %d/%d" % [display_floor, max_floors]
 
-func refresh_hand(cards: Array[String], disabled: bool, on_pressed: Callable) -> void:
+func refresh_hand(cards: Array, disabled: bool, on_pressed: Callable) -> void:
 	if hand_container == null:
 		return
 	populate_card_container(hand_container, cards, on_pressed, disabled)
@@ -105,13 +105,22 @@ func populate_card_container(container: Container, cards: Array, on_pressed: Cal
 		grid.add_theme_constant_override("v_separation", 6)
 		container.add_child(grid)
 		target_container = grid
-	for card_id in cards:
-		var selected_card_id: String = String(card_id)
-		var button := create_card_button(selected_card_id)
+	for card in cards:
+		var card_id: String = ""
+		var instance_id: int = -1
+		if card is Dictionary:
+			card_id = String(card.get("card_id", ""))
+			instance_id = int(card.get("id", -1))
+		else:
+			card_id = String(card)
+		var button := create_card_button(card_id)
 		button.disabled = disabled
 		if on_pressed.is_valid():
 			button.pressed.connect(func() -> void:
-				on_pressed.call(selected_card_id)
+				if instance_id >= 0:
+					on_pressed.call(instance_id)
+				else:
+					on_pressed.call(card_id)
 			)
 		target_container.add_child(button)
 

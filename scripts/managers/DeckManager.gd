@@ -1,16 +1,17 @@
 extends Node
 class_name DeckManager
 
-signal hand_changed(hand: Array[String])
-signal piles_changed(draw_pile: Array[String], discard_pile: Array[String], deck: Array[String])
+signal hand_changed(hand: Array)
+signal piles_changed(draw_pile: Array, discard_pile: Array, deck: Array)
 
 const MAX_HAND_SIZE: int = 7
 
-var deck: Array[String] = []
-var draw_pile: Array[String] = []
-var discard_pile: Array[String] = []
-var hand: Array[String] = []
+var deck: Array = []
+var draw_pile: Array = []
+var discard_pile: Array = []
+var hand: Array = []
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+var next_card_instance_id: int = 1
 
 func set_rng(rng_instance: RandomNumberGenerator) -> void:
 	if rng_instance != null:
@@ -20,7 +21,10 @@ func set_rng(rng_instance: RandomNumberGenerator) -> void:
 		rng.randomize()
 
 func setup(starting_deck: Array[String]) -> void:
-	deck = starting_deck.duplicate()
+	next_card_instance_id = 1
+	deck.clear()
+	for card_id in starting_deck:
+		deck.append(_make_card_instance(String(card_id)))
 	draw_pile.clear()
 	discard_pile.clear()
 	hand.clear()
@@ -50,37 +54,41 @@ func draw_cards(count: int) -> void:
 	_emit_piles_changed()
 
 func discard_hand() -> void:
-	for card_id in hand:
-		discard_pile.append(card_id)
+	for card in hand:
+		discard_pile.append(card)
 	hand.clear()
 	_emit_hand_changed()
 	_emit_piles_changed()
 
-func discard_card(card_id: String) -> void:
-	discard_pile.append(card_id)
+func discard_card_instance(instance_id: int) -> void:
+	var card := _remove_one_instance_from_array(hand, instance_id)
+	if not card.is_empty():
+		discard_pile.append(card)
+	_emit_hand_changed()
 	_emit_piles_changed()
 
 func add_card(card_id: String) -> void:
-	deck.append(card_id)
-	draw_pile.append(card_id)
+	var card := _make_card_instance(card_id)
+	deck.append(card)
+	draw_pile.append(card)
 	_shuffle_array(draw_pile)
 	_emit_piles_changed()
 
-func remove_card_from_all(card_id: String, remove_from_deck: bool = true) -> void:
+func remove_card_instance_from_all(instance_id: int, remove_from_deck: bool = true) -> void:
 	if remove_from_deck:
-		_remove_one_from_array(deck, card_id)
-	_remove_one_from_array(draw_pile, card_id)
-	_remove_one_from_array(discard_pile, card_id)
-	_remove_one_from_array(hand, card_id)
+		_remove_one_instance_from_array(deck, instance_id)
+	_remove_one_instance_from_array(draw_pile, instance_id)
+	_remove_one_instance_from_array(discard_pile, instance_id)
+	_remove_one_instance_from_array(hand, instance_id)
 	_emit_hand_changed()
 	_emit_piles_changed()
 
 func remove_card_from_deck(card_id: String) -> void:
-	_remove_one_from_array(deck, card_id)
+	_remove_one_by_card_id(deck, card_id)
 	_emit_piles_changed()
 
-func play_card(card_id: String) -> void:
-	hand.erase(card_id)
+func play_card_instance(instance_id: int) -> void:
+	_remove_one_instance_from_array(hand, instance_id)
 	_emit_hand_changed()
 
 func _shuffle_into_draw(cards: Array) -> void:
@@ -94,10 +102,53 @@ func _shuffle_array(values: Array) -> void:
 		values[i] = values[j]
 		values[j] = temp
 
-func _remove_one_from_array(values: Array, target: String) -> void:
-	var index: int = values.find(target)
-	if index >= 0:
-		values.remove_at(index)
+func _make_card_instance(card_id: String) -> Dictionary:
+	var card := {
+		"id": next_card_instance_id,
+		"card_id": card_id
+	}
+	next_card_instance_id += 1
+	return card
+
+func get_card_id_from_hand(instance_id: int) -> String:
+	var card := _get_instance_from_array(hand, instance_id)
+	return String(card.get("card_id", ""))
+
+func get_card_id_for_instance(instance_id: int) -> String:
+	var card := _get_instance_from_array(hand, instance_id)
+	if not card.is_empty():
+		return String(card.get("card_id", ""))
+	card = _get_instance_from_array(draw_pile, instance_id)
+	if not card.is_empty():
+		return String(card.get("card_id", ""))
+	card = _get_instance_from_array(discard_pile, instance_id)
+	if not card.is_empty():
+		return String(card.get("card_id", ""))
+	card = _get_instance_from_array(deck, instance_id)
+	if not card.is_empty():
+		return String(card.get("card_id", ""))
+	return ""
+
+func _get_instance_from_array(values: Array, instance_id: int) -> Dictionary:
+	for card in values:
+		if card is Dictionary and int(card.get("id", -1)) == instance_id:
+			return card
+	return {}
+
+func _remove_one_instance_from_array(values: Array, instance_id: int) -> Dictionary:
+	for index in range(values.size()):
+		var card = values[index]
+		if card is Dictionary and int(card.get("id", -1)) == instance_id:
+			values.remove_at(index)
+			return card
+	return {}
+
+func _remove_one_by_card_id(values: Array, card_id: String) -> void:
+	for index in range(values.size()):
+		var card = values[index]
+		if card is Dictionary and String(card.get("card_id", "")) == card_id:
+			values.remove_at(index)
+			return
 
 func _emit_hand_changed() -> void:
 	hand_changed.emit(hand.duplicate())
