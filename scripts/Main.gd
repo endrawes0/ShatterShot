@@ -1355,9 +1355,7 @@ func _play_card(instance_id: int) -> void:
 		return
 	energy -= cost
 	_apply_card_effect(card_id, instance_id)
-	if card_id == "wound":
-		deck_manager.remove_card_instance_from_all(instance_id, true)
-	else:
+	if card_id != "wound":
 		deck_manager.discard_card_instance(instance_id)
 	_refresh_hand()
 	_update_reserve_indicator()
@@ -1386,6 +1384,7 @@ func _apply_card_effect(card_id: String, instance_id: int) -> void:
 		"slow":
 			volley_ball_speed_multiplier = 0.7
 		"wound":
+			deck_manager.remove_card_instance_from_all(instance_id, true)
 			info_label.text = "Wound removed from your deck."
 		_:
 			pass
