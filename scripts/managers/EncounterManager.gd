@@ -254,23 +254,10 @@ func _weighted_pick(candidates: Array[EncounterConfig]) -> EncounterConfig:
 	return candidates[0]
 
 func _materialize_config(base_config: EncounterConfig, floor_index: int, is_elite: bool, is_boss: bool) -> EncounterConfig:
-	var config := EncounterConfig.new()
-	config.id = base_config.id
-	config.encounter_kind = base_config.encounter_kind
-	config.min_floor = base_config.min_floor
-	config.max_floor = base_config.max_floor
-	config.weight = base_config.weight
-	config.rows = base_config.rows
-	config.cols = base_config.cols
-	config.base_hp = base_config.base_hp
-	config.base_threat = base_config.base_threat
-	config.pattern_id = base_config.pattern_id
-	config.speed_boost_chance = base_config.speed_boost_chance
-	config.speed_boost = base_config.speed_boost
+	var config := base_config.duplicate() as EncounterConfig
+	if config == null:
+		config = EncounterConfig.new()
 	config.is_boss = base_config.is_boss or is_boss
-	config.boss_core = base_config.boss_core
-	config.boss_core_hp_bonus = base_config.boss_core_hp_bonus
-	config.variant_policy = base_config.variant_policy
 
 	if config.pattern_id == "auto":
 		config.pattern_id = _pick_pattern(floor_index, config.is_boss)
