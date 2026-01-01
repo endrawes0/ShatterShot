@@ -109,6 +109,8 @@ var encounter_manager: EncounterManager
 var map_manager: MapManager
 var deck_manager: DeckManager
 var hud_controller: HudController
+var reward_manager: RewardManager
+var shop_manager: ShopManager
 var balance_data: Resource
 
 var card_data: Dictionary = {}
@@ -117,6 +119,7 @@ var starting_deck: Array[String] = []
 var ball_mod_data: Dictionary = {}
 var ball_mod_order: Array[String] = []
 var ball_mod_colors: Dictionary = {}
+var reward_card_count: int = 3
 var shop_card_price: int = 0
 var shop_remove_price: int = 0
 var shop_upgrade_price: int = 0
@@ -126,8 +129,6 @@ var shop_vitality_max_hp_bonus: int = 0
 var shop_vitality_heal: int = 0
 var shop_reroll_base_price: int = 0
 var shop_reroll_multiplier: float = 1.0
-var shop_reroll_count: int = 0
-var shop_card_offers: Array[String] = []
 
 var state: GameState = GameState.MAP
 
@@ -236,6 +237,17 @@ func _ready() -> void:
 		"gameover_panel": gameover_panel,
 		"hand_container": hand_container
 	}, card_data, CARD_TYPE_COLORS, CARD_BUTTON_SIZE, card_emoji_font)
+	reward_manager = RewardManager.new()
+	add_child(reward_manager)
+	reward_manager.setup(hud_controller, reward_buttons)
+	reward_manager.set_on_selected(Callable(self, "_on_reward_selected"))
+	reward_manager.set_panel_nodes(reward_label, reward_skip_button)
+	reward_manager.set_info_callback(Callable(self, "_set_info_text"))
+	reward_manager.configure({"reward_count": reward_card_count})
+	shop_manager = ShopManager.new()
+	add_child(shop_manager)
+	shop_manager.setup(hud_controller, shop_cards_buttons, shop_buffs_buttons, shop_ball_mods_buttons)
+	_configure_shop_manager()
 	_apply_hud_theme()
 	App.bind_button_feedback(self)
 	# Buttons removed; use Space to launch and cards/turn flow for control.
@@ -291,6 +303,7 @@ func _apply_balance_data(data: Resource) -> void:
 	ball_mod_data = data.ball_mod_data
 	ball_mod_order = data.ball_mod_order
 	ball_mod_colors = data.ball_mod_colors
+	reward_card_count = data.reward_card_count
 	shop_card_price = data.shop_card_price
 	shop_remove_price = data.shop_remove_price
 	shop_upgrade_price = data.shop_upgrade_price
@@ -890,31 +903,20 @@ func _reset_deck_for_next_floor() -> void:
 	_update_labels()
 
 func _build_reward_buttons() -> void:
-	_build_combat_reward_buttons()
-
-func _build_combat_reward_buttons() -> void:
-	_clear_reward_buttons()
-	for _i in range(3):
-		var card_id: String = _pick_random_card()
-		var reward_card_id := card_id
-		var button := hud_controller.create_card_button(card_id)
-		button.pressed.connect(func() -> void:
-			_add_card_to_deck(reward_card_id)
-			_show_map()
-		)
-		reward_buttons.add_child(button)
-
-func _clear_reward_buttons() -> void:
-	if reward_buttons == null:
+	if reward_manager == null:
 		return
-	for child in reward_buttons.get_children():
-		child.queue_free()
+	reward_manager.build_card_rewards(Callable(self, "_pick_random_card"))
+
+func _on_reward_selected(card_id: String) -> void:
+	_add_card_to_deck(card_id)
+	_show_map()
 
 func _show_shop() -> void:
 	state = GameState.SHOP
 	_show_single_panel(shop_panel)
 	info_label.text = ""
-	_reset_shop_offers()
+	if shop_manager:
+		shop_manager.reset_offers(Callable(self, "_pick_random_card"))
 	_build_shop_buttons()
 	_focus_shop_buttons()
 	_refresh_mod_buttons()
@@ -946,165 +948,90 @@ func _apply_hud_button_exclusions() -> void:
 		discard_button.add_to_group(App.UI_PARTICLE_IGNORE_GROUP)
 	if mods_persist_checkbox:
 		mods_persist_checkbox.add_to_group(App.UI_PARTICLE_IGNORE_GROUP)
+
 func _show_treasure() -> void:
 	_show_treasure_panel()
 
 func _build_shop_buttons() -> void:
-	if shop_cards_buttons == null or shop_buffs_buttons == null or shop_ball_mods_buttons == null:
+	if shop_manager == null:
 		return
-	_clear_shop_buttons()
-	_build_shop_card_buttons()
-	_build_shop_buff_buttons()
-	_build_shop_mod_buttons()
-
-func _clear_shop_buttons() -> void:
-	for child in shop_cards_buttons.get_children():
-		child.queue_free()
-	for child in shop_buffs_buttons.get_children():
-		child.queue_free()
-	for child in shop_ball_mods_buttons.get_children():
-		child.queue_free()
+	shop_manager.build_shop_buttons()
 
 func _build_shop_card_buttons() -> void:
-	_clear_shop_card_buttons()
-	if shop_card_offers.is_empty():
-		_reset_shop_offers()
-	for card_id in shop_card_offers:
-		var shop_card_id := card_id
-		var button := hud_controller.create_card_button(card_id)
-		var card_button := button
-		hud_controller.set_card_button_desc(button, "%s\nPrice: %dg" % [card_data[card_id]["desc"], shop_card_price])
-		button.pressed.connect(func() -> void:
-			if gold >= shop_card_price:
-				gold -= shop_card_price
-				_add_card_to_deck(shop_card_id)
-				info_label.text = "Purchased %s." % card_data[shop_card_id]["name"]
-				_update_labels()
-				card_button.queue_free()
-			else:
-				info_label.text = "Not enough gold."
-		)
-		shop_cards_buttons.add_child(button)
-	var remove := Button.new()
-	remove.text = "Remove a card (%dg)" % shop_remove_price
-	remove.pressed.connect(func() -> void:
-		if gold >= shop_remove_price and deck_manager.deck.size() > 0:
-			gold -= shop_remove_price
-			_update_labels()
-			_show_remove_card_panel()
-		else:
-			info_label.text = "Cannot remove."
-	)
-	App.apply_neutral_button_style(remove)
-	App.bind_button_feedback(remove)
-	shop_cards_buttons.add_child(remove)
-	var reroll := Button.new()
-	reroll.text = "Reroll Cards (%dg)" % _shop_reroll_price()
-	reroll.pressed.connect(func() -> void:
-		_reroll_shop_cards()
-	)
-	App.apply_neutral_button_style(reroll)
-	App.bind_button_feedback(reroll)
-	shop_cards_buttons.add_child(reroll)
-
-func _clear_shop_card_buttons() -> void:
-	if shop_cards_buttons == null:
+	if shop_manager == null:
 		return
-	for child in shop_cards_buttons.get_children():
-		child.queue_free()
-
-func _build_shop_buff_buttons() -> void:
-	var upgrade := Button.new()
-	upgrade.text = "Upgrade starting hand (+%d) (%dg)" % [shop_upgrade_hand_bonus, shop_upgrade_price]
-	upgrade.pressed.connect(func() -> void:
-		if gold >= shop_upgrade_price:
-			gold -= shop_upgrade_price
-			starting_hand_size += shop_upgrade_hand_bonus
-			info_label.text = "Starting hand increased to %d." % starting_hand_size
-			_update_labels()
-		else:
-			info_label.text = "Not enough gold."
-	)
-	App.apply_neutral_button_style(upgrade)
-	App.bind_button_feedback(upgrade)
-	shop_buffs_buttons.add_child(upgrade)
-
-	var vitality_buff := Button.new()
-	vitality_buff.text = "Vitality (+%d max HP, heal %d) (%dg)" % [
-		shop_vitality_max_hp_bonus,
-		shop_vitality_heal,
-		shop_vitality_price
-	]
-	vitality_buff.pressed.connect(func() -> void:
-		if gold >= shop_vitality_price:
-			gold -= shop_vitality_price
-			max_hp += shop_vitality_max_hp_bonus
-			hp = min(max_hp, hp + shop_vitality_heal)
-			info_label.text = "Max HP increased to %d." % max_hp
-			_update_labels()
-		else:
-			info_label.text = "Not enough gold."
-	)
-	App.apply_neutral_button_style(vitality_buff)
-	App.bind_button_feedback(vitality_buff)
-	shop_buffs_buttons.add_child(vitality_buff)
-
-func _build_shop_mod_buttons() -> void:
-	for mod_id in ball_mod_order:
-		var count: int = int(ball_mod_counts.get(mod_id, 0))
-		var mod: Dictionary = ball_mod_data[mod_id]
-		var shop_mod_id := mod_id
-		var shop_mod := mod
-		var button := Button.new()
-		if count > 0:
-			button.text = "%s x%d (+1) (%dg)" % [mod["name"], count, mod["cost"]]
-		else:
-			button.text = "%s x0 (+1) (%dg)" % [mod["name"], mod["cost"]]
-		button.tooltip_text = mod["desc"]
-		if ball_mod_colors.has(mod_id):
-			button.self_modulate = ball_mod_colors[mod_id]
-		button.pressed.connect(func() -> void:
-			if gold >= int(shop_mod["cost"]):
-				gold -= int(shop_mod["cost"])
-				var new_count: int = int(ball_mod_counts.get(shop_mod_id, 0)) + 1
-				ball_mod_counts[shop_mod_id] = new_count
-				info_label.text = "%s buff acquired." % shop_mod["name"]
-				_refresh_mod_buttons()
-				_update_labels()
-				button.text = "%s x%d (+1) (%dg)" % [shop_mod["name"], new_count, shop_mod["cost"]]
-			else:
-				info_label.text = "Not enough gold."
-		)
-		App.apply_neutral_button_style(button)
-		App.bind_button_feedback(button)
-		shop_ball_mods_buttons.add_child(button)
-
-func _reset_shop_offers() -> void:
-	shop_reroll_count = 0
-	shop_card_offers = _roll_shop_card_offers()
+	shop_manager.build_shop_card_buttons()
 
 func _reroll_shop_cards() -> void:
-	var price: int = _shop_reroll_price()
-	if gold < price:
-		info_label.text = "Not enough gold."
+	if shop_manager == null:
 		return
-	gold -= price
-	shop_reroll_count += 1
-	shop_card_offers = _roll_shop_card_offers()
+	var price: int = shop_manager.get_reroll_price()
+	if not _can_afford(price):
+		_set_info_text("Not enough gold.")
+		return
+	_spend_gold(price)
+	shop_manager.reroll_offers(Callable(self, "_pick_random_card"))
 	_build_shop_card_buttons()
 	_update_labels()
 
-func _roll_shop_card_offers() -> Array[String]:
-	var offers: Array[String] = []
-	for _i in range(2):
-		var card_id: String = _pick_random_card()
-		if card_id != "":
-			offers.append(card_id)
-	return offers
+func _shop_callbacks() -> Dictionary:
+	return {
+		"can_afford": Callable(self, "_can_afford"),
+		"spend_gold": Callable(self, "_spend_gold"),
+		"add_card": Callable(self, "_add_card_to_deck"),
+		"update_labels": Callable(self, "_update_labels"),
+		"set_info": Callable(self, "_set_info_text"),
+		"show_remove_card_panel": Callable(self, "_show_remove_card_panel"),
+		"get_deck_size": Callable(self, "_get_deck_size"),
+		"reroll": Callable(self, "_reroll_shop_cards"),
+		"upgrade_hand": Callable(self, "_upgrade_starting_hand"),
+		"apply_vitality": Callable(self, "_apply_vitality"),
+		"refresh_mod_buttons": Callable(self, "_refresh_mod_buttons")
+	}
 
-func _shop_reroll_price() -> int:
-	var multiplier: float = pow(shop_reroll_multiplier, shop_reroll_count)
-	return int(round(float(shop_reroll_base_price) * multiplier))
+func _configure_shop_manager() -> void:
+	if shop_manager == null:
+		return
+	shop_manager.configure({
+		"card_data": card_data,
+		"card_price": shop_card_price,
+		"remove_price": shop_remove_price,
+		"upgrade_hand_bonus": shop_upgrade_hand_bonus,
+		"upgrade_price": shop_upgrade_price,
+		"vitality_max_hp_bonus": shop_vitality_max_hp_bonus,
+		"vitality_heal": shop_vitality_heal,
+		"vitality_price": shop_vitality_price,
+		"reroll_base_price": shop_reroll_base_price,
+		"reroll_multiplier": shop_reroll_multiplier,
+		"ball_mod_data": ball_mod_data,
+		"ball_mod_order": ball_mod_order,
+		"ball_mod_counts": ball_mod_counts,
+		"ball_mod_colors": ball_mod_colors
+	})
+	shop_manager.set_callbacks(_shop_callbacks())
+
+func _can_afford(price: int) -> bool:
+	return gold >= price
+
+func _spend_gold(price: int) -> void:
+	gold -= price
+
+func _set_info_text(text: String) -> void:
+	info_label.text = text
+
+func _get_deck_size() -> int:
+	if deck_manager:
+		return deck_manager.deck.size()
+	return 0
+
+func _upgrade_starting_hand(bonus: int) -> int:
+	starting_hand_size += bonus
+	return starting_hand_size
+
+func _apply_vitality(max_bonus: int, heal: int) -> int:
+	max_hp += max_bonus
+	hp = min(max_hp, hp + heal)
+	return max_hp
 
 func _show_rest() -> void:
 	state = GameState.REST
@@ -1128,11 +1055,8 @@ func _show_game_over() -> void:
 func _show_reward_panel() -> void:
 	state = GameState.REWARD
 	_show_single_panel(reward_panel)
-	if reward_label:
-		reward_label.text = "Choose a card"
-	if reward_skip_button:
-		reward_skip_button.text = "Skip"
-	info_label.text = "Room cleared. Choose a reward."
+	if reward_manager:
+		reward_manager.apply_panel_copy()
 	_build_reward_buttons()
 	_update_labels()
 	_update_volley_prompt_visibility()

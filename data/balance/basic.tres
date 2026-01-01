@@ -103,3 +103,4 @@ ball_mod_colors = {
 }
 shop_vitality_max_hp_bonus = 25
 shop_vitality_heal = 30
+reward_card_count = 3

@@ -18,3 +18,4 @@ class_name BalanceData
 @export var shop_vitality_heal: int = 10
 @export var shop_reroll_base_price: int = 20
 @export var shop_reroll_multiplier: float = 1.8
+@export var reward_card_count: int = 3
