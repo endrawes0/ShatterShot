@@ -4,8 +4,8 @@
 
 [resource]
 script = ExtResource("1")
-floors = 0
-min_choices = 6
+floors = 6
+min_choices = 2
 max_choices = 5
 hidden_edge_chance = 0.25
 treasure_reward_weights = {
