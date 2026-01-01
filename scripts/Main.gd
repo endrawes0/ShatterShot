@@ -717,38 +717,27 @@ func _reveal_mystery_room() -> String:
 	return revealed
 
 func _start_encounter(is_elite: bool) -> void:
-	state = GameState.PLANNING
-	_hide_all_panels()
-	info_label.text = "Plan your volley, then launch."
-	_clear_active_balls()
-	_reset_deck_for_next_floor()
-	current_is_boss = false
-	var config := encounter_manager.build_config_from_floor(floor_index, is_elite, false)
-	current_pattern = config.pattern_id
-	encounter_speed_boost = config.speed_boost
-	encounter_rows = config.rows
-	encounter_cols = config.cols
-	encounter_hp = config.base_hp
-	encounter_base_threat = config.base_threat
-	if encounter_speed_boost:
-		info_label.text = "Volley Mod: Speed Boost."
-	encounter_manager.start_encounter(config, Callable(self, "_on_brick_destroyed"), Callable(self, "_on_brick_damaged"))
-	_start_turn()
+	_begin_encounter(is_elite, false, "Plan your volley, then launch.")
 
 func _start_boss() -> void:
+	_begin_encounter(false, true, "Boss fight. Plan carefully.")
+
+func _begin_encounter(is_elite: bool, is_boss: bool, intro_text: String) -> void:
 	state = GameState.PLANNING
 	_hide_all_panels()
-	info_label.text = "Boss fight. Plan carefully."
+	info_label.text = intro_text
 	_clear_active_balls()
 	_reset_deck_for_next_floor()
-	current_is_boss = true
-	var config := encounter_manager.build_config_from_floor(floor_index, false, true)
+	current_is_boss = is_boss
+	var config := encounter_manager.build_config_from_floor(floor_index, is_elite, is_boss)
 	current_pattern = config.pattern_id
 	encounter_speed_boost = config.speed_boost
 	encounter_rows = config.rows
 	encounter_cols = config.cols
 	encounter_hp = config.base_hp
 	encounter_base_threat = config.base_threat
+	if encounter_speed_boost and not is_boss:
+		info_label.text = "Volley Mod: Speed Boost."
 	encounter_manager.start_encounter(config, Callable(self, "_on_brick_destroyed"), Callable(self, "_on_brick_damaged"))
 	_start_turn()
 
