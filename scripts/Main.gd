@@ -1428,6 +1428,7 @@ func _play_card(instance_id: int) -> void:
 
 func _apply_card_effect(card_id: String, instance_id: int) -> bool:
 	var should_discard := true
+	# TODO: Move card behavior into a card class; this match is getting too complex.
 	match card_id:
 		"what_doesnt_kill_us":
 			var wound_instance_id: int = -1
