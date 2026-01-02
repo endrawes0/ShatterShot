@@ -1569,7 +1569,7 @@ func _apply_brick_damage_cap(brick: Node, amount: int) -> void:
 		return
 	var capped_amount: int = amount
 	if brick.has_method("get"):
-		var hp_value := brick.get("hp")
+		var hp_value: Variant = brick.get("hp")
 		if typeof(hp_value) == TYPE_INT and hp_value > 0:
 			capped_amount = min(amount, int(hp_value))
 	if brick.has_method("apply_damage"):

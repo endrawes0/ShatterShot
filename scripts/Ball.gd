@@ -201,7 +201,7 @@ func _apply_explosion_damage(brick: Object) -> void:
 		return
 	var capped_amount: int = 999
 	if brick.has_method("get"):
-		var hp_value := brick.get("hp")
+		var hp_value: Variant = brick.get("hp")
 		if typeof(hp_value) == TYPE_INT and hp_value > 0:
 			capped_amount = min(capped_amount, int(hp_value))
 	if brick.has_method("apply_damage_with_overkill"):
