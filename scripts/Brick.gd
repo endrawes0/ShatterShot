@@ -16,7 +16,6 @@ const BOUNCE_BALL_SCENE := preload("res://scenes/BounceBall.tscn")
 @onready var shield_bottom: ColorRect = $Rect/ShieldBottom
 
 var hp: int = 1
-var threat: int = 1
 var shielded_sides: Array = []
 var regen_on_drop: bool = false
 var regen_amount: int = 1
@@ -26,7 +25,7 @@ var particle_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 func _ready() -> void:
 	particle_rng.randomize()
 
-func setup(new_hp: int, new_threat: int, color: Color, data: Dictionary = {}) -> void:
+func setup(new_hp: int, color: Color, data: Dictionary = {}) -> void:
 	if rect == null:
 		rect = get_node("Rect") as ColorRect
 	if hp_label == null and rect != null:
@@ -45,7 +44,6 @@ func setup(new_hp: int, new_threat: int, color: Color, data: Dictionary = {}) ->
 		if shield_bottom == null:
 			shield_bottom = rect.get_node("ShieldBottom") as ColorRect
 	hp = max(1, new_hp)
-	threat = max(0, new_threat)
 	shielded_sides = data.get("shielded_sides", [])
 	regen_on_drop = data.get("regen_on_drop", false)
 	regen_amount = data.get("regen_amount", 1)
@@ -69,6 +67,7 @@ func apply_damage_with_overkill(amount: int, normal: Vector2 = Vector2.ZERO, ign
 	var hp_before: int = hp
 	hp -= damage
 	if hp <= 0:
+		hp = 0
 		_spawn_hit_particles(_destroy_particle_count(damage))
 		_spawn_bounce_particle()
 		emit_signal("destroyed", self)
@@ -84,7 +83,7 @@ func _update_label() -> void:
 		hp_label.text = "%d" % hp
 
 func get_threat() -> int:
-	return hp
+	return max(0, hp)
 
 func on_ball_drop() -> void:
 	if regen_on_drop and hp > 0:

@@ -144,7 +144,7 @@ func _spawn_brick(row: int, col: int, _rows: int, cols: int, hp_value: int, colo
 		brick.destroyed.connect(on_brick_destroyed)
 	if on_brick_damaged.is_valid():
 		brick.damaged.connect(on_brick_damaged)
-	brick.setup(hp_value, 1, color, data)
+	brick.setup(hp_value, color, data)
 
 
 func _spawn_boss_core(config: EncounterConfig, on_brick_destroyed: Callable, on_brick_damaged: Callable) -> void:
