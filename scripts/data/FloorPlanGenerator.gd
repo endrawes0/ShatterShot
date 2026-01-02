@@ -99,13 +99,7 @@ func generate(config: FloorPlanGeneratorConfig) -> Dictionary:
 		for prev_id in prev_ids:
 			_append_next(rooms, room_index, prev_id, [boss_id])
 
-		var is_final_act := act_index == act_defs.size() - 1
-		if is_final_act:
-			var victory_id := "%s_victory" % act_prefix
-			var victory_room: Dictionary = {"id": victory_id, "type": "victory", "next": []}
-			room_index[victory_id] = rooms.size()
-			rooms.append(victory_room)
-			_append_next(rooms, room_index, boss_id, [victory_id])
+		# No explicit victory node; final act ends on boss defeat.
 
 		_ensure_forward_edges(rooms, room_index, boss_id)
 		_apply_hidden_edges(rooms, room_index, rng, float(act_settings.get("hidden_edge_chance", config.hidden_edge_chance)))
