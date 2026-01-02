@@ -20,6 +20,7 @@ const CARD_BUTTON_SIZE: Vector2 = Vector2(110, 154)
 const BASE_STARTING_HAND_SIZE: int = 4
 const BALL_SPAWN_OFFSET: Vector2 = Vector2(0, -32)
 const ENCOUNTER_CONFIG_DIR: String = "res://data/encounters"
+const ACT_CONFIG_DIR: String = "res://data/act_configs"
 const FLOOR_PLAN_PATH: String = "res://data/floor_plans/basic.tres"
 const FLOOR_PLAN_GENERATOR_CONFIG_PATH: String = "res://data/floor_plans/generator_config.tres"
 const FLOOR_PLAN_GENERATOR := preload("res://scripts/data/FloorPlanGenerator.gd")
@@ -175,12 +176,17 @@ var encounter_hp: int = 1
 var encounter_rows: int = 4
 var encounter_cols: int = 8
 var current_is_boss: bool = false
+var current_is_elite: bool = false
 var current_pattern: String = "grid"
 var encounter_speed_boost: bool = false
+var act_ball_speed_multiplier: float = 1.0
 var deck_return_panel: int = ReturnPanel.NONE
 var deck_return_info: String = ""
 var volley_prompt_tween: Tween = null
 var volley_prompt_pulsing: bool = false
+
+var act_configs_by_index: Dictionary = {}
+var active_act_config: ActConfig
 
 func _update_reserve_indicator() -> void:
 	if paddle and paddle.has_method("set_reserve_count"):
@@ -218,6 +224,7 @@ func _ready() -> void:
 		if has_pending_seed_override:
 			floor_plan_generator_config.seed = pending_seed
 			has_pending_seed_override = false
+	_load_act_configs()
 	deck_manager = DeckManager.new()
 	add_child(deck_manager)
 	hud_controller = HudController.new()
@@ -320,6 +327,84 @@ func _reset_run_rng() -> void:
 	else:
 		run_rng.randomize()
 		run_seed = run_rng.seed
+
+func _load_act_configs() -> void:
+	act_configs_by_index.clear()
+	var dir := DirAccess.open(ACT_CONFIG_DIR)
+	if dir == null:
+		return
+	dir.list_dir_begin()
+	var file_name := dir.get_next()
+	while file_name != "":
+		if not dir.current_is_dir() and file_name.ends_with(".tres"):
+			var resource_path := ACT_CONFIG_DIR.path_join(file_name)
+			var resource := ResourceLoader.load(resource_path)
+			if resource is ActConfig:
+				var index := max(1, int(resource.act_index))
+				act_configs_by_index[index - 1] = resource
+		file_name = dir.get_next()
+	dir.list_dir_end()
+
+func _act_index_for_floor(floor_index: int) -> int:
+	if floor_plan_generator_config == null or floor_plan_generator_config.acts.is_empty():
+		return 0
+	var cursor: int = 0
+	for idx in range(floor_plan_generator_config.acts.size()):
+		var act := floor_plan_generator_config.acts[idx]
+		var act_floors := max(0, int(act.get("floors", 0)))
+		if act_floors <= 0:
+			continue
+		cursor += act_floors
+		if floor_index <= cursor:
+			return idx
+	return max(0, floor_plan_generator_config.acts.size() - 1)
+
+func _get_act_config_for_floor(floor_index: int) -> ActConfig:
+	var index := _act_index_for_floor(floor_index)
+	var act_config: ActConfig = act_configs_by_index.get(index, null)
+	if act_config == null:
+		return ActConfig.new()
+	return act_config
+
+func _get_intro_text(act_config: ActConfig, is_elite: bool, is_boss: bool) -> String:
+	if act_config == null:
+		return "Boss fight. Plan carefully." if is_boss else "Plan your volley, then launch."
+	if is_boss:
+		return act_config.boss_intro
+	if is_elite:
+		return act_config.elite_intro
+	return act_config.combat_intro
+
+func _scaled_variant_policy(policy: VariantPolicy, multiplier: float) -> VariantPolicy:
+	if policy == null:
+		return null
+	var scaled := policy.duplicate() as VariantPolicy
+	if scaled == null:
+		return policy
+	var scale: float = max(0.0, multiplier)
+	scaled.shield_chance = clamp(policy.shield_chance * scale, 0.0, 1.0)
+	scaled.regen_chance = clamp(policy.regen_chance * scale, 0.0, 1.0)
+	scaled.curse_chance = clamp(policy.curse_chance * scale, 0.0, 1.0)
+	return scaled
+
+func _apply_act_config_to_encounter(config: EncounterConfig, is_elite: bool, is_boss: bool, act_config: ActConfig) -> void:
+	if config == null or act_config == null:
+		return
+	if is_boss:
+		config.base_hp = max(1, int(round(float(config.base_hp) * act_config.boss_hp_multiplier)))
+		config.base_threat = max(0, int(round(float(config.base_threat) * act_config.boss_threat_multiplier)))
+	elif is_elite:
+		config.base_hp = max(1, int(round(float(config.base_hp) * act_config.elite_hp_multiplier)))
+		config.base_threat = max(0, int(round(float(config.base_threat) * act_config.elite_threat_multiplier)))
+	if config.variant_policy != null and act_config.variant_chance_multiplier != 1.0:
+		config.variant_policy = _scaled_variant_policy(config.variant_policy, act_config.variant_chance_multiplier)
+
+func _get_encounter_gold_reward() -> int:
+	if active_act_config == null:
+		return 25
+	if current_is_elite:
+		return active_act_config.elite_gold_reward
+	return active_act_config.combat_gold_reward
 
 func _apply_balance_data(data: Resource) -> void:
 	card_data = data.card_data
@@ -742,19 +827,23 @@ func _reveal_mystery_room() -> String:
 	return revealed
 
 func _start_encounter(is_elite: bool) -> void:
-	_begin_encounter(is_elite, false, "Plan your volley, then launch.")
+	_begin_encounter(is_elite, false)
 
 func _start_boss() -> void:
-	_begin_encounter(false, true, "Boss fight. Plan carefully.")
+	_begin_encounter(false, true)
 
-func _begin_encounter(is_elite: bool, is_boss: bool, intro_text: String) -> void:
+func _begin_encounter(is_elite: bool, is_boss: bool) -> void:
 	state = GameState.PLANNING
 	_hide_all_panels()
-	info_label.text = intro_text
+	active_act_config = _get_act_config_for_floor(floor_index)
+	current_is_elite = is_elite
+	act_ball_speed_multiplier = active_act_config.ball_speed_multiplier if active_act_config != null else 1.0
+	info_label.text = _get_intro_text(active_act_config, is_elite, is_boss)
 	_clear_active_balls()
 	_reset_deck_for_next_floor()
 	current_is_boss = is_boss
 	var config := encounter_manager.build_config_from_floor(floor_index, is_elite, is_boss)
+	_apply_act_config_to_encounter(config, is_elite, is_boss, active_act_config)
 	current_pattern = config.pattern_id
 	encounter_speed_boost = config.speed_boost
 	encounter_rows = config.rows
@@ -827,6 +916,7 @@ func _spawn_volley_ball() -> void:
 	if encounter_speed_boost:
 		speed_multiplier *= 1.25
 	speed_multiplier *= App.get_ball_speed_multiplier()
+	speed_multiplier *= act_ball_speed_multiplier
 	ball.speed *= speed_multiplier
 	if ball.has_method("set_mod_colors"):
 		ball.set_mod_colors(ball_mod_colors)
@@ -914,7 +1004,7 @@ func _end_encounter() -> void:
 	if current_is_boss:
 		_show_victory()
 		return
-	gold += 25
+	gold += _get_encounter_gold_reward()
 	if state == GameState.PLANNING:
 		await _play_planning_victory_message(_get_planning_victory_message())
 	_show_reward_panel()
