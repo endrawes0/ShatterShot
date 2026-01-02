@@ -21,8 +21,11 @@ content_margin_top = 6.0
 content_margin_right = 10.0
 content_margin_bottom = 6.0
 bg_color = Color(0.64, 0.4, 0.76, 1)
-shadow_color = Color(1, 1, 1, 1)
-shadow_size = 2
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gfhtu"]
 content_margin_left = 10.0
@@ -30,8 +33,11 @@ content_margin_top = 6.0
 content_margin_right = 10.0
 content_margin_bottom = 6.0
 bg_color = Color(0.72, 0.46, 0.86, 1)
-shadow_color = Color(1, 1, 1, 1)
-shadow_size = 2
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qa7hf"]
 content_margin_left = 10.0
@@ -48,6 +54,12 @@ content_margin_top = 6.0
 content_margin_right = 8.0
 content_margin_bottom = 6.0
 bg_color = Color(0.11, 0.11, 0.13, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 1)
+
 
 [resource]
 default_font_size = 14
@@ -70,3 +82,4 @@ Label/colors/font_color = Color(0.94, 0.94, 0.98, 1)
 Panel/styles/panel = SubResource("StyleBoxFlat_jkgan")
 PanelContainer/styles/panel = SubResource("StyleBoxFlat_jkgan")
 PopupPanel/styles/panel = SubResource("StyleBoxFlat_jkgan")
+Window/styles/panel = SubResource("StyleBoxFlat_jkgan")

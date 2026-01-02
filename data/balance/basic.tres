@@ -33,13 +33,6 @@ card_data = {
 "name": "Haste",
 "type": "utility"
 },
-"what_doesnt_kill_us": {
-"cost": 1,
-"desc": "If you have a Wound in hand, remove it and gain 2 energy.",
-"emoji": "💪",
-"name": "What Doesn't Kill",
-"type": "utility"
-},
 "punch": {
 "cost": 1,
 "desc": "+1 volley damage.",
@@ -67,6 +60,13 @@ card_data = {
 "emoji": "‼️",
 "name": "Twin Launch",
 "type": "offense"
+},
+"what_doesnt_kill_us": {
+"cost": 1,
+"desc": "If you have a Wound in hand, remove it and gain 2 energy.",
+"emoji": "💪",
+"name": "What Doesn't Kill Us",
+"type": "utility"
 },
 "widen": {
 "cost": 1,
@@ -110,4 +110,3 @@ ball_mod_colors = {
 }
 shop_vitality_max_hp_bonus = 25
 shop_vitality_heal = 30
-reward_card_count = 3

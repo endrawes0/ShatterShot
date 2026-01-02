@@ -4,8 +4,6 @@
 
 [resource]
 script = ExtResource("1")
-floors = 6
-min_choices = 2
 max_choices = 5
 hidden_edge_chance = 0.25
 treasure_reward_weights = {
@@ -14,9 +12,9 @@ treasure_reward_weights = {
 "mod": 25
 }
 room_weights = {
-"combat": 3,
-"elite": 1,
-"mystery": 1,
+"combat": 6,
+"elite": 3,
+"mystery": 2,
 "rest": 1,
 "shop": 1,
 "treasure": 1

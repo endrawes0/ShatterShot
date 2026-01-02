@@ -172,30 +172,21 @@ func _layout_positions(room_index: Dictionary, depths: Dictionary, source_rooms:
 		var depth: int = int(depth_key)
 		var rooms_at_depth: Array = depth_groups[depth]
 		var usable_width: float = max(1.0, size.x - margin * 2.0)
-		var index_positions := _build_index_positions(rooms_at_depth, usable_width, margin, global_max_index)
+		var radius: float = _node_radius()
+		var ordered_rooms := _order_room_ids(rooms_at_depth)
 		var center_x: float = usable_width * 0.5 + margin
-		var min_x: float = INF
-		var max_x: float = -INF
-		for room_id in rooms_at_depth:
-			if room_id in ["start", "boss", "victory"]:
-				continue
-			var key := String(room_id)
-			var x := float(index_positions.get(key, center_x))
-			min_x = min(min_x, x)
-			max_x = max(max_x, x)
-		var shift_x := 0.0
-		if min_x != INF and max_x != -INF:
-			var current_center: float = (min_x + max_x) * 0.5
-			shift_x = center_x - current_center
-			var min_shift: float = margin - min_x
-			var max_shift: float = margin + usable_width - max_x
-			shift_x = clamp(shift_x, min_shift, max_shift)
-		for room_id in rooms_at_depth:
-			var x: float = float(index_positions.get(String(room_id), center_x))
+		var max_slots: int = max(1, global_max_index)
+		var col_spacing: float = usable_width / float(max(1, max_slots - 1))
+		var row_count: int = ordered_rooms.size()
+		var row_width: float = col_spacing * float(max(0, row_count - 1))
+		var start_x: float = center_x - row_width * 0.5
+		for i in range(row_count):
+			var room_id := String(ordered_rooms[i])
+			var x: float = start_x + col_spacing * float(i)
 			if room_id in ["start", "boss", "victory"]:
 				x = center_x
 			else:
-				x += shift_x
+				x = clamp(x, margin + radius, margin + usable_width - radius)
 			var y: float = size.y - margin - row_spacing * float(depth)
 			positions[room_id] = Vector2(x, y)
 	return positions
@@ -245,7 +236,7 @@ func _draw_nodes(room_index: Dictionary, positions: Dictionary) -> void:
 			draw_arc(pos, radius + 6.0, 0.0, TAU, 48, Color(0.95, 0.85, 0.2), 2.0)
 		var label: String = String(TYPE_LABELS.get(room_type, "?"))
 		var font_size: int = 18
-		if room_type in ["elite", "rest", "shop"]:
+		if room_type in ["elite", "rest", "shop", "boss"]:
 			font_size = int(round(float(font_size) * 1.3))
 		var text_size: Vector2 = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 		var ascent: float = font.get_ascent(font_size)
@@ -305,30 +296,32 @@ func _build_outgoing_edges(edges: Array[Dictionary]) -> Dictionary:
 		outgoing[from_id].append(to_id)
 	return outgoing
 
-func _build_index_positions(room_ids: Array, usable_width: float, margin: float, global_max_index: int) -> Dictionary:
-	var max_index: int = global_max_index
-	var indexed: Dictionary = {}
-	for room_id in room_ids:
-		var index := _room_floor_index(String(room_id))
-		if index > 0:
-			indexed[String(room_id)] = index
-			max_index = max(max_index, index)
-	var positions: Dictionary = {}
-	if max_index <= 1:
-		for room_id in room_ids:
-			positions[String(room_id)] = usable_width * 0.5 + margin
-		return positions
-	var col_spacing := usable_width / float(max_index - 1)
-	var fallback_order: Array = room_ids.duplicate()
-	fallback_order.sort()
+func _order_room_ids(room_ids: Array) -> Array:
+	# NOTE: This ordering assumes "f<floor>_<index>" room ids; other schemes will fall back to sort-by-id.
+	var indexed: Array[Dictionary] = []
+	var fallback: Array[String] = []
 	for room_id in room_ids:
 		var key := String(room_id)
-		if indexed.has(key):
-			positions[key] = margin + col_spacing * float(indexed[key] - 1)
+		var index := _room_floor_index(key)
+		if index > 0:
+			indexed.append({"id": key, "index": index})
 		else:
-			var fallback_index: int = fallback_order.find(room_id)
-			positions[key] = margin + col_spacing * float(max(0, fallback_index))
-	return positions
+			fallback.append(key)
+	indexed.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var a_index: int = int(a.get("index", 0))
+		var b_index: int = int(b.get("index", 0))
+		if a_index == b_index:
+			return String(a.get("id", "")) < String(b.get("id", ""))
+		return a_index < b_index
+	)
+	fallback.sort()
+	var ordered: Array[String] = []
+	for entry in indexed:
+		ordered.append(String(entry.get("id", "")))
+	for entry in fallback:
+		if not ordered.has(entry):
+			ordered.append(entry)
+	return ordered
 
 func _room_floor_index(room_id: String) -> int:
 	if room_id.begins_with("f"):
