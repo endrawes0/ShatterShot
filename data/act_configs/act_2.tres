@@ -5,9 +5,6 @@
 [resource]
 script = ExtResource("1")
 act_index = 2
-combat_intro = "Plan your volley, then launch."
-elite_intro = "Plan your volley, then launch."
-boss_intro = "Boss fight. Plan carefully."
 combat_gold_reward = 35
 elite_gold_reward = 45
 boss_gold_reward = 60
