@@ -13,7 +13,7 @@ card_data = {
 "type": "offense"
 },
 "focus": {
-"cost": 1,
+"cost": 0,
 "desc": "+1 energy this turn.",
 "emoji": "🧠",
 "name": "Focus",
@@ -31,6 +31,13 @@ card_data = {
 "desc": "Paddle moves faster for 2 turns.",
 "emoji": "⚡⚡",
 "name": "Haste",
+"type": "utility"
+},
+"what_doesnt_kill_us": {
+"cost": 1,
+"desc": "If you have a Wound in hand, remove it and gain 2 energy.",
+"emoji": "💪",
+"name": "What Doesn't Kill",
 "type": "utility"
 },
 "punch": {
@@ -76,7 +83,7 @@ card_data = {
 "type": "curse"
 }
 }
-card_pool = Array[String](["punch", "twin", "guard", "widen", "bomb", "rally", "focus", "haste", "slow"])
+card_pool = Array[String](["punch", "twin", "guard", "widen", "bomb", "rally", "focus", "haste", "slow", "what_doesnt_kill_us"])
 starting_deck = Array[String](["punch", "punch", "punch", "punch", "twin", "twin", "guard", "guard", "rally", "focus"])
 ball_mod_data = {
 "explosive": {

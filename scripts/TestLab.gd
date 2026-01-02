@@ -70,6 +70,11 @@ func _ready() -> void:
 			main_node._update_labels()
 		)
 	)
+	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/AddCard", func() -> void:
+		_with_main(func(main_node: Node) -> void:
+			main_node._show_add_card_to_hand_panel()
+		)
+	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/UnlockExplosive", func() -> void:
 		_unlock_mod("explosive")
 	)

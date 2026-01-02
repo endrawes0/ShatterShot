@@ -67,7 +67,7 @@ func hide_all_panels() -> void:
 
 func update_labels(energy: int, max_energy: int, draw_count: int, discard_count: int, hp: int, max_hp: int, gold: int, threat: int, floor_index: int, max_floors: int) -> void:
 	if energy_label:
-		energy_label.text = "Energy: %d/%d" % [energy, max_energy]
+		energy_label.text = "Energy (💥): %d/%d" % [energy, max_energy]
 	if deck_label:
 		deck_label.text = "Draw: %d" % draw_count
 	if discard_label:
@@ -215,11 +215,11 @@ func set_card_button_desc(button: Button, text: String) -> void:
 
 func _card_label(card_id: String) -> String:
 	var card: Dictionary = card_data[card_id]
-	return "%s [%d]" % [card["name"], card["cost"]]
+	return "%s\n%d💥" % [card["name"], card["cost"]]
 
 func _card_tooltip(card_id: String) -> String:
 	var card: Dictionary = card_data[card_id]
-	return "%s (Cost %d)\n%s" % [card["name"], card["cost"], card["desc"]]
+	return "%s (%d💥)\n%s" % [card["name"], card["cost"], card["desc"]]
 
 func _apply_card_style(button: Button, card_id: String) -> void:
 	var card: Dictionary = card_data[card_id]

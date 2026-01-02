@@ -101,6 +101,10 @@ text = "Add Punch"
 layout_mode = 2
 text = "Add Wound"
 
+[node name="AddCard" type="Button" parent="DebugPanel/VBox/ButtonColumns/LeftColumn"]
+layout_mode = 2
+text = "Add Card"
+
 [node name="UnlockExplosive" type="Button" parent="DebugPanel/VBox/ButtonColumns/RightColumn"]
 layout_mode = 2
 text = "Unlock Explosives"

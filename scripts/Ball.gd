@@ -8,6 +8,7 @@ const GhostShape = preload("res://scripts/effects/GhostShape.gd")
 
 signal lost(ball: Node)
 signal mod_consumed(mod_id: String)
+signal caught(ball: Node)
 
 @export var speed: float = 320.0
 @export var paddle_path: NodePath
@@ -80,6 +81,7 @@ func _physics_process(delta: float) -> void:
 				collider.apply_damage(damage)
 		if collider and collider.name == "Paddle":
 			_bounce_from_paddle(collider as Node2D)
+			emit_signal("caught", self)
 		elif not piercing:
 			velocity = velocity.bounce(collision.get_normal())
 

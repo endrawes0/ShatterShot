@@ -37,6 +37,7 @@ const VOLLEY_PROMPT_OFFSET_Y: float = -70.0
 @export var brick_size: Vector2 = Vector2(64, 24)
 @export var brick_gap: Vector2 = Vector2(8, 8)
 @export var top_margin: float = 70.0
+@export var planning_victory_messages: Array[String] = ["Nice one!"]
 
 @onready var paddle: CharacterBody2D = $Paddle
 @onready var bricks_root: Node2D = $Bricks
@@ -836,6 +837,7 @@ func _spawn_volley_ball() -> void:
 	ball.global_position = paddle.global_position + BALL_SPAWN_OFFSET
 	ball.launch_with_angle(0.0)
 	ball.lost.connect(_on_ball_lost)
+	ball.caught.connect(_on_ball_caught)
 	ball.mod_consumed.connect(_on_ball_mod_consumed)
 	active_balls.append(ball)
 	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN)
@@ -854,6 +856,12 @@ func _on_ball_lost(ball: Node) -> void:
 			info_label.text = "Press Space to launch the next ball or Enter to end the volley."
 			return
 		_apply_volley_threat()
+
+func _on_ball_caught(_ball: Node) -> void:
+	if state != GameState.PLANNING:
+		return
+	if encounter_manager and encounter_manager.check_victory():
+		await _play_planning_victory_message(_get_planning_victory_message())
 
 func _forfeit_volley() -> void:
 	if state != GameState.VOLLEY:
@@ -905,11 +913,16 @@ func _end_encounter() -> void:
 	if current_is_boss:
 		_show_victory()
 		return
-	gold += 25 #TODO: if elite: gold +=50 elif boss += 100 (prepares for acts)
+	gold += 25
 	if state == GameState.PLANNING:
-		await _play_planning_victory_message("Nice one!") #TODO make this configuraable
-	#TODO: if the player catches the ball while in planning mode,  us _play_planning_victory... method
+		await _play_planning_victory_message(_get_planning_victory_message())
 	_show_reward_panel()
+
+func _get_planning_victory_message() -> String:
+	if planning_victory_messages.is_empty():
+		return "Nice one!"
+	var index: int = run_rng.randi_range(0, planning_victory_messages.size() - 1)
+	return String(planning_victory_messages[index])
 
 func _play_planning_victory_message(message: String) -> void:
 	if info_label == null or hud == null:
@@ -1412,8 +1425,21 @@ func _play_card(instance_id: int) -> void:
 
 func _apply_card_effect(card_id: String, instance_id: int) -> bool:
 	var should_discard := true
-	# TODO: Add card "what doesnt kill us..." (cost 1). If played with a wound, destroy that wound and gain 2 energy.
 	match card_id:
+		"what_doesnt_kill_us":
+			var wound_instance_id: int = -1
+			for card in deck_manager.hand:
+				if card is Dictionary:
+					var found_id: int = int(card.get("id", -1))
+					if found_id == instance_id:
+						continue
+					if String(card.get("card_id", "")) == "wound":
+						wound_instance_id = found_id
+						break
+			if wound_instance_id != -1:
+				deck_manager.remove_card_instance_from_all(wound_instance_id, true)
+				energy += 2
+				info_label.text = "Wound removed. +2 energy."
 		"punch":
 			volley_damage_bonus += 1
 		"twin":

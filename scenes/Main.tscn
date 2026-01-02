@@ -70,7 +70,7 @@ text = "Gold: 0"
 
 [node name="EnergyLabel" type="Label" parent="HUD/TopBar"]
 layout_mode = 2
-text = "Energy: 3/3"
+text = "Energy (💥): 3/3"
 
 [node name="DeckLabel" type="Label" parent="HUD/TopBar"]
 layout_mode = 2
