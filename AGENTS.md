@@ -4,6 +4,7 @@
 - Commit changes to a `feature/` or `bugfix/` branch, not directly to `main`.
 - Commit early and often while working on changes.
 - If you notice unexpected changes you didn't make, show the diff when asking how to proceed.
+- When commenting in a PR, start the comment with "🤖:" to indicate it's from Codex.
 
 ## Export Process (Windows/Linux/macOS)
 
