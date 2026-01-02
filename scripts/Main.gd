@@ -69,6 +69,7 @@ const START_PROMPT_EXTRA_OFFSET_Y: float = 40.0
 @onready var map_graph: Control = $HUD/MapPanel/MapGraph
 @onready var map_buttons: HBoxContainer = $HUD/MapPanel/MapButtons
 @onready var map_seed_label: Label = $HUD/MapPanel/MapSeedLabel
+@onready var map_label: Label = $HUD/MapPanel/MapLabel
 @onready var reward_panel: Panel = $HUD/RewardPanel
 @onready var reward_label: Label = $HUD/RewardPanel/RewardLabel
 @onready var reward_buttons: HBoxContainer = $HUD/RewardPanel/RewardLayout/RewardButtons
@@ -632,6 +633,7 @@ func _show_map() -> void:
 	state = GameState.MAP
 	_hide_all_panels()
 	map_panel.visible = true
+	_update_map_label()
 	if get_viewport():
 		get_viewport().gui_release_focus()
 	var choices := _build_map_buttons()
@@ -642,6 +644,14 @@ func _show_map() -> void:
 	_update_seed_display()
 	map_preview_active = false
 	_update_volley_prompt_visibility()
+
+func _update_map_label() -> void:
+	if map_label == null:
+		return
+	if map_manager != null and map_manager.has_acts():
+		map_label.text = "Act %d Map" % (map_manager.get_active_act_index() + 1)
+	else:
+		map_label.text = "Map"
 
 func _show_map_preview() -> void:
 	if map_panel == null:
