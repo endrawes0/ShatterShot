@@ -1372,8 +1372,8 @@ func _show_victory() -> void:
 	_clear_active_balls()
 	_hide_all_panels()
 	gameover_panel.visible = true
-	gameover_label.text = "Victory! You beat Shatter Shot! Thank you for playing!"
-	info_label.text = ""
+	gameover_label.text = "Victory!"
+	info_label.text = "You beat Shatter Shot! Thank you for playing."
 	_show_outcome_overlay(true)
 	_update_volley_prompt_visibility()
 
