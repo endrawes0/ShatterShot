@@ -114,6 +114,7 @@ var test_lab_panel: Control = null
 
 var encounter_manager: EncounterManager
 var map_manager: MapManager
+var act_manager: ActManager
 var deck_manager: DeckManager
 var hud_controller: HudController
 var reward_manager: RewardManager
@@ -186,9 +187,7 @@ var deck_return_info: String = ""
 var volley_prompt_tween: Tween = null
 var volley_prompt_pulsing: bool = false
 
-var act_configs_by_index: Dictionary = {}
 var active_act_config: Resource
-var act_floor_lengths: Array[int] = []
 
 func _update_reserve_indicator() -> void:
 	if paddle and paddle.has_method("set_reserve_count"):
@@ -223,7 +222,10 @@ func _ready() -> void:
 		if has_pending_seed_override:
 			floor_plan_generator_config.seed = pending_seed
 			has_pending_seed_override = false
-	_load_act_configs()
+	act_manager = ActManager.new()
+	add_child(act_manager)
+	act_manager.setup(floor_plan_generator_config, map_manager, ACT_CONFIG_DIR, ACT_CONFIG_SCRIPT, max_combat_floors)
+	_apply_act_limits()
 	deck_manager = DeckManager.new()
 	add_child(deck_manager)
 	hud_controller = HudController.new()
@@ -327,73 +329,11 @@ func _reset_run_rng() -> void:
 		run_rng.randomize()
 		run_seed = run_rng.seed
 
-func _load_act_configs() -> void:
-	act_configs_by_index.clear()
-	var dir := DirAccess.open(ACT_CONFIG_DIR)
-	if dir == null:
+func _apply_act_limits() -> void:
+	if act_manager == null:
 		return
-	dir.list_dir_begin()
-	var file_name: String = dir.get_next()
-	while file_name != "":
-		if not dir.current_is_dir() and file_name.ends_with(".tres"):
-			var resource_path: String = ACT_CONFIG_DIR.path_join(file_name)
-			var resource: Resource = ResourceLoader.load(resource_path)
-			if resource != null and resource.get_script() == ACT_CONFIG_SCRIPT:
-				var index: int = max(1, int(resource.act_index))
-				act_configs_by_index[index - 1] = resource
-		file_name = dir.get_next()
-	dir.list_dir_end()
-
-func _configure_act_progression() -> void:
-	act_floor_lengths.clear()
-	var base_non_boss: int = max(1, max_combat_floors)
-	if floor_plan_generator_config is FLOOR_PLAN_GENERATOR_CONFIG:
-		var config := floor_plan_generator_config
-		if config.acts.is_empty():
-			base_non_boss = max(1, int(config.floors))
-		else:
-			for entry in config.acts:
-				var act_dict: Dictionary = Dictionary(entry)
-				var floors: int = max(0, int(act_dict.get("floors", 0)))
-				if floors > 0:
-					act_floor_lengths.append(floors)
-	if act_floor_lengths.is_empty():
-		var act_count: int = max(1, act_configs_by_index.size())
-		for _i in range(act_count):
-			act_floor_lengths.append(base_non_boss)
-	var total_non_boss: int = 0
-	for floors in act_floor_lengths:
-		total_non_boss += max(1, floors)
-	var total_bosses: int = max(1, act_floor_lengths.size())
-	max_floors = total_non_boss + total_bosses
-	_update_act_floor_limits()
-
-func _update_act_floor_limits() -> void:
-	if act_floor_lengths.is_empty():
-		return
-	var act_index: int = 0
-	if map_manager != null and map_manager.has_acts():
-		act_index = map_manager.get_active_act_index()
-	act_index = clamp(act_index, 0, act_floor_lengths.size() - 1)
-	max_combat_floors = act_floor_lengths[act_index]
-
-func _get_active_act_config() -> Resource:
-	var index: int = 0
-	if map_manager != null and map_manager.has_acts():
-		index = map_manager.get_active_act_index()
-	var act_config: Resource = act_configs_by_index.get(index, null)
-	if act_config == null:
-		return ACT_CONFIG_SCRIPT.new()
-	return act_config
-
-func _get_intro_text(act_config: Resource, is_elite: bool, is_boss: bool) -> String:
-	if act_config == null:
-		return "Boss fight. Plan carefully." if is_boss else "Plan your volley, then launch."
-	if is_boss:
-		return act_config.boss_intro
-	if is_elite:
-		return act_config.elite_intro
-	return act_config.combat_intro
+	max_combat_floors = act_manager.get_max_combat_floors()
+	max_floors = act_manager.get_max_floors()
 
 func _scaled_variant_policy(policy: VariantPolicy, multiplier: float) -> VariantPolicy:
 	if policy == null:
@@ -603,7 +543,6 @@ func _start_run() -> void:
 	for child in bricks_root.get_children():
 		child.queue_free()
 	_generate_floor_plan_if_needed()
-	_configure_act_progression()
 	_reset_run_rng()
 	if deck_manager:
 		deck_manager.set_rng(run_rng)
@@ -613,6 +552,9 @@ func _start_run() -> void:
 		map_manager.set_rng(run_rng)
 	deck_manager.setup(starting_deck)
 	map_manager.reset_run()
+	if act_manager:
+		act_manager.refresh_limits(max_combat_floors)
+	_apply_act_limits()
 	_show_map()
 
 func _restart_run_same_seed() -> void:
@@ -864,11 +806,17 @@ func _start_boss() -> void:
 func _begin_encounter(is_elite: bool, is_boss: bool) -> void:
 	state = GameState.PLANNING
 	_hide_all_panels()
-	active_act_config = _get_active_act_config()
 	current_is_elite = is_elite
-	act_ball_speed_multiplier = active_act_config.ball_speed_multiplier if active_act_config != null else 1.0
-	act_threat_multiplier = active_act_config.block_threat_multiplier if active_act_config != null else 1.0
-	info_label.text = _get_intro_text(active_act_config, is_elite, is_boss)
+	if act_manager != null:
+		active_act_config = act_manager.get_active_act_config()
+		act_ball_speed_multiplier = act_manager.get_ball_speed_multiplier()
+		act_threat_multiplier = act_manager.get_block_threat_multiplier()
+		info_label.text = act_manager.get_intro_text(is_elite, is_boss)
+	else:
+		active_act_config = ACT_CONFIG_SCRIPT.new()
+		act_ball_speed_multiplier = 1.0
+		act_threat_multiplier = 1.0
+		info_label.text = "Boss fight. Plan carefully." if is_boss else "Plan your volley, then launch."
 	_clear_active_balls()
 	_reset_deck_for_next_floor()
 	current_is_boss = is_boss
@@ -1039,7 +987,9 @@ func _end_encounter() -> void:
 				_spawn_act_complete_particles()
 				await _play_planning_victory_message("Well done! Act %d Complete!" % (act_index + 1))
 				map_manager.advance_act()
-				_update_act_floor_limits()
+				if act_manager:
+					act_manager.refresh_limits()
+				_apply_act_limits()
 				_show_map()
 			return
 		else:

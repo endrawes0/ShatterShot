@@ -18,27 +18,18 @@ func generate(config: FloorPlanGeneratorConfig) -> Dictionary:
 	}
 
 	var act_defs: Array[Dictionary] = []
-	if config.acts.is_empty():
+	for entry in config.acts:
+		var act := Dictionary(entry)
+		var floors: int = max(0, int(act.get("floors", 0)))
+		if floors <= 0:
+			continue
 		act_defs.append({
-			"floors": max(1, int(config.floors)),
-			"room_weights": config.room_weights,
-			"min_choices": config.min_choices,
-			"max_choices": config.max_choices,
-			"hidden_edge_chance": config.hidden_edge_chance
+			"floors": floors,
+			"room_weights": act.get("room_weights", config.room_weights),
+			"min_choices": act.get("min_choices", config.min_choices),
+			"max_choices": act.get("max_choices", config.max_choices),
+			"hidden_edge_chance": act.get("hidden_edge_chance", config.hidden_edge_chance)
 		})
-	else:
-		for entry in config.acts:
-			var act := Dictionary(entry)
-			var floors: int = max(0, int(act.get("floors", 0)))
-			if floors <= 0:
-				continue
-			act_defs.append({
-				"floors": floors,
-				"room_weights": act.get("room_weights", config.room_weights),
-				"min_choices": act.get("min_choices", config.min_choices),
-				"max_choices": act.get("max_choices", config.max_choices),
-				"hidden_edge_chance": act.get("hidden_edge_chance", config.hidden_edge_chance)
-			})
 	if act_defs.is_empty():
 		act_defs.append({
 			"floors": max(1, int(config.floors)),
