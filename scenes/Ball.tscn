@@ -2,8 +2,8 @@
 
 [ext_resource type="Script" path="res://scripts/Ball.gd" id=1]
 
-[sub_resource type="RectangleShape2D" id=1]
-size = Vector2(16, 16)
+[sub_resource type="CircleShape2D" id=1]
+radius = 8.0
 
 [node name="Ball" type="CharacterBody2D"]
 script = ExtResource("1")
@@ -15,6 +15,7 @@ shape = SubResource("1")
 position = Vector2(-8, -8)
 size = Vector2(16, 16)
 color = Color(0.95, 0.95, 1, 1)
+visible = false
 
 [node name="BounceSfx" type="AudioStreamPlayer" parent="."]
 volume_db = -8.0

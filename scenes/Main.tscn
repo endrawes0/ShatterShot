@@ -27,7 +27,7 @@ anchor_bottom = 1.0
 color = Color(0.08, 0.08, 0.1, 1)
 
 [node name="Playfield" type="Polygon2D" parent="."]
-color = Color(0.16, 0.16, 0.18, 1)
+color = Color(0.12, 0.12, 0.14, 1)
 
 [node name="Paddle" parent="." instance=ExtResource("1")]
 position = Vector2(400, 386)

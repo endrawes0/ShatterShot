@@ -4,6 +4,7 @@ const BallModEffect = preload("res://scripts/ball_mods/BallModEffect.gd")
 const ExplosiveMod = preload("res://scripts/ball_mods/ExplosiveMod.gd")
 const SpikesMod = preload("res://scripts/ball_mods/SpikesMod.gd")
 const MiracleMod = preload("res://scripts/ball_mods/MiracleMod.gd")
+const GhostShape = preload("res://scripts/effects/GhostShape.gd")
 
 signal lost(ball: Node)
 signal mod_consumed(mod_id: String)
@@ -97,7 +98,10 @@ func launch_with_angle(angle: float) -> void:
 	velocity = Vector2(0, -1).rotated(angle) * speed
 
 func _bounce_from_paddle(paddle_node: Node2D) -> void:
-	var rel: float = (global_position.x - paddle_node.global_position.x) / 60.0
+	var half_width := 60.0
+	if paddle_node.has_method("get"):
+		half_width = float(paddle_node.get("half_width"))
+	var rel: float = (global_position.x - paddle_node.global_position.x) / max(1.0, half_width)
 	var angle: float = clamp(rel, -1.0, 1.0) * 0.9
 	damage = base_damage
 	var direction_y: float = -1.0
@@ -148,6 +152,13 @@ func _update_ball_color() -> void:
 	if not mod_colors.is_empty():
 		color = mod_colors.get(ball_mod, mod_colors.get("", DEFAULT_MOD_COLOR))
 	rect.color = color
+	queue_redraw()
+
+func _draw() -> void:
+	if rect == null:
+		return
+	var radius: float = rect.size.x * 0.5
+	draw_circle(Vector2.ZERO, radius, rect.color)
 
 func _update_ghosts() -> void:
 	if not App.get_vfx_enabled():
@@ -168,22 +179,14 @@ func _spawn_ghost() -> void:
 	var parent_node := get_parent()
 	if parent_node == null:
 		return
-	var ghost := Node2D.new()
+	var ghost := GhostShape.new()
 	ghost.position = position
 	ghost.z_index = rect.z_index if rect else 0
 	parent_node.add_child(ghost)
-	var ghost_rect := rect.duplicate() if rect else ColorRect.new()
 	var base_color := rect.color if rect else DEFAULT_MOD_COLOR
 	base_color.a = clampf(GHOST_ALPHA * App.get_vfx_intensity(), 0.0, 1.0)
-	ghost_rect.color = base_color
-	ghost_rect.position = rect.position if rect else Vector2(-8, -8)
-	ghost_rect.size = rect.size if rect else Vector2(16, 16)
-	ghost_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ghost_rect.z_index = rect.z_index if rect else 0
-	ghost.add_child(ghost_rect)
-	var tween := ghost.create_tween()
-	tween.tween_property(ghost_rect, "color", Color(base_color.r, base_color.g, base_color.b, 0.0), GHOST_LIFETIME)
-	tween.tween_callback(ghost.queue_free)
+	var size: Vector2 = rect.size if rect else Vector2(16, 16)
+	ghost.setup(GhostShape.SHAPE_CIRCLE, size, base_color, GHOST_LIFETIME)
 
 func _trigger_explosion(center: Vector2) -> void:
 	var bricks: Array = get_tree().get_nodes_in_group("bricks")

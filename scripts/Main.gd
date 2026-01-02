@@ -182,10 +182,10 @@ var volley_prompt_pulsing: bool = false
 
 func _update_reserve_indicator() -> void:
 	if paddle and paddle.has_method("set_reserve_count"):
+		var count: int = volley_ball_reserve
 		if state == GameState.PLANNING:
-			paddle.set_reserve_count(volley_ball_bonus)
-		else:
-			paddle.set_reserve_count(volley_ball_reserve)
+			count += 1 + volley_ball_bonus
+		paddle.set_reserve_count(count)
 
 func _ready() -> void:
 	balance_data = load(BALANCE_DATA_PATH)
@@ -1412,6 +1412,7 @@ func _play_card(instance_id: int) -> void:
 
 func _apply_card_effect(card_id: String, instance_id: int) -> bool:
 	var should_discard := true
+	# TODO: Add card "what doesnt kill us..." (cost 1). If played with a wound, destroy that wound and gain 2 energy.
 	match card_id:
 		"punch":
 			volley_damage_bonus += 1
