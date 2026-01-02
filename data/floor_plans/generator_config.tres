@@ -19,3 +19,10 @@ room_weights = {
 "shop": 1,
 "treasure": 1
 }
+acts = [{
+"floors": 5
+}, {
+"floors": 6
+}, {
+"floors": 7
+}]

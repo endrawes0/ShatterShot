@@ -20,4 +20,4 @@
 - RR-11 (Medium): Encounter configs are now data-driven via `EncounterConfig` resources in `data/encounters/`, loaded by `EncounterManager` (no edits to `_start_encounter()`/`_start_boss()` required).
 - RR-12 (Medium): Pattern selection is data-driven via `PatternRegistry` and `EncounterConfig.pattern_id` (use `auto` for rotation or specify a pattern).
 - RR-13 (Medium): Variant behavior is data-driven via `VariantPolicy` resources in `data/variant_policies/` and assigned per encounter config.
-- RR-14 (Low): Room choices are data-driven via `FloorPlan` resources (see `data/floor_plans/basic.tres`) and traversed by `MapManager`.
+- RR-14 (Low): Room choices are data-driven via the floor plan generator config (`data/floor_plans/generator_config.tres`) and traversed by `MapManager`.

@@ -1,12 +1,12 @@
 extends Node
 class_name MapManager
 
-@export var floor_plan: FloorPlan
-
 var current_room_id: String = ""
 var fallback_active: bool = false
 var runtime_rooms: Array[Dictionary] = []
 var runtime_start_room_id: String = ""
+var runtime_acts: Array[Dictionary] = []
+var active_act_index: int = 0
 var runtime_seed: int = 0
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var discovered_rooms: Dictionary = {}
@@ -24,17 +24,61 @@ func reset_run() -> void:
 	fallback_active = false
 	discovered_rooms.clear()
 	discovered_edges.clear()
+	active_act_index = 0
 	_validate_active_floor_plan()
 
 func set_runtime_floor_plan(plan: Dictionary) -> void:
-	runtime_rooms = plan.get("rooms", [])
-	runtime_start_room_id = String(plan.get("start_room_id", ""))
+	runtime_acts.clear()
+	var acts: Array = plan.get("acts", [])
+	for entry in acts:
+		if entry is Dictionary:
+			runtime_acts.append(entry)
+		else:
+			runtime_acts.append(Dictionary(entry))
+	if runtime_acts.is_empty():
+		runtime_rooms = plan.get("rooms", [])
+		runtime_start_room_id = String(plan.get("start_room_id", ""))
+	else:
+		runtime_rooms = []
+		runtime_start_room_id = ""
+		active_act_index = 0
 	runtime_seed = int(plan.get("seed", 0))
 	current_room_id = ""
 	fallback_active = false
 	discovered_rooms.clear()
 	discovered_edges.clear()
 	_validate_active_floor_plan()
+
+func set_active_act(index: int) -> void:
+	var count: int = get_act_count()
+	if count <= 0:
+		active_act_index = 0
+		return
+	active_act_index = clamp(index, 0, count - 1)
+	current_room_id = ""
+	fallback_active = false
+	discovered_rooms.clear()
+	discovered_edges.clear()
+	_validate_active_floor_plan()
+
+func get_active_act_index() -> int:
+	return active_act_index
+
+func get_act_count() -> int:
+	var acts := _active_acts()
+	return acts.size() if not acts.is_empty() else 1
+
+func has_acts() -> bool:
+	return not _active_acts().is_empty()
+
+func is_final_act() -> bool:
+	return active_act_index >= get_act_count() - 1
+
+func advance_act() -> bool:
+	if active_act_index + 1 >= get_act_count():
+		return false
+	set_active_act(active_act_index + 1)
+	return true
 
 func get_start_room_choice() -> Dictionary:
 	var start_id := _active_start_room_id()
@@ -76,7 +120,11 @@ func reveal_current_mystery_room() -> String:
 		room["type"] = revealed
 		room.erase("is_mystery")
 		rooms[i] = room
-		if not runtime_rooms.is_empty():
+		if not runtime_acts.is_empty():
+			var act := runtime_acts[active_act_index]
+			act["rooms"] = rooms
+			runtime_acts[active_act_index] = act
+		elif not runtime_rooms.is_empty():
 			runtime_rooms = rooms
 		return revealed
 	return ""
@@ -111,7 +159,9 @@ func get_active_plan_summary(choices: Array[Dictionary] = []) -> Dictionary:
 		"fallback_active": fallback_active,
 		"visible_room_ids": visible_graph.get("room_ids", []),
 		"visible_edges": visible_graph.get("edges", []),
-		"has_visibility_data": true
+		"has_visibility_data": true,
+		"active_act_index": active_act_index,
+		"act_count": get_act_count()
 	}
 
 func _choices_from_active_plan(floor_index: int, max_combat_floors: int) -> Array[Dictionary]:
@@ -217,23 +267,37 @@ func _validate_active_floor_plan() -> void:
 				push_warning("Floor plan room '%s' references missing next id '%s'." % [room_id, next_id])
 
 func _active_rooms() -> Array[Dictionary]:
+	var acts := _active_acts()
+	if not acts.is_empty():
+		if active_act_index >= 0 and active_act_index < acts.size():
+			return Array(acts[active_act_index].get("rooms", []))
+		return []
 	if not runtime_rooms.is_empty():
 		return runtime_rooms
-	if floor_plan != null:
-		return floor_plan.rooms
 	return []
 
 func _active_start_room_id() -> String:
+	var acts := _active_acts()
+	if not acts.is_empty():
+		if active_act_index >= 0 and active_act_index < acts.size():
+			return String(acts[active_act_index].get("start_room_id", ""))
+		return ""
 	if not runtime_rooms.is_empty():
 		return runtime_start_room_id
-	if floor_plan != null:
-		return floor_plan.start_room_id
 	return ""
 
 func _has_active_floor_plan() -> bool:
+	var acts := _active_acts()
+	if not acts.is_empty():
+		return true
 	if not runtime_rooms.is_empty():
 		return true
-	return floor_plan != null and floor_plan.rooms.size() > 0
+	return false
+
+func _active_acts() -> Array[Dictionary]:
+	if not runtime_acts.is_empty():
+		return runtime_acts
+	return []
 
 func _resolve_next_entries(room: Dictionary) -> Array[Dictionary]:
 	var entries: Array = room.get("next", [])

@@ -25,7 +25,6 @@ enum GameState { MAP, PLANNING, VOLLEY, REWARD, SHOP, REST, GAME_OVER, VICTORY }
 @export var paddle_buff_turns: int = 0
 @export var paddle_speed_buff_turns: int = 0
 
-@export var encounter_base_threat: int = 0
 @export var encounter_rows: int = 4
 @export var encounter_cols: int = 8
 @export var encounter_hp: int = 1

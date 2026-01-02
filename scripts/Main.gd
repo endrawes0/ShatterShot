@@ -20,10 +20,12 @@ const CARD_BUTTON_SIZE: Vector2 = Vector2(110, 154)
 const BASE_STARTING_HAND_SIZE: int = 4
 const BALL_SPAWN_OFFSET: Vector2 = Vector2(0, -32)
 const ENCOUNTER_CONFIG_DIR: String = "res://data/encounters"
-const FLOOR_PLAN_PATH: String = "res://data/floor_plans/basic.tres"
+const ACT_CONFIG_DIR: String = "res://data/act_configs"
 const FLOOR_PLAN_GENERATOR_CONFIG_PATH: String = "res://data/floor_plans/generator_config.tres"
 const FLOOR_PLAN_GENERATOR := preload("res://scripts/data/FloorPlanGenerator.gd")
 const FLOOR_PLAN_GENERATOR_CONFIG := preload("res://scripts/data/FloorPlanGeneratorConfig.gd")
+const ACT_MANAGER_SCRIPT := preload("res://scripts/managers/ActManager.gd")
+const ACT_CONFIG_SCRIPT := preload("res://scripts/data/ActConfig.gd")
 const BALANCE_DATA_PATH: String = "res://data/balance/basic.tres"
 const EMOJI_FONT_PATH: String = "res://assets/fonts/NotoColorEmoji.ttf"
 const OUTCOME_PARTICLE_SCENE: PackedScene = preload("res://scenes/HitParticle.tscn")
@@ -67,6 +69,7 @@ const START_PROMPT_EXTRA_OFFSET_Y: float = 40.0
 @onready var map_graph: Control = $HUD/MapPanel/MapGraph
 @onready var map_buttons: HBoxContainer = $HUD/MapPanel/MapButtons
 @onready var map_seed_label: Label = $HUD/MapPanel/MapSeedLabel
+@onready var map_label: Label = $HUD/MapPanel/MapLabel
 @onready var reward_panel: Panel = $HUD/RewardPanel
 @onready var reward_label: Label = $HUD/RewardPanel/RewardLabel
 @onready var reward_buttons: HBoxContainer = $HUD/RewardPanel/RewardLayout/RewardButtons
@@ -112,6 +115,7 @@ var test_lab_panel: Control = null
 
 var encounter_manager: EncounterManager
 var map_manager: MapManager
+var act_manager: Node
 var deck_manager: DeckManager
 var hud_controller: HudController
 var reward_manager: RewardManager
@@ -170,17 +174,21 @@ var paddle_speed_buff_turns: int = 0
 var paddle_speed_multiplier: float = 1.3
 
 var active_balls: Array[Node] = []
-var encounter_base_threat: int = 5
 var encounter_hp: int = 1
 var encounter_rows: int = 4
 var encounter_cols: int = 8
 var current_is_boss: bool = false
+var current_is_elite: bool = false
 var current_pattern: String = "grid"
 var encounter_speed_boost: bool = false
+var act_ball_speed_multiplier: float = 1.0
+var act_threat_multiplier: float = 1.0
 var deck_return_panel: int = ReturnPanel.NONE
 var deck_return_info: String = ""
 var volley_prompt_tween: Tween = null
 var volley_prompt_pulsing: bool = false
+
+var active_act_config: Resource
 
 func _update_reserve_indicator() -> void:
 	if paddle and paddle.has_method("set_reserve_count"):
@@ -209,15 +217,16 @@ func _ready() -> void:
 	encounter_manager.load_configs_from_dir(ENCOUNTER_CONFIG_DIR)
 	map_manager = MapManager.new()
 	add_child(map_manager)
-	var floor_plan_resource := load(FLOOR_PLAN_PATH)
-	if floor_plan_resource != null:
-		map_manager.floor_plan = floor_plan_resource
 	var generator_config_resource := load(FLOOR_PLAN_GENERATOR_CONFIG_PATH)
 	if generator_config_resource is FLOOR_PLAN_GENERATOR_CONFIG:
 		floor_plan_generator_config = generator_config_resource
 		if has_pending_seed_override:
 			floor_plan_generator_config.seed = pending_seed
 			has_pending_seed_override = false
+	act_manager = ACT_MANAGER_SCRIPT.new()
+	add_child(act_manager)
+	act_manager.setup(floor_plan_generator_config, map_manager, ACT_CONFIG_DIR, ACT_CONFIG_SCRIPT, max_combat_floors)
+	_apply_act_limits()
 	deck_manager = DeckManager.new()
 	add_child(deck_manager)
 	hud_controller = HudController.new()
@@ -308,7 +317,7 @@ func set_pending_seed(seed_value: int) -> void:
 
 func _reset_run_rng() -> void:
 	var seed_value: int = 0
-	if floor_plan_generator_config == null or not floor_plan_generator_config.enabled:
+	if floor_plan_generator_config == null:
 		run_rng.randomize()
 		run_seed = 0
 		return
@@ -320,6 +329,41 @@ func _reset_run_rng() -> void:
 	else:
 		run_rng.randomize()
 		run_seed = run_rng.seed
+
+func _apply_act_limits() -> void:
+	if act_manager == null:
+		return
+	max_combat_floors = act_manager.get_max_combat_floors()
+	max_floors = act_manager.get_max_floors()
+
+func _scaled_variant_policy(policy: VariantPolicy, multiplier: float) -> VariantPolicy:
+	if policy == null:
+		return null
+	var scaled := policy.duplicate() as VariantPolicy
+	if scaled == null:
+		return policy
+	var scale: float = max(0.0, multiplier)
+	scaled.shield_chance = clamp(policy.shield_chance * scale, 0.0, 1.0)
+	scaled.regen_chance = clamp(policy.regen_chance * scale, 0.0, 1.0)
+	scaled.curse_chance = clamp(policy.curse_chance * scale, 0.0, 1.0)
+	return scaled
+
+func _apply_act_config_to_encounter(config: EncounterConfig, is_elite: bool, is_boss: bool, act_config: Resource) -> void:
+	if config == null or act_config == null:
+		return
+	if is_boss:
+		config.base_hp = max(1, int(round(float(config.base_hp) * act_config.boss_hp_multiplier)))
+	elif is_elite:
+		config.base_hp = max(1, int(round(float(config.base_hp) * act_config.elite_hp_multiplier)))
+	if config.variant_policy != null and act_config.variant_chance_multiplier != 1.0:
+		config.variant_policy = _scaled_variant_policy(config.variant_policy, act_config.variant_chance_multiplier)
+
+func _get_encounter_gold_reward() -> int:
+	if active_act_config == null:
+		return 25
+	if current_is_elite:
+		return active_act_config.elite_gold_reward
+	return active_act_config.combat_gold_reward
 
 func _apply_balance_data(data: Resource) -> void:
 	card_data = data.card_data
@@ -489,6 +533,7 @@ func _start_run() -> void:
 	gold = 60
 	floor_index = 0
 	current_is_boss = false
+	current_is_elite = false
 	starting_hand_size = BASE_STARTING_HAND_SIZE
 	ball_mod_counts.clear()
 	active_ball_mod = ""
@@ -508,6 +553,9 @@ func _start_run() -> void:
 		map_manager.set_rng(run_rng)
 	deck_manager.setup(starting_deck)
 	map_manager.reset_run()
+	if act_manager:
+		act_manager.refresh_limits(max_combat_floors)
+	_apply_act_limits()
 	_show_map()
 
 func _restart_run_same_seed() -> void:
@@ -522,6 +570,7 @@ func _show_map() -> void:
 	state = GameState.MAP
 	_hide_all_panels()
 	map_panel.visible = true
+	_update_map_label()
 	if get_viewport():
 		get_viewport().gui_release_focus()
 	var choices := _build_map_buttons()
@@ -532,6 +581,14 @@ func _show_map() -> void:
 	_update_seed_display()
 	map_preview_active = false
 	_update_volley_prompt_visibility()
+
+func _update_map_label() -> void:
+	if map_label == null:
+		return
+	if map_manager != null and map_manager.has_acts():
+		map_label.text = "Act %d Map" % (map_manager.get_active_act_index() + 1)
+	else:
+		map_label.text = "Map"
 
 func _show_map_preview() -> void:
 	if map_panel == null:
@@ -560,7 +617,7 @@ func _toggle_map_preview() -> void:
 	_show_map_preview()
 
 func _generate_floor_plan_if_needed() -> void:
-	if floor_plan_generator_config == null or not floor_plan_generator_config.enabled:
+	if floor_plan_generator_config == null:
 		return
 	var generator := FLOOR_PLAN_GENERATOR.new()
 	var plan := generator.generate(floor_plan_generator_config)
@@ -742,25 +799,35 @@ func _reveal_mystery_room() -> String:
 	return revealed
 
 func _start_encounter(is_elite: bool) -> void:
-	_begin_encounter(is_elite, false, "Plan your volley, then launch.")
+	_begin_encounter(is_elite, false)
 
 func _start_boss() -> void:
-	_begin_encounter(false, true, "Boss fight. Plan carefully.")
+	_begin_encounter(false, true)
 
-func _begin_encounter(is_elite: bool, is_boss: bool, intro_text: String) -> void:
+func _begin_encounter(is_elite: bool, is_boss: bool) -> void:
 	state = GameState.PLANNING
 	_hide_all_panels()
-	info_label.text = intro_text
+	current_is_elite = is_elite
+	if act_manager != null:
+		active_act_config = act_manager.get_active_act_config()
+		act_ball_speed_multiplier = act_manager.get_ball_speed_multiplier()
+		act_threat_multiplier = act_manager.get_block_threat_multiplier()
+		info_label.text = act_manager.get_intro_text(is_elite, is_boss)
+	else:
+		active_act_config = ACT_CONFIG_SCRIPT.new()
+		act_ball_speed_multiplier = 1.0
+		act_threat_multiplier = 1.0
+		info_label.text = "Boss fight. Plan carefully." if is_boss else "Plan your volley, then launch."
 	_clear_active_balls()
 	_reset_deck_for_next_floor()
 	current_is_boss = is_boss
 	var config := encounter_manager.build_config_from_floor(floor_index, is_elite, is_boss)
+	_apply_act_config_to_encounter(config, is_elite, is_boss, active_act_config)
 	current_pattern = config.pattern_id
 	encounter_speed_boost = config.speed_boost
 	encounter_rows = config.rows
 	encounter_cols = config.cols
 	encounter_hp = config.base_hp
-	encounter_base_threat = config.base_threat
 	if encounter_speed_boost and not is_boss:
 		info_label.text = "Volley Mod: Speed Boost."
 	encounter_manager.start_encounter(config, Callable(self, "_on_brick_destroyed"), Callable(self, "_on_brick_damaged"))
@@ -788,7 +855,7 @@ func _end_turn() -> void:
 	if state != GameState.PLANNING:
 		return
 	_discard_hand()
-	var incoming: int = max(0, encounter_manager.calculate_threat(encounter_base_threat) - block)
+	var incoming: int = max(0, encounter_manager.calculate_threat(act_threat_multiplier) - block)
 	hp -= incoming
 	info_label.text = "You take %d damage." % incoming
 	if hp <= 0:
@@ -827,6 +894,7 @@ func _spawn_volley_ball() -> void:
 	if encounter_speed_boost:
 		speed_multiplier *= 1.25
 	speed_multiplier *= App.get_ball_speed_multiplier()
+	speed_multiplier *= act_ball_speed_multiplier
 	ball.speed *= speed_multiplier
 	if ball.has_method("set_mod_colors"):
 		ball.set_mod_colors(ball_mod_colors)
@@ -887,7 +955,7 @@ func _confirm_forfeit_volley() -> void:
 func _apply_volley_threat() -> void:
 	var threat: int = 0
 	if encounter_manager:
-		threat = encounter_manager.calculate_threat(encounter_base_threat)
+		threat = encounter_manager.calculate_threat(act_threat_multiplier)
 	hp -= threat
 	if hp <= 0:
 		_show_game_over()
@@ -912,9 +980,23 @@ func _end_encounter() -> void:
 	_clear_active_balls()
 	_reset_deck_for_next_floor()
 	if current_is_boss:
-		_show_victory()
+		if map_manager != null and map_manager.has_acts():
+			var act_index := map_manager.get_active_act_index()
+			if map_manager.is_final_act():
+				_show_victory()
+			else:
+				_spawn_act_complete_particles()
+				await _play_planning_victory_message("Well done! Act %d Complete!" % (act_index + 1))
+				map_manager.advance_act()
+				if act_manager:
+					act_manager.refresh_limits()
+				_apply_act_limits()
+				_show_map()
+			return
+		else:
+			_show_victory()
 		return
-	gold += 25
+	gold += _get_encounter_gold_reward()
 	if state == GameState.PLANNING:
 		await _play_planning_victory_message(_get_planning_victory_message())
 	_show_reward_panel()
@@ -1235,8 +1317,8 @@ func _show_victory() -> void:
 	_clear_active_balls()
 	_hide_all_panels()
 	gameover_panel.visible = true
-	gameover_label.text = "Victory!"
-	info_label.text = "You cleared the run."
+	gameover_label.text = "Victory! You beat Shatter Shot! Thank you for playing."
+	info_label.text = ""
 	_show_outcome_overlay(true)
 	_update_volley_prompt_visibility()
 
@@ -1254,6 +1336,9 @@ func _show_outcome_overlay(is_victory: bool) -> void:
 	elif not is_victory and defeat_overlay:
 		defeat_overlay.visible = true
 		_spawn_outcome_particles(Color(0.35, 0.1, 0.1, 1), false)
+
+func _spawn_act_complete_particles() -> void:
+	_spawn_outcome_particles(Color(0.95, 0.85, 0.25, 1), true)
 
 func _spawn_victory_particles() -> void:
 	var base_count: int = App.get_vfx_count(OUTCOME_PARTICLE_COUNT)
@@ -1523,7 +1608,7 @@ func _update_labels() -> void:
 	var draw_count: int = deck_manager.draw_pile.size()
 	if state != GameState.PLANNING and state != GameState.VOLLEY:
 		draw_count = deck_manager.deck.size()
-	var threat: int = encounter_manager.calculate_threat(encounter_base_threat)
+	var threat: int = encounter_manager.calculate_threat(act_threat_multiplier)
 	hud_controller.update_labels(
 		energy,
 		max_energy,

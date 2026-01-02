@@ -1,7 +1,6 @@
 extends Resource
 class_name FloorPlanGeneratorConfig
 
-@export var enabled: bool = true
 @export var seed: int = 0
 @export var floors: int = 6
 @export var min_choices: int = 2

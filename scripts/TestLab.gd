@@ -128,10 +128,7 @@ func _ready() -> void:
 		_with_main(func(main_node: Node) -> void:
 			for child in main_node.bricks_root.get_children():
 				child.queue_free()
-			if main_node.current_is_boss:
-				main_node._show_victory()
-			else:
-				main_node._end_encounter()
+			main_node._end_encounter()
 		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/BackMenu", func() -> void:

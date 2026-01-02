@@ -5,3 +5,6 @@ class_name FloorPlan
 # Optional fields: next entries can be { "id": String, "hidden": bool } to hide edges.
 @export var rooms: Array[Dictionary] = []
 @export var start_room_id: String = ""
+
+# Acts are dictionaries with keys: rooms (Array[Dictionary]) and start_room_id (String).
+@export var acts: Array[Dictionary] = []

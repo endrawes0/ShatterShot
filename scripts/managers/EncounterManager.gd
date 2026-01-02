@@ -80,14 +80,14 @@ func start_encounter(config: EncounterConfig, on_brick_destroyed: Callable, on_b
 		_spawn_boss_core(config, on_brick_destroyed, on_brick_damaged)
 	encounter_started.emit(config)
 
-func calculate_threat(base_threat: int) -> int:
+func calculate_threat(multiplier: float = 1.0) -> int:
 	if bricks_root == null or bricks_root.get_child_count() == 0:
 		return 0
 	var total: int = 0
 	for brick in bricks_root.get_children():
 		if brick.has_method("get_threat"):
 			total += brick.get_threat()
-	return total + base_threat
+	return int(round(float(total) * max(0.0, multiplier)))
 
 func check_victory() -> bool:
 	return calculate_threat(0) <= 0
@@ -215,13 +215,11 @@ func _build_fallback_config(floor_index: int, is_elite: bool, is_boss: bool) -> 
 		config.rows = 6 + int(floor_index / 2.0)
 		config.cols = 10
 		config.base_hp = 4 + int(floor_index / 2.0)
-		config.base_threat = 0
 		config.boss_core = true
 	else:
 		config.rows = (5 if is_elite else 4) + int(floor_index / 2.0)
 		config.cols = 9 if is_elite else 8
 		config.base_hp = (2 if is_elite else 1) + int(floor_index / 3.0)
-		config.base_threat = 0
 	return config
 
 func _select_config(floor_index: int, kind: String) -> EncounterConfig:

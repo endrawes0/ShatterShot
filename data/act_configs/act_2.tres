@@ -1,0 +1,15 @@
+[gd_resource type="Resource" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/ActConfig.gd" id=1]
+
+[resource]
+script = ExtResource("1")
+act_index = 2
+combat_gold_reward = 35
+elite_gold_reward = 45
+boss_gold_reward = 60
+ball_speed_multiplier = 1.2
+variant_chance_multiplier = 1.5
+block_threat_multiplier = 1.2
+elite_hp_multiplier = 1.2
+boss_hp_multiplier = 1.2

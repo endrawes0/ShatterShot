@@ -10,7 +10,6 @@ class_name EncounterConfig
 @export var rows: int = 4
 @export var cols: int = 8
 @export var base_hp: int = 1
-@export var base_threat: int = 0
 
 @export var pattern_id: String = "auto"
 @export var speed_boost_chance: float = 0.0

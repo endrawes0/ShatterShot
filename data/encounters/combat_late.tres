@@ -13,7 +13,6 @@ weight = 2
 rows = 5
 cols = 9
 base_hp = 3
-base_threat = 0
 pattern_id = "auto"
 speed_boost_chance = 0.3
 speed_boost = false

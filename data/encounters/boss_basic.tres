@@ -13,7 +13,6 @@ weight = 1
 rows = 6
 cols = 10
 base_hp = 4
-base_threat = 0
 pattern_id = "ring"
 speed_boost_chance = 1.0
 speed_boost = true
