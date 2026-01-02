@@ -153,8 +153,9 @@ func _layout_positions(room_index: Dictionary, depths: Dictionary, source_rooms:
 		var room_id := String(room.get("id", ""))
 		if room_id == "":
 			continue
-		var room_index_value := _room_floor_index(room_id)
-		global_max_index = max(global_max_index, room_index_value)
+		var room_index_value := _room_index_value(room_id)
+		if room_index_value >= 0:
+			global_max_index = max(global_max_index, room_index_value)
 		var depth: int = int(depths.get(room_id, 0))
 		max_depth = max(max_depth, depth)
 		if not depth_groups.has(depth):
@@ -302,8 +303,8 @@ func _order_room_ids(room_ids: Array) -> Array:
 	var fallback: Array[String] = []
 	for room_id in room_ids:
 		var key := String(room_id)
-		var index := _room_floor_index(key)
-		if index > 0:
+		var index := _room_index_value(key)
+		if index >= 0:
 			indexed.append({"id": key, "index": index})
 		else:
 			fallback.append(key)
@@ -333,3 +334,12 @@ func _room_floor_index(room_id: String) -> int:
 		if floor_str.is_valid_int():
 			return int(floor_str)
 	return -1
+
+func _room_index_value(room_id: String) -> int:
+	var last_sep := room_id.rfind("_")
+	if last_sep == -1 or last_sep == room_id.length() - 1:
+		return -1
+	var index_str := room_id.substr(last_sep + 1, room_id.length() - last_sep - 1)
+	if not index_str.is_valid_int():
+		return -1
+	return int(index_str)
