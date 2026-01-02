@@ -1043,7 +1043,7 @@ func _end_encounter() -> void:
 				_show_victory()
 			else:
 				_spawn_act_complete_particles()
-				await _play_planning_victory_message("Act %d Complete!" % (act_index + 1))
+				await _play_planning_victory_message("Well done! Act %d Complete!" % (act_index + 1))
 				map_manager.advance_act()
 				_update_act_floor_limits()
 				_show_map()
