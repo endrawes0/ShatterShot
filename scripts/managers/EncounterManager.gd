@@ -90,7 +90,7 @@ func calculate_threat(multiplier: float = 1.0) -> int:
 	return int(round(float(total) * max(0.0, multiplier)))
 
 func check_victory() -> bool:
-	return calculate_threat(0) <= 0
+	return calculate_threat() <= 0
 
 func regen_bricks_on_drop() -> void:
 	if bricks_root == null:
