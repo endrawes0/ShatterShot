@@ -335,11 +335,11 @@ func _load_act_configs() -> void:
 	if dir == null:
 		return
 	dir.list_dir_begin()
-	var file_name := dir.get_next()
+		var file_name: String = dir.get_next()
 	while file_name != "":
 		if not dir.current_is_dir() and file_name.ends_with(".tres"):
-			var resource_path := ACT_CONFIG_DIR.path_join(file_name)
-			var resource := ResourceLoader.load(resource_path)
+			var resource_path: String = ACT_CONFIG_DIR.path_join(file_name)
+			var resource: Resource = ResourceLoader.load(resource_path)
 			if resource != null and resource.get_script() == ACT_CONFIG_SCRIPT:
 				var index := max(1, int(resource.act_index))
 				act_configs_by_index[index - 1] = resource
