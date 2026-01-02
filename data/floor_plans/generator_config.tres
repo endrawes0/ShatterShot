@@ -22,7 +22,7 @@ room_weights = {
 acts = [{
 "floors": 5
 }, {
-"floors": 5
+"floors": 6
 }, {
-"floors": 5
+"floors": 7
 }]
