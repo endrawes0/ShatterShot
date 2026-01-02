@@ -24,6 +24,7 @@ const ACT_CONFIG_DIR: String = "res://data/act_configs"
 const FLOOR_PLAN_GENERATOR_CONFIG_PATH: String = "res://data/floor_plans/generator_config.tres"
 const FLOOR_PLAN_GENERATOR := preload("res://scripts/data/FloorPlanGenerator.gd")
 const FLOOR_PLAN_GENERATOR_CONFIG := preload("res://scripts/data/FloorPlanGeneratorConfig.gd")
+const ACT_MANAGER_SCRIPT := preload("res://scripts/managers/ActManager.gd")
 const ACT_CONFIG_SCRIPT := preload("res://scripts/data/ActConfig.gd")
 const BALANCE_DATA_PATH: String = "res://data/balance/basic.tres"
 const EMOJI_FONT_PATH: String = "res://assets/fonts/NotoColorEmoji.ttf"
@@ -114,7 +115,7 @@ var test_lab_panel: Control = null
 
 var encounter_manager: EncounterManager
 var map_manager: MapManager
-var act_manager: ActManager
+var act_manager: Node
 var deck_manager: DeckManager
 var hud_controller: HudController
 var reward_manager: RewardManager
@@ -222,7 +223,7 @@ func _ready() -> void:
 		if has_pending_seed_override:
 			floor_plan_generator_config.seed = pending_seed
 			has_pending_seed_override = false
-	act_manager = ActManager.new()
+	act_manager = ACT_MANAGER_SCRIPT.new()
 	add_child(act_manager)
 	act_manager.setup(floor_plan_generator_config, map_manager, ACT_CONFIG_DIR, ACT_CONFIG_SCRIPT, max_combat_floors)
 	_apply_act_limits()

@@ -18,7 +18,8 @@ func setup(config: FloorPlanGeneratorConfig, manager: MapManager, config_dir: St
 	act_config_script = config_script
 	_load_act_configs()
 	_configure_act_lengths(default_max_combat)
-	_refresh_limits()
+	_update_floor_totals()
+	_update_active_combat_limit()
 
 func refresh_limits(default_max_combat: int = 0) -> void:
 	if default_max_combat > 0:
