@@ -88,6 +88,7 @@ const VOLLEY_PROMPT_OFFSET_Y: float = -70.0
 @onready var restart_button: Button = $HUD/GameOverPanel/RestartButton
 @onready var menu_button: Button = $HUD/GameOverPanel/MenuButton
 @onready var forfeit_dialog: ConfirmationDialog = $HUD/ForfeitDialog
+@onready var test_lab_panel: Control = $HUD/TestLabPanel
 @onready var left_wall: CollisionShape2D = $Walls/LeftWall
 @onready var right_wall: CollisionShape2D = $Walls/RightWall
 @onready var top_wall: CollisionShape2D = $Walls/TopWall
@@ -104,6 +105,7 @@ var outcome_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var map_preview_active: bool = false
 var map_preview_state: int = GameState.MAP
 var treasure_reward_entries: Array[Dictionary] = []
+var test_lab_enabled: bool = false
 
 var encounter_manager: EncounterManager
 var map_manager: MapManager
@@ -248,6 +250,7 @@ func _ready() -> void:
 	add_child(shop_manager)
 	shop_manager.setup(hud_controller, shop_cards_buttons, shop_buffs_buttons, shop_ball_mods_buttons)
 	_configure_shop_manager()
+	_set_test_lab_enabled(test_lab_enabled)
 	_apply_hud_theme()
 	App.bind_button_feedback(self)
 	# Buttons removed; use Space to launch and cards/turn flow for control.
@@ -276,6 +279,15 @@ func _ready() -> void:
 		_apply_persist_checkbox_style()
 	_set_hud_tooltips()
 	_start_run()
+
+func set_test_lab_enabled(enabled: bool) -> void:
+	test_lab_enabled = enabled
+	_set_test_lab_enabled(enabled)
+
+func _set_test_lab_enabled(enabled: bool) -> void:
+	if test_lab_panel == null:
+		return
+	test_lab_panel.visible = enabled
 
 func set_pending_seed(seed_value: int) -> void:
 	pending_seed = seed_value

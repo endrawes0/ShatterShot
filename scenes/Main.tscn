@@ -1,9 +1,10 @@
-[gd_scene load_steps=8 format=3 uid="uid://dhnntcfxs4lg0"]
+[gd_scene load_steps=9 format=3 uid="uid://dhnntcfxs4lg0"]
 
 [ext_resource type="PackedScene" path="res://scenes/Paddle.tscn" id="1"]
 [ext_resource type="Script" uid="uid://b8nul2np1du6b" path="res://scripts/Main.gd" id="3"]
 [ext_resource type="PackedScene" uid="uid://cfnto8it2e26m" path="res://scenes/Shop.tscn" id="4"]
 [ext_resource type="Script" uid="uid://bncgwbo12t5vj" path="res://scripts/ui/MapGraph.gd" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/TestLabPanel.tscn" id="6"]
 
 [sub_resource type="RectangleShape2D" id="1"]
 size = Vector2(20, 600)
@@ -49,6 +50,8 @@ position = Vector2(400, -10)
 shape = SubResource("2")
 
 [node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="TestLabPanel" parent="HUD" instance=ExtResource("6")]
 
 [node name="TopBar" type="HBoxContainer" parent="HUD"]
 anchors_preset = 10
