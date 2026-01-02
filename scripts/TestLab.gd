@@ -1,45 +1,74 @@
 extends Control
 
-@onready var main: Node = $Main
+var main: Node = null
 @onready var debug_panel: Control = $DebugPanel
 @onready var toggle_button: Button = $ToggleDebug
+var initial_debug_panel_visible: bool = true
 
 func _ready() -> void:
 	_apply_debug_font_size(9)
 	_apply_debug_theme()
+	if debug_panel:
+		debug_panel.visible = initial_debug_panel_visible
 	_update_toggle_button_text()
 	_connect_button("ToggleDebug", _toggle_debug_panel)
 	resized.connect(_layout_toggle_button)
+	main = _resolve_main()
 	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/StartCombat", func() -> void:
-		main.floor_index = 1
-		main._start_encounter(false)
+		_with_main(func(main_node: Node) -> void:
+			main_node.floor_index = 1
+			main_node._start_encounter(false)
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/StartElite", func() -> void:
-		main.floor_index = 1
-		main._start_encounter(true)
+		_with_main(func(main_node: Node) -> void:
+			main_node.floor_index = 1
+			main_node._start_encounter(true)
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/StartBoss", func() -> void:
-		main.floor_index = 1
-		main._start_boss()
+		_with_main(func(main_node: Node) -> void:
+			main_node.floor_index = 1
+			main_node._start_boss()
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/ShowMap", func() -> void:
-		main._show_map()
+		_with_main(func(main_node: Node) -> void:
+			main_node._show_map()
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/ShowShop", func() -> void:
-		main._show_shop()
+		_with_main(func(main_node: Node) -> void:
+			main_node._show_shop()
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/ShowVictory", func() -> void:
-		main._show_victory()
+		_with_main(func(main_node: Node) -> void:
+			main_node._show_victory()
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/ShowDefeat", func() -> void:
-		main._show_game_over()
+		_with_main(func(main_node: Node) -> void:
+			main_node._show_game_over()
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/AddGold", func() -> void:
-		main.gold += 100
-		main._update_labels()
+		_with_main(func(main_node: Node) -> void:
+			main_node.gold += 100
+			main_node._update_labels()
+		)
 	)
-	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/AddCard", func() -> void:
-		main._show_add_card_to_hand_panel()
+	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/AddPunch", func() -> void:
+		_with_main(func(main_node: Node) -> void:
+			main_node._add_card_to_deck("punch")
+			main_node._update_labels()
+		)
+	)
+	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/AddWound", func() -> void:
+		_with_main(func(main_node: Node) -> void:
+			main_node._add_card_to_deck("wound")
+			main_node._update_labels()
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/UnlockExplosive", func() -> void:
 		_unlock_mod("explosive")
@@ -51,38 +80,54 @@ func _ready() -> void:
 		_unlock_mod("miracle")
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/ModExplosive", func() -> void:
-		main._select_ball_mod("explosive")
+		_with_main(func(main_node: Node) -> void:
+			main_node._select_ball_mod("explosive")
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/ModSpikes", func() -> void:
-		main._select_ball_mod("spikes")
+		_with_main(func(main_node: Node) -> void:
+			main_node._select_ball_mod("spikes")
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/ModMiracle", func() -> void:
-		main._select_ball_mod("miracle")
+		_with_main(func(main_node: Node) -> void:
+			main_node._select_ball_mod("miracle")
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/ClearMod", func() -> void:
-		main.active_ball_mod = ""
-		main._apply_ball_mod_to_active_balls()
-		main._refresh_mod_buttons()
+		_with_main(func(main_node: Node) -> void:
+			main_node.active_ball_mod = ""
+			main_node._apply_ball_mod_to_active_balls()
+			main_node._refresh_mod_buttons()
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/RefillEnergy", func() -> void:
-		main.energy = main.max_energy
-		main._update_labels()
+		_with_main(func(main_node: Node) -> void:
+			main_node.energy = main_node.max_energy
+			main_node._update_labels()
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/HealFull", func() -> void:
-		main.hp = main.max_hp
-		main._update_labels()
+		_with_main(func(main_node: Node) -> void:
+			main_node.hp = main_node.max_hp
+			main_node._update_labels()
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/ClearBricks", func() -> void:
-		for child in main.bricks_root.get_children():
-			child.queue_free()
+		_with_main(func(main_node: Node) -> void:
+			for child in main_node.bricks_root.get_children():
+				child.queue_free()
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/PassLevel", func() -> void:
-		for child in main.bricks_root.get_children():
-			child.queue_free()
-		if main.current_is_boss:
-			main._show_victory()
-		else:
-			main._end_encounter()
+		_with_main(func(main_node: Node) -> void:
+			for child in main_node.bricks_root.get_children():
+				child.queue_free()
+			if main_node.current_is_boss:
+				main_node._show_victory()
+			else:
+				main_node._end_encounter()
+		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/BackMenu", func() -> void:
 		App.show_menu()
@@ -93,6 +138,17 @@ func _toggle_debug_panel() -> void:
 		return
 	debug_panel.visible = not debug_panel.visible
 	_update_toggle_button_text()
+
+func set_debug_panel_visible(visible: bool) -> void:
+	if debug_panel == null:
+		return
+	debug_panel.visible = visible
+	_update_toggle_button_text()
+
+func set_initial_debug_panel_visible(visible: bool) -> void:
+	initial_debug_panel_visible = visible
+	if is_node_ready():
+		set_debug_panel_visible(visible)
 
 func _update_toggle_button_text() -> void:
 	if toggle_button == null or debug_panel == null:
@@ -107,6 +163,20 @@ func _layout_toggle_button() -> void:
 	var min_size := toggle_button.get_combined_minimum_size()
 	toggle_button.size = min_size
 	toggle_button.position = Vector2(size.x - min_size.x - padding.x, padding.y)
+
+func _resolve_main() -> Node:
+	var current := get_tree().current_scene
+	if current != null and current.has_method("_start_encounter"):
+		return current
+	var fallback := get_tree().root.find_child("Main", true, false)
+	return fallback if fallback != null and fallback.has_method("_start_encounter") else null
+
+func _with_main(action: Callable) -> void:
+	if main == null or not is_instance_valid(main):
+		main = _resolve_main()
+	if main == null or not is_instance_valid(main):
+		return
+	action.call(main)
 
 func _apply_debug_font_size(size: int) -> void:
 	var root := get_node("DebugPanel") as Control
@@ -138,11 +208,14 @@ func _mark_buttons_recursive(node: Node) -> void:
 		(node as BaseButton).add_to_group(App.UI_PARTICLE_IGNORE_GROUP)
 	for child in node.get_children():
 		_mark_buttons_recursive(child)
+
 func _connect_button(path: String, action: Callable) -> void:
 	var button := get_node(path) as Button
 	if button:
 		button.pressed.connect(action)
 
 func _unlock_mod(mod_id: String) -> void:
-	main.ball_mod_counts[mod_id] = int(main.ball_mod_counts.get(mod_id, 0)) + 1
-	main._refresh_mod_buttons()
+	_with_main(func(main_node: Node) -> void:
+		main_node.ball_mod_counts[mod_id] = int(main_node.ball_mod_counts.get(mod_id, 0)) + 1
+		main_node._refresh_mod_buttons()
+	)

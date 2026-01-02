@@ -10,7 +10,6 @@ A single-player Godot project that fuses Breakout-style paddle/ball action with 
   - `scenes/Main.tscn`: core gameplay scene with Paddle, Bricks container, Walls, and HUD panels.
   - `scenes/Paddle.tscn`, `scenes/Ball.tscn`, `scenes/Brick.tscn`: reusable gameplay actors.
   - `scenes/MainMenu.tscn`, `scenes/Help.tscn`, `scenes/Shop.tscn`: front-end flow and shop layout.
-  - `scenes/TestLab.tscn`: debug test screen for rapid feature testing.
 - Core scripts:
   - `scripts/Main.gd`: main game controller. Owns the run state machine, deck/hand/discard, encounter setup, UI updates, and room flow (map, rewards, shop, rest, boss).
   - `scripts/Ball.gd`: ball physics, launch/bounce behavior, piercing logic, and loss handling.

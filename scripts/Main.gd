@@ -27,6 +27,7 @@ const FLOOR_PLAN_GENERATOR_CONFIG := preload("res://scripts/data/FloorPlanGenera
 const BALANCE_DATA_PATH: String = "res://data/balance/basic.tres"
 const EMOJI_FONT_PATH: String = "res://assets/fonts/NotoColorEmoji.ttf"
 const OUTCOME_PARTICLE_SCENE: PackedScene = preload("res://scenes/HitParticle.tscn")
+const TEST_LAB_PANEL_SCENE: PackedScene = preload("res://scenes/TestLabPanel.tscn")
 const OUTCOME_PARTICLE_COUNT: int = 18
 const OUTCOME_PARTICLE_SPEED_X: Vector2 = Vector2(-80.0, 80.0)
 const OUTCOME_PARTICLE_SPEED_Y_VICTORY: Vector2 = Vector2(-220.0, -60.0)
@@ -104,6 +105,8 @@ var outcome_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var map_preview_active: bool = false
 var map_preview_state: int = GameState.MAP
 var treasure_reward_entries: Array[Dictionary] = []
+var test_lab_enabled: bool = false
+var test_lab_panel: Control = null
 
 var encounter_manager: EncounterManager
 var map_manager: MapManager
@@ -248,6 +251,7 @@ func _ready() -> void:
 	add_child(shop_manager)
 	shop_manager.setup(hud_controller, shop_cards_buttons, shop_buffs_buttons, shop_ball_mods_buttons)
 	_configure_shop_manager()
+	_set_test_lab_enabled(test_lab_enabled)
 	_apply_hud_theme()
 	App.bind_button_feedback(self)
 	# Buttons removed; use Space to launch and cards/turn flow for control.
@@ -276,6 +280,25 @@ func _ready() -> void:
 		_apply_persist_checkbox_style()
 	_set_hud_tooltips()
 	_start_run()
+
+func set_test_lab_enabled(enabled: bool, panel_visible: bool = true) -> void:
+	test_lab_enabled = enabled
+	_set_test_lab_enabled(enabled, panel_visible)
+
+func _set_test_lab_enabled(enabled: bool, panel_visible: bool = true) -> void:
+	if enabled:
+		if test_lab_panel == null or not is_instance_valid(test_lab_panel):
+			test_lab_panel = TEST_LAB_PANEL_SCENE.instantiate()
+			if test_lab_panel.has_method("set_initial_debug_panel_visible"):
+				test_lab_panel.set_initial_debug_panel_visible(panel_visible)
+		if test_lab_panel and test_lab_panel.get_parent() == null and hud:
+			hud.add_child(test_lab_panel)
+		if test_lab_panel:
+			test_lab_panel.visible = true
+		return
+	if test_lab_panel and is_instance_valid(test_lab_panel):
+		test_lab_panel.queue_free()
+	test_lab_panel = null
 
 func set_pending_seed(seed_value: int) -> void:
 	pending_seed = seed_value

@@ -4,7 +4,6 @@ const MENU_SCENE: PackedScene = preload("res://scenes/MainMenu.tscn")
 const RUN_SCENE: PackedScene = preload("res://scenes/Main.tscn")
 const HELP_SCENE: PackedScene = preload("res://scenes/Help.tscn")
 const SETTINGS_SCENE: PackedScene = preload("res://scenes/Settings.tscn")
-const TEST_SCENE: PackedScene = preload("res://scenes/TestLab.tscn")
 const SETTINGS_PATH: String = "user://settings.cfg"
 const FALLBACK_BASE_RESOLUTION: Vector2i = Vector2i(800, 600)
 const UI_SCALE: float = 0.75
@@ -21,7 +20,6 @@ var menu_instance: Node = null
 var run_instance: Node = null
 var help_instance: Node = null
 var settings_instance: Node = null
-var test_instance: Node = null
 var _layout_resolution_cache: Vector2i = Vector2i.ZERO
 var _layout_size_cache: Vector2 = Vector2.ZERO
 var _global_theme: Theme = null
@@ -37,6 +35,7 @@ var _settings_vfx_enabled: bool = true
 var _settings_vfx_intensity: float = 1.0
 var _settings_ball_speed_multiplier: float = 1.0
 var _settings_paddle_speed_multiplier: float = 1.0
+var _test_lab_unlocked: bool = false
 
 func _ready() -> void:
 	_ui_particle_rng.randomize()
@@ -71,12 +70,23 @@ func _action_has_key(action: String, keycode: int) -> bool:
 func has_run() -> bool:
 	return run_instance != null and is_instance_valid(run_instance)
 
+func set_test_lab_unlocked(unlocked: bool) -> void:
+	_test_lab_unlocked = unlocked
+
+func is_test_lab_unlocked() -> bool:
+	return _test_lab_unlocked
+
 func start_new_run(seed_value: int = 0) -> void:
 	if run_instance and is_instance_valid(run_instance):
 		run_instance.queue_free()
 	run_instance = RUN_SCENE.instantiate()
 	if run_instance.has_method("set_pending_seed"):
 		run_instance.set_pending_seed(seed_value)
+	if run_instance.has_method("set_test_lab_enabled"):
+		if _test_lab_unlocked:
+			run_instance.set_test_lab_enabled(true, false)
+		else:
+			run_instance.set_test_lab_enabled(false)
 	get_tree().root.add_child(run_instance)
 	if run_instance.has_method("on_menu_closed"):
 		run_instance.on_menu_closed()
@@ -112,8 +122,15 @@ func show_settings() -> void:
 	_switch_to_scene(settings_instance)
 
 func show_test_lab() -> void:
-	_ensure_test_lab()
-	_switch_to_scene(test_instance)
+	if run_instance and is_instance_valid(run_instance):
+		run_instance.queue_free()
+	run_instance = RUN_SCENE.instantiate()
+	get_tree().root.add_child(run_instance)
+	if run_instance.has_method("set_test_lab_enabled"):
+		run_instance.set_test_lab_enabled(true, true)
+	if run_instance.has_method("on_menu_closed"):
+		run_instance.on_menu_closed()
+	_switch_to_scene(run_instance)
 
 func _switch_to_scene(scene_instance: Node) -> void:
 	for instance in _all_scene_instances():
@@ -140,7 +157,7 @@ func _show_menu_overlay() -> void:
 		root.move_child(menu_instance, root.get_child_count() - 1)
 
 func _all_scene_instances() -> Array[Node]:
-	return [menu_instance, run_instance, help_instance, settings_instance, test_instance]
+	return [menu_instance, run_instance, help_instance, settings_instance]
 
 func _ensure_help() -> void:
 	if help_instance == null or not is_instance_valid(help_instance):
@@ -151,11 +168,6 @@ func _ensure_settings() -> void:
 	if settings_instance == null or not is_instance_valid(settings_instance):
 		settings_instance = SETTINGS_SCENE.instantiate()
 		get_tree().root.add_child(settings_instance)
-
-func _ensure_test_lab() -> void:
-	if test_instance == null or not is_instance_valid(test_instance):
-		test_instance = TEST_SCENE.instantiate()
-		get_tree().root.add_child(test_instance)
 
 func _apply_saved_settings() -> void:
 	var config := ConfigFile.new()

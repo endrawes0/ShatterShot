@@ -56,6 +56,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _lock_test_lab() -> void:
 	test_lab_unlocked = false
+	App.set_test_lab_unlocked(false)
 	if test_button:
 		test_button.visible = false
 
@@ -66,6 +67,7 @@ func _try_unlock_test_lab(event: InputEventKey) -> void:
 		return
 	if event.keycode == KEY_T and event.alt_pressed and event.ctrl_pressed and event.shift_pressed:
 		test_lab_unlocked = true
+		App.set_test_lab_unlocked(true)
 		test_button.visible = true
 		_apply_menu_palette()
 

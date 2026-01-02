@@ -1,5 +1,4 @@
 [gd_resource type="Resource" load_steps=3 format=3]
-# TODO: Act Configuration
 
 [ext_resource type="Script" path="res://scripts/data/EncounterConfig.gd" id=1]
 [ext_resource type="Resource" path="res://data/variant_policies/variant_normal.tres" id=2]
