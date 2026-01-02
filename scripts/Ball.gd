@@ -194,12 +194,22 @@ func _trigger_explosion(center: Vector2) -> void:
 	var bricks: Array = get_tree().get_nodes_in_group("bricks")
 	for brick in bricks:
 		if brick is Node2D and (brick as Node2D).global_position.distance_to(center) <= EXPLOSION_RADIUS:
-			if brick.has_method("apply_damage_with_overkill"):
-				if brick.has_method("suppress_curse"):
-					brick.suppress_curse()
-				brick.apply_damage_with_overkill(999, Vector2.ZERO, true)
-			elif brick.has_method("apply_damage"):
-				brick.apply_damage(999)
+			_apply_explosion_damage(brick)
+
+func _apply_explosion_damage(brick: Object) -> void:
+	if brick == null:
+		return
+	var capped_amount: int = 999
+	if brick.has_method("get"):
+		var hp_value: Variant = brick.get("hp")
+		if typeof(hp_value) == TYPE_INT and hp_value > 0:
+			capped_amount = min(capped_amount, int(hp_value))
+	if brick.has_method("apply_damage_with_overkill"):
+		if brick.has_method("suppress_curse"):
+			brick.suppress_curse()
+		brick.apply_damage_with_overkill(capped_amount, Vector2.ZERO, true)
+	elif brick.has_method("apply_damage"):
+		brick.apply_damage(capped_amount)
 
 func _consume_mod(mod_id: String) -> void:
 	set_ball_mod("")

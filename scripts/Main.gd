@@ -1562,8 +1562,18 @@ func _destroy_random_bricks(amount: int) -> void:
 	_shuffle_array(bricks)
 	for i in range(min(amount, bricks.size())):
 		var brick: Node = bricks[i]
-		if brick.has_method("apply_damage"):
-			brick.apply_damage(999)
+		_apply_brick_damage_cap(brick, 999)
+
+func _apply_brick_damage_cap(brick: Node, amount: int) -> void:
+	if brick == null:
+		return
+	var capped_amount: int = amount
+	if brick.has_method("get"):
+		var hp_value: Variant = brick.get("hp")
+		if typeof(hp_value) == TYPE_INT and hp_value > 0:
+			capped_amount = min(amount, int(hp_value))
+	if brick.has_method("apply_damage"):
+		brick.apply_damage(capped_amount)
 
 func _pick_random_card() -> String:
 	if card_pool.is_empty():
