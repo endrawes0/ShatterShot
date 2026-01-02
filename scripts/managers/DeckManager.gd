@@ -74,6 +74,14 @@ func add_card(card_id: String) -> void:
 	_shuffle_array(draw_pile)
 	_emit_piles_changed()
 
+func add_card_to_hand(card_id: String) -> bool:
+	if hand.size() >= MAX_HAND_SIZE:
+		return false
+	var card := _make_card_instance(card_id)
+	hand.append(card)
+	_emit_hand_changed()
+	return true
+
 func remove_card_instance_from_all(instance_id: int, remove_from_deck: bool = true) -> void:
 	if remove_from_deck:
 		_remove_one_instance_from_array(deck, instance_id)
