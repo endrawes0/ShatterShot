@@ -1,10 +1,15 @@
 extends Control
 
 @onready var main: Node = $Main
+@onready var debug_panel: Control = $DebugPanel
+@onready var toggle_button: Button = $ToggleDebug
 
 func _ready() -> void:
 	_apply_debug_font_size(9)
 	_apply_debug_theme()
+	_update_toggle_button_text()
+	_connect_button("ToggleDebug", _toggle_debug_panel)
+	resized.connect(_layout_toggle_button)
 	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/StartCombat", func() -> void:
 		main.floor_index = 1
 		main._start_encounter(false)
@@ -33,13 +38,8 @@ func _ready() -> void:
 		main.gold += 100
 		main._update_labels()
 	)
-	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/AddPunch", func() -> void:
-		main._add_card_to_deck("punch")
-		main._update_labels()
-	)
-	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/AddWound", func() -> void:
-		main._add_card_to_deck("wound")
-		main._update_labels()
+	_connect_button("DebugPanel/VBox/ButtonColumns/LeftColumn/AddCard", func() -> void:
+		main._show_add_card_to_hand_panel()
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/UnlockExplosive", func() -> void:
 		_unlock_mod("explosive")
@@ -87,6 +87,26 @@ func _ready() -> void:
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/BackMenu", func() -> void:
 		App.show_menu()
 	)
+
+func _toggle_debug_panel() -> void:
+	if debug_panel == null:
+		return
+	debug_panel.visible = not debug_panel.visible
+	_update_toggle_button_text()
+
+func _update_toggle_button_text() -> void:
+	if toggle_button == null or debug_panel == null:
+		return
+	toggle_button.text = "Hide Panel" if debug_panel.visible else "Show Panel"
+	_layout_toggle_button()
+
+func _layout_toggle_button() -> void:
+	if toggle_button == null:
+		return
+	var padding: Vector2 = Vector2(10.0, 44.0)
+	var min_size := toggle_button.get_combined_minimum_size()
+	toggle_button.size = min_size
+	toggle_button.position = Vector2(size.x - min_size.x - padding.x, padding.y)
 
 func _apply_debug_font_size(size: int) -> void:
 	var root := get_node("DebugPanel") as Control

@@ -882,8 +882,34 @@ func _end_encounter() -> void:
 	if current_is_boss:
 		_show_victory()
 		return
-	gold += 25
+	gold += 25 #TODO: if elite: gold +=50 elif boss += 100 (prepares for acts)
+	if state == GameState.PLANNING:
+		await _play_planning_victory_message("Nice one!") #TODO make this configuraable
+	#TODO: if the player catches the ball while in planning mode,  us _play_planning_victory... method
 	_show_reward_panel()
+
+func _play_planning_victory_message(message: String) -> void:
+	if info_label == null or hud == null:
+		return
+	var toast := Label.new()
+	toast.text = message
+	toast.modulate = Color(1.0, 0.9, 0.2, 1.0)
+	toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	toast.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	toast.size = info_label.size
+	toast.position = info_label.position
+	hud.add_child(toast)
+	var original_pos: Vector2 = toast.global_position
+	if volley_prompt_label != null:
+		original_pos.y = volley_prompt_label.global_position.y
+	var viewport_width: float = get_viewport_rect().size.x
+	toast.global_position = Vector2(viewport_width + toast.size.x, original_pos.y)
+	var tween := create_tween()
+	tween.tween_property(toast, "global_position:x", original_pos.x, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(0.5)
+	tween.tween_property(toast, "global_position:x", -toast.size.x, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await tween.finished
+	toast.queue_free()
 
 func _reset_deck_for_next_floor() -> void:
 	if deck_manager:
@@ -1388,9 +1414,9 @@ func _apply_card_effect(card_id: String, instance_id: int) -> bool:
 			deck_manager.remove_card_instance_from_all(instance_id, true)
 			info_label.text = "Wound removed from your deck."
 			should_discard = false
-	return should_discard
 		_:
 			pass
+	return should_discard
 
 func _destroy_random_bricks(amount: int) -> void:
 	var bricks: Array = bricks_root.get_children()
@@ -1626,12 +1652,34 @@ func _show_remove_card_panel() -> void:
 	info_label.text = "Choose a card to remove."
 	hud_controller.populate_card_container(deck_list, deck_manager.deck, Callable(self, "_on_remove_card_selected"), false, 5)
 
+func _show_add_card_to_hand_panel() -> void:
+	if state == GameState.GAME_OVER or state == GameState.VICTORY:
+		return
+	_capture_deck_return_context()
+	_show_single_panel(deck_panel)
+	info_label.text = "Choose a card to add to hand."
+	var card_ids: Array = card_data.keys()
+	card_ids.sort()
+	hud_controller.populate_card_container(deck_list, card_ids, Callable(self, "_on_add_card_to_hand_selected"), false, 5)
+
 func _on_remove_card_selected(instance_id: int) -> void:
 	var card_id: String = deck_manager.get_card_id_for_instance(instance_id)
 	deck_manager.remove_card_instance_from_all(instance_id, true)
 	_refresh_hand()
 	var card_name: String = card_data.get(card_id, {}).get("name", card_id)
 	deck_return_info = "Removed %s." % card_name
+	_close_deck_panel()
+
+func _on_add_card_to_hand_selected(card_id: String) -> void:
+	var added: bool = false
+	if deck_manager:
+		added = deck_manager.add_card_to_hand(card_id)
+	if added:
+		_refresh_hand()
+		var card_name: String = card_data.get(card_id, {}).get("name", card_id)
+		deck_return_info = "Added %s to hand." % card_name
+	else:
+		deck_return_info = "Hand is full."
 	_close_deck_panel()
 
 func _close_deck_panel() -> void:
