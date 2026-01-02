@@ -30,7 +30,13 @@ func reset_run() -> void:
 	_validate_active_floor_plan()
 
 func set_runtime_floor_plan(plan: Dictionary) -> void:
-	runtime_acts = plan.get("acts", [])
+	runtime_acts.clear()
+	var acts: Array = plan.get("acts", [])
+	for entry in acts:
+		if entry is Dictionary:
+			runtime_acts.append(entry)
+		else:
+			runtime_acts.append(Dictionary(entry))
 	if runtime_acts.is_empty():
 		runtime_rooms = plan.get("rooms", [])
 		runtime_start_room_id = String(plan.get("start_room_id", ""))
