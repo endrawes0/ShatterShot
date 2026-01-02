@@ -33,6 +33,7 @@ const OUTCOME_PARTICLE_SPEED_X: Vector2 = Vector2(-80.0, 80.0)
 const OUTCOME_PARTICLE_SPEED_Y_VICTORY: Vector2 = Vector2(-220.0, -60.0)
 const OUTCOME_PARTICLE_SPEED_Y_DEFEAT: Vector2 = Vector2(40.0, 200.0)
 const VOLLEY_PROMPT_OFFSET_Y: float = -70.0
+const START_PROMPT_EXTRA_OFFSET_Y: float = 40.0
 
 @export var brick_size: Vector2 = Vector2(64, 24)
 @export var brick_gap: Vector2 = Vector2(8, 8)
@@ -936,7 +937,9 @@ func _play_planning_victory_message(message: String) -> void:
 	toast.position = info_label.position
 	hud.add_child(toast)
 	var original_pos: Vector2 = toast.global_position
-	if volley_prompt_label != null:
+	if paddle != null:
+		original_pos.y = paddle.global_position.y + VOLLEY_PROMPT_OFFSET_Y
+	elif volley_prompt_label != null:
 		original_pos.y = volley_prompt_label.global_position.y
 	var viewport_width: float = get_viewport_rect().size.x
 	toast.global_position = Vector2(viewport_width + toast.size.x, original_pos.y)
@@ -1663,7 +1666,7 @@ func _update_volley_prompt_position() -> void:
 	if viewport != null:
 		var rect: Rect2 = viewport.get_visible_rect()
 		center_x = rect.position.x + rect.size.x * 0.5
-	var target_y := paddle.global_position.y + VOLLEY_PROMPT_OFFSET_Y
+	var target_y := paddle.global_position.y + VOLLEY_PROMPT_OFFSET_Y + START_PROMPT_EXTRA_OFFSET_Y
 	volley_prompt_label.global_position = Vector2(center_x - min_size.x * 0.5, target_y - min_size.y * 0.5)
 
 func _capture_deck_return_context() -> void:

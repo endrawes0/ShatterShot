@@ -1,6 +1,8 @@
 # Agent Notes
 
 - Direct questions should be answered directly instead of proposing or making code changes.
+- Commit changes to a `feature/` or `bugfix/` branch, not directly to `main`.
+- Commit early and often while working on changes.
 
 ## Export Process (Windows/Linux/macOS)
 
