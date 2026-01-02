@@ -13,62 +13,109 @@ func generate(config: FloorPlanGeneratorConfig) -> Dictionary:
 	rng.seed = seed_value
 
 	var plan := {
-		"start_room_id": "start",
-		"rooms": [],
+		"acts": [],
 		"seed": seed_value
 	}
 
-	var floors: int = _resolve_floor_count(config)
-	var rooms: Array[Dictionary] = []
-	var room_index: Dictionary = {}
+	var act_defs: Array[Dictionary] = []
+	if config.acts.is_empty():
+		act_defs.append({
+			"floors": max(1, int(config.floors)),
+			"room_weights": config.room_weights,
+			"min_choices": config.min_choices,
+			"max_choices": config.max_choices,
+			"hidden_edge_chance": config.hidden_edge_chance
+		})
+	else:
+		for entry in config.acts:
+			var act := Dictionary(entry)
+			var floors: int = max(0, int(act.get("floors", 0)))
+			if floors <= 0:
+				continue
+			act_defs.append({
+				"floors": floors,
+				"room_weights": act.get("room_weights", config.room_weights),
+				"min_choices": act.get("min_choices", config.min_choices),
+				"max_choices": act.get("max_choices", config.max_choices),
+				"hidden_edge_chance": act.get("hidden_edge_chance", config.hidden_edge_chance)
+			})
+	if act_defs.is_empty():
+		act_defs.append({
+			"floors": max(1, int(config.floors)),
+			"room_weights": config.room_weights,
+			"min_choices": config.min_choices,
+			"max_choices": config.max_choices,
+			"hidden_edge_chance": config.hidden_edge_chance
+		})
 
-	var start_room: Dictionary = {"id": "start", "type": "combat", "next": []}
-	rooms.append(start_room)
-	room_index["start"] = 0
-	var prev_ids: Array[String] = ["start"]
+	for act_index in range(act_defs.size()):
+		var act_settings: Dictionary = act_defs[act_index]
+		var floors: int = int(act_settings.get("floors", 1))
+		var act_prefix := "a%d" % (act_index + 1)
+		var rooms: Array[Dictionary] = []
+		var room_index: Dictionary = {}
 
-	for floor in range(floors):
-		var act_settings := _act_settings_for_floor(config, floor)
-		var weights := _sanitize_weights(Dictionary(act_settings.get("room_weights", config.room_weights)))
-		var min_choices: int = max(1, int(act_settings.get("min_choices", config.min_choices)))
-		var max_choices: int = max(min_choices, int(act_settings.get("max_choices", config.max_choices)))
-		var choice_count: int = rng.randi_range(min_choices, max_choices)
+		var start_id := "%s_start" % act_prefix
+		var start_room: Dictionary = {"id": start_id, "type": "combat", "next": []}
+		rooms.append(start_room)
+		room_index[start_id] = 0
+		var prev_ids: Array[String] = [start_id]
 
-		var floor_ids: Array[String] = []
-		for index in range(choice_count):
-			var room_type := _pick_weighted(weights, rng)
-			var room_id := "f%d_%d" % [floor + 1, index + 1]
-			var resolved_type := room_type
-			var revealed_type := ""
-			if room_type == "mystery":
-				revealed_type = _pick_revealed_type(weights, rng)
-				resolved_type = "mystery"
-			var room: Dictionary = {
-				"id": room_id,
-				"type": resolved_type,
-				"next": []
-			}
-			if revealed_type != "":
-				room["is_mystery"] = true
-				room["revealed_type"] = revealed_type
-			room_index[room_id] = rooms.size()
-			rooms.append(room)
-			floor_ids.append(room_id)
-		var prev_count: int = prev_ids.size()
-		for prev_index in range(prev_count):
-			_append_next_adjacent(rooms, room_index, prev_ids[prev_index], prev_index, floor_ids)
-		prev_ids = floor_ids
+		for floor in range(floors):
+			var weights := _sanitize_weights(Dictionary(act_settings.get("room_weights", config.room_weights)))
+			var min_choices: int = max(1, int(act_settings.get("min_choices", config.min_choices)))
+			var max_choices: int = max(min_choices, int(act_settings.get("max_choices", config.max_choices)))
+			var choice_count: int = rng.randi_range(min_choices, max_choices)
 
-	var boss_id := "boss"
-	var boss_room: Dictionary = {"id": boss_id, "type": "boss", "next": []}
-	room_index[boss_id] = rooms.size()
-	rooms.append(boss_room)
-	for prev_id in prev_ids:
-		_append_next(rooms, room_index, prev_id, [boss_id])
+			var floor_ids: Array[String] = []
+			for index in range(choice_count):
+				var room_type := _pick_weighted(weights, rng)
+				var room_id := "%s_f%d_%d" % [act_prefix, floor + 1, index + 1]
+				var resolved_type := room_type
+				var revealed_type := ""
+				if room_type == "mystery":
+					revealed_type = _pick_revealed_type(weights, rng)
+					resolved_type = "mystery"
+				var room: Dictionary = {
+					"id": room_id,
+					"type": resolved_type,
+					"next": []
+				}
+				if revealed_type != "":
+					room["is_mystery"] = true
+					room["revealed_type"] = revealed_type
+				room_index[room_id] = rooms.size()
+				rooms.append(room)
+				floor_ids.append(room_id)
+			var prev_count: int = prev_ids.size()
+			for prev_index in range(prev_count):
+				_append_next_adjacent(rooms, room_index, prev_ids[prev_index], prev_index, floor_ids)
+			prev_ids = floor_ids
 
-	_ensure_forward_edges(rooms, room_index)
-	_apply_hidden_edges(rooms, room_index, rng, config)
-	plan["rooms"] = rooms
+		var boss_id := "%s_boss" % act_prefix
+		var boss_room: Dictionary = {"id": boss_id, "type": "boss", "next": []}
+		room_index[boss_id] = rooms.size()
+		rooms.append(boss_room)
+		for prev_id in prev_ids:
+			_append_next(rooms, room_index, prev_id, [boss_id])
+
+		var is_final_act := act_index == act_defs.size() - 1
+		if is_final_act:
+			var victory_id := "%s_victory" % act_prefix
+			var victory_room: Dictionary = {"id": victory_id, "type": "victory", "next": []}
+			room_index[victory_id] = rooms.size()
+			rooms.append(victory_room)
+			_append_next(rooms, room_index, boss_id, [victory_id])
+
+		_ensure_forward_edges(rooms, room_index, boss_id)
+		_apply_hidden_edges(rooms, room_index, rng, float(act_settings.get("hidden_edge_chance", config.hidden_edge_chance)))
+
+		plan["acts"].append({
+			"act_index": act_index,
+			"rooms": rooms,
+			"start_room_id": start_id,
+			"boss_room_id": boss_id
+		})
 	return plan
 
 func _resolve_floor_count(config: FloorPlanGeneratorConfig) -> int:
@@ -148,7 +195,7 @@ func _append_next_adjacent(rooms: Array[Dictionary], room_index: Dictionary, roo
 	entry["next"] = next_list
 	rooms[index] = entry
 
-func _ensure_forward_edges(rooms: Array[Dictionary], room_index: Dictionary) -> void:
+func _ensure_forward_edges(rooms: Array[Dictionary], room_index: Dictionary, boss_id: String) -> void:
 	# Make sure every floor room can advance at least once.
 	var floor_map := _build_floor_map(rooms)
 	var max_floor: int = int(floor_map.get("max_floor", 0))
@@ -156,7 +203,7 @@ func _ensure_forward_edges(rooms: Array[Dictionary], room_index: Dictionary) -> 
 	for floor_index in range(1, max_floor + 1):
 		var current_ids: Array = floors.get(floor_index, [])
 		for room_id in current_ids:
-			_ensure_room_forward_edge(rooms, room_index, floors, floor_index, room_id, max_floor)
+			_ensure_room_forward_edge(rooms, room_index, floors, floor_index, room_id, max_floor, boss_id)
 
 func _ensure_room_forward_edge(
 	rooms: Array[Dictionary],
@@ -164,7 +211,8 @@ func _ensure_room_forward_edge(
 	floors: Dictionary,
 	floor_index: int,
 	room_id: String,
-	max_floor: int
+	max_floor: int,
+	boss_id: String
 ) -> void:
 	if not room_index.has(room_id):
 		return
@@ -175,8 +223,8 @@ func _ensure_room_forward_edge(
 		return
 	var room_index_on_floor := _parse_room_index(room_id)
 	if floor_index == max_floor:
-		if room_index.has("boss"):
-			next_list.append("boss")
+		if room_index.has(boss_id):
+			next_list.append(boss_id)
 	else:
 		var next_floor_ids: Array = floors.get(floor_index + 1, [])
 		var target_id := _nearest_room_id_by_index(next_floor_ids, room_index_on_floor)
@@ -206,23 +254,20 @@ func _adjacent_room_id(floor_index: int, room_index_on_floor: int) -> String:
 	return "f%d_%d" % [floor_index, room_index_on_floor]
 
 func _parse_floor_index(room_id: String) -> int:
-	if not room_id.begins_with("f"):
-		return -1
 	var parts := room_id.split("_")
-	if parts.size() != 2:
-		return -1
-	var floor_str := parts[0].substr(1, parts[0].length() - 1)
-	if not floor_str.is_valid_int():
-		return -1
-	return int(floor_str)
+	for part in parts:
+		if not String(part).begins_with("f"):
+			continue
+		var floor_str := String(part).substr(1, String(part).length() - 1)
+		if floor_str.is_valid_int():
+			return int(floor_str)
+	return -1
 
 func _parse_room_index(room_id: String) -> int:
-	if not room_id.begins_with("f"):
-		return -1
 	var parts := room_id.split("_")
-	if parts.size() != 2:
+	if parts.size() < 2:
 		return -1
-	var idx_str := parts[1]
+	var idx_str := String(parts[parts.size() - 1])
 	if not idx_str.is_valid_int():
 		return -1
 	return int(idx_str)
@@ -240,8 +285,8 @@ func _nearest_room_id_by_index(room_ids: Array, room_index_on_floor: int) -> Str
 			best_delta = delta
 	return best_id
 
-func _apply_hidden_edges(rooms: Array[Dictionary], room_index: Dictionary, rng: RandomNumberGenerator, config: FloorPlanGeneratorConfig) -> void:
-	if config.hidden_edge_chance <= 0.0:
+func _apply_hidden_edges(rooms: Array[Dictionary], room_index: Dictionary, rng: RandomNumberGenerator, hidden_edge_chance: float) -> void:
+	if hidden_edge_chance <= 0.0:
 		return
 	for i in range(rooms.size()):
 		var room: Dictionary = rooms[i]
@@ -263,7 +308,7 @@ func _apply_hidden_edges(rooms: Array[Dictionary], room_index: Dictionary, rng: 
 			if room_index.has(next_id):
 				var next_room: Dictionary = rooms[int(room_index[next_id])]
 				next_room_type = String(next_room.get("type", ""))
-			var should_hide := pre_hidden or rng.randf() < config.hidden_edge_chance
+			var should_hide := pre_hidden or rng.randf() < hidden_edge_chance
 			if RESERVED_TYPES.has(next_room_type):
 				should_hide = false
 			if should_hide:

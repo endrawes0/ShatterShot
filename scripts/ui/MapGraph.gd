@@ -324,10 +324,12 @@ func _order_room_ids(room_ids: Array) -> Array:
 	return ordered
 
 func _room_floor_index(room_id: String) -> int:
-	if room_id.begins_with("f"):
-		var parts := room_id.split("_")
-		if parts.size() == 2:
-			var idx_str := parts[1]
-			if idx_str.is_valid_int():
-				return int(idx_str)
+	var parts := room_id.split("_")
+	for part in parts:
+		var part_str := String(part)
+		if not part_str.begins_with("f"):
+			continue
+		var floor_str := part_str.substr(1, part_str.length() - 1)
+		if floor_str.is_valid_int():
+			return int(floor_str)
 	return -1

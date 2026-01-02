@@ -189,7 +189,6 @@ var volley_prompt_pulsing: bool = false
 var act_configs_by_index: Dictionary = {}
 var active_act_config: Resource
 var act_floor_lengths: Array[int] = []
-var act_floor_breaks: Array[int] = []
 
 func _update_reserve_indicator() -> void:
 	if paddle and paddle.has_method("set_reserve_count"):
@@ -350,12 +349,11 @@ func _load_act_configs() -> void:
 
 func _configure_act_progression() -> void:
 	act_floor_lengths.clear()
-	act_floor_breaks.clear()
 	var base_non_boss: int = max(1, max_combat_floors)
 	if floor_plan_generator_config is FLOOR_PLAN_GENERATOR_CONFIG:
 		var config := floor_plan_generator_config
 		if config.acts.is_empty():
-			base_non_boss = max(1, int(config.floors) - 1)
+			base_non_boss = max(1, int(config.floors))
 		else:
 			for entry in config.acts:
 				var act_dict: Dictionary = Dictionary(entry)
@@ -366,33 +364,26 @@ func _configure_act_progression() -> void:
 		var act_count: int = max(1, act_configs_by_index.size())
 		for _i in range(act_count):
 			act_floor_lengths.append(base_non_boss)
-	var cursor: int = 0
+	var total_non_boss: int = 0
 	for floors in act_floor_lengths:
-		cursor += max(1, floors)
-		act_floor_breaks.append(cursor)
-	if not act_floor_breaks.is_empty():
-		max_combat_floors = act_floor_breaks[0]
-		var total_non_boss: int = act_floor_breaks[act_floor_breaks.size() - 1]
-		var total_bosses: int = act_floor_breaks.size()
-		max_floors = total_non_boss + total_bosses
+		total_non_boss += max(1, floors)
+	var total_bosses: int = max(1, act_floor_lengths.size())
+	max_floors = total_non_boss + total_bosses
+	_update_act_floor_limits()
 
-func _act_index_for_floor(floor_index: int) -> int:
-	if act_floor_breaks.is_empty():
-		return 0
-	for idx in range(act_floor_breaks.size()):
-		if floor_index <= act_floor_breaks[idx]:
-			return idx
-	return max(0, act_floor_breaks.size() - 1)
+func _update_act_floor_limits() -> void:
+	if act_floor_lengths.is_empty():
+		return
+	var act_index: int = 0
+	if map_manager != null and map_manager.has_acts():
+		act_index = map_manager.get_active_act_index()
+	act_index = clamp(act_index, 0, act_floor_lengths.size() - 1)
+	max_combat_floors = act_floor_lengths[act_index]
 
-func _advance_act_threshold(current_act_index: int) -> void:
-	if current_act_index + 1 < act_floor_breaks.size():
-		max_combat_floors = act_floor_breaks[current_act_index + 1]
-
-func _is_final_act(current_act_index: int) -> bool:
-	return act_floor_breaks.is_empty() or current_act_index >= act_floor_breaks.size() - 1
-
-func _get_act_config_for_floor(floor_index: int) -> Resource:
-	var index := _act_index_for_floor(floor_index)
+func _get_active_act_config() -> Resource:
+	var index: int = 0
+	if map_manager != null and map_manager.has_acts():
+		index = map_manager.get_active_act_index()
 	var act_config: Resource = act_configs_by_index.get(index, null)
 	if act_config == null:
 		return ACT_CONFIG_SCRIPT.new()
@@ -437,86 +428,6 @@ func _get_encounter_gold_reward() -> int:
 	if current_is_elite:
 		return active_act_config.elite_gold_reward
 	return active_act_config.combat_gold_reward
-
-func _room_floor_number(room_id: String) -> int:
-	if not room_id.begins_with("f"):
-		return -1
-	var parts := room_id.split("_")
-	if parts.size() < 2:
-		return -1
-	var floor_str := parts[0].substr(1, parts[0].length() - 1)
-	if not floor_str.is_valid_int():
-		return -1
-	return int(floor_str)
-
-func _filter_plan_for_current_act(plan: Dictionary) -> Dictionary:
-	if act_floor_breaks.is_empty():
-		return plan
-	var rooms: Array[Dictionary] = plan.get("rooms", [])
-	var has_numbered_rooms := false
-	for room in rooms:
-		var room_id := String(room.get("id", ""))
-		if room_id.begins_with("f") and room_id.find("_") >= 0:
-			has_numbered_rooms = true
-			break
-	if not has_numbered_rooms:
-		return plan
-	var act_floor_index := max(1, floor_index + 1)
-	var act_index := _act_index_for_floor(act_floor_index)
-	var start_floor: int = 1
-	if act_index > 0:
-		start_floor = act_floor_breaks[act_index - 1] + 1
-	var end_floor: int = act_floor_breaks[act_index]
-	var keep_ids: Dictionary = {}
-	var filtered_rooms: Array[Dictionary] = []
-	for room in rooms:
-		var room_id := String(room.get("id", ""))
-		if room_id == "":
-			continue
-		var room_floor := _room_floor_number(room_id)
-		if room_floor >= start_floor and room_floor <= end_floor:
-			filtered_rooms.append(room)
-			keep_ids[room_id] = true
-	if start_floor == 1:
-		for room in rooms:
-			if String(room.get("id", "")) == "start":
-				filtered_rooms.append(room)
-				keep_ids["start"] = true
-				break
-	if _is_final_act(act_index):
-		for room in rooms:
-			var room_id := String(room.get("id", ""))
-			if room_id in ["boss", "victory"]:
-				filtered_rooms.append(room)
-				keep_ids[room_id] = true
-	var filtered_plan := plan.duplicate()
-	filtered_plan["rooms"] = filtered_rooms
-	var visible_ids: Array = plan.get("visible_room_ids", [])
-	if not visible_ids.is_empty():
-		var filtered_visible: Array[String] = []
-		for room_id in visible_ids:
-			var id_str := String(room_id)
-			if keep_ids.has(id_str):
-				filtered_visible.append(id_str)
-		filtered_plan["visible_room_ids"] = filtered_visible
-	var visible_edges: Array = plan.get("visible_edges", [])
-	if not visible_edges.is_empty():
-		var filtered_edges: Array[Dictionary] = []
-		for edge in visible_edges:
-			var from_id := String(edge.get("from", ""))
-			var to_id := String(edge.get("to", ""))
-			if keep_ids.has(from_id) and keep_ids.has(to_id):
-				filtered_edges.append(edge)
-		filtered_plan["visible_edges"] = filtered_edges
-	var current_id := String(plan.get("current_room_id", ""))
-	var start_id := String(plan.get("start_room_id", ""))
-	if keep_ids.has(current_id):
-		filtered_plan["start_room_id"] = current_id
-	elif keep_ids.has(start_id):
-		filtered_plan["start_room_id"] = start_id
-	elif not filtered_rooms.is_empty():
-		filtered_plan["start_room_id"] = String(filtered_rooms[0].get("id", ""))
-	return filtered_plan
 
 func _apply_balance_data(data: Resource) -> void:
 	card_data = data.card_data
@@ -905,7 +816,6 @@ func _update_map_graph(choices: Array[Dictionary]) -> void:
 	if map_graph == null or not map_graph.has_method("set_plan"):
 		return
 	var plan := map_manager.get_active_plan_summary(choices)
-	plan = _filter_plan_for_current_act(plan)
 	map_graph.call("set_plan", plan, choices)
 
 func _enter_room(room_type: String) -> void:
@@ -950,8 +860,7 @@ func _start_boss() -> void:
 func _begin_encounter(is_elite: bool, is_boss: bool) -> void:
 	state = GameState.PLANNING
 	_hide_all_panels()
-	var act_floor_index: int = floor_index - 1 if is_boss else floor_index
-	active_act_config = _get_act_config_for_floor(act_floor_index)
+	active_act_config = _get_active_act_config()
 	current_is_elite = is_elite
 	act_ball_speed_multiplier = active_act_config.ball_speed_multiplier if active_act_config != null else 1.0
 	info_label.text = _get_intro_text(active_act_config, is_elite, is_boss)
@@ -1118,14 +1027,19 @@ func _end_encounter() -> void:
 	_clear_active_balls()
 	_reset_deck_for_next_floor()
 	if current_is_boss:
-		var act_index := _act_index_for_floor(max(1, floor_index - 1))
-		if _is_final_act(act_index):
-			_show_victory()
+		if map_manager != null and map_manager.has_acts():
+			var act_index := map_manager.get_active_act_index()
+			if map_manager.is_final_act():
+				_show_victory()
+			else:
+				_spawn_act_complete_particles()
+				await _play_planning_victory_message("Act %d Complete!" % (act_index + 1))
+				map_manager.advance_act()
+				_update_act_floor_limits()
+				_show_map()
+			return
 		else:
-			_spawn_act_complete_particles()
-			await _play_planning_victory_message("Act %d Complete!" % (act_index + 1))
-			_advance_act_threshold(act_index)
-			_show_map()
+			_show_victory()
 		return
 	gold += _get_encounter_gold_reward()
 	if state == GameState.PLANNING:
