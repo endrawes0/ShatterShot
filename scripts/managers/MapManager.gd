@@ -1,8 +1,6 @@
 extends Node
 class_name MapManager
 
-@export var floor_plan: FloorPlan
-
 var current_room_id: String = ""
 var fallback_active: bool = false
 var runtime_rooms: Array[Dictionary] = []
@@ -276,8 +274,6 @@ func _active_rooms() -> Array[Dictionary]:
 		return []
 	if not runtime_rooms.is_empty():
 		return runtime_rooms
-	if floor_plan != null:
-		return floor_plan.rooms
 	return []
 
 func _active_start_room_id() -> String:
@@ -288,8 +284,6 @@ func _active_start_room_id() -> String:
 		return ""
 	if not runtime_rooms.is_empty():
 		return runtime_start_room_id
-	if floor_plan != null:
-		return floor_plan.start_room_id
 	return ""
 
 func _has_active_floor_plan() -> bool:
@@ -298,13 +292,11 @@ func _has_active_floor_plan() -> bool:
 		return true
 	if not runtime_rooms.is_empty():
 		return true
-	return floor_plan != null and floor_plan.rooms.size() > 0
+	return false
 
 func _active_acts() -> Array[Dictionary]:
 	if not runtime_acts.is_empty():
 		return runtime_acts
-	if floor_plan != null:
-		return floor_plan.acts
 	return []
 
 func _resolve_next_entries(room: Dictionary) -> Array[Dictionary]:

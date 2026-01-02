@@ -21,7 +21,6 @@ const BASE_STARTING_HAND_SIZE: int = 4
 const BALL_SPAWN_OFFSET: Vector2 = Vector2(0, -32)
 const ENCOUNTER_CONFIG_DIR: String = "res://data/encounters"
 const ACT_CONFIG_DIR: String = "res://data/act_configs"
-const FLOOR_PLAN_PATH: String = "res://data/floor_plans/basic.tres"
 const FLOOR_PLAN_GENERATOR_CONFIG_PATH: String = "res://data/floor_plans/generator_config.tres"
 const FLOOR_PLAN_GENERATOR := preload("res://scripts/data/FloorPlanGenerator.gd")
 const FLOOR_PLAN_GENERATOR_CONFIG := preload("res://scripts/data/FloorPlanGeneratorConfig.gd")
@@ -218,9 +217,6 @@ func _ready() -> void:
 	encounter_manager.load_configs_from_dir(ENCOUNTER_CONFIG_DIR)
 	map_manager = MapManager.new()
 	add_child(map_manager)
-	var floor_plan_resource := load(FLOOR_PLAN_PATH)
-	if floor_plan_resource != null:
-		map_manager.floor_plan = floor_plan_resource
 	var generator_config_resource := load(FLOOR_PLAN_GENERATOR_CONFIG_PATH)
 	if generator_config_resource is FLOOR_PLAN_GENERATOR_CONFIG:
 		floor_plan_generator_config = generator_config_resource
@@ -318,7 +314,7 @@ func set_pending_seed(seed_value: int) -> void:
 
 func _reset_run_rng() -> void:
 	var seed_value: int = 0
-	if floor_plan_generator_config == null or not floor_plan_generator_config.enabled:
+	if floor_plan_generator_config == null:
 		run_rng.randomize()
 		run_seed = 0
 		return
@@ -678,7 +674,7 @@ func _toggle_map_preview() -> void:
 	_show_map_preview()
 
 func _generate_floor_plan_if_needed() -> void:
-	if floor_plan_generator_config == null or not floor_plan_generator_config.enabled:
+	if floor_plan_generator_config == null:
 		return
 	var generator := FLOOR_PLAN_GENERATOR.new()
 	var plan := generator.generate(floor_plan_generator_config)
