@@ -86,26 +86,24 @@ card_data = {
 card_pool = Array[String](["punch", "twin", "guard", "widen", "bomb", "rally", "focus", "haste", "slow", "what_doesnt_kill_us"])
 starting_deck = Array[String](["punch", "punch", "punch", "punch", "twin", "twin", "guard", "guard", "rally", "focus"])
 ball_mods = {
-"colors": {
-"explosive": Color(0.95, 0.35, 0.35, 1),
-"miracle": Color(0.45, 0.75, 1, 1),
-"spikes": Color(0.95, 0.85, 0.25, 1)
-},
 "data": {
 "explosive": {
 "name": "Explosives"
 "cost": 50,
-"desc": "Explode bricks on hit."
+"desc": "Explode bricks on hit.",
+"color": Color(0.95, 0.35, 0.35, 1)
 },
 "miracle": {
 "name": "Miracle"
 "cost": 75,
-"desc": "One floor bounce per ball."
+"desc": "One floor bounce per ball.",
+"color": Color(0.45, 0.75, 1, 1)
 },
 "spikes": {
 "name": "Spikes"
 "cost": 50,
-"desc": "Ignore brick shields on hit."
+"desc": "Ignore brick shields on hit.",
+"color": Color(0.95, 0.85, 0.25, 1)
 }
 },
 "order": Array[String](["explosive", "spikes", "miracle"])

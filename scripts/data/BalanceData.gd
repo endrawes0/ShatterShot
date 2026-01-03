@@ -7,8 +7,7 @@ class_name BalanceData
 
 @export var ball_mods: Dictionary = {
 	"data": {},
-	"order": [],
-	"colors": {}
+	"order": []
 }
 
 @export var shop_data: Dictionary = {

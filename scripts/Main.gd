@@ -398,7 +398,11 @@ func _apply_balance_data(data: Resource) -> void:
 	var mods: Dictionary = data.ball_mods
 	ball_mod_data = mods.get("data", {})
 	ball_mod_order = mods.get("order", [])
-	ball_mod_colors = mods.get("colors", {})
+	ball_mod_colors = {}
+	for mod_id in ball_mod_data.keys():
+		var mod: Dictionary = ball_mod_data[mod_id]
+		if mod.has("color"):
+			ball_mod_colors[mod_id] = mod["color"]
 	reward_card_count = data.reward_card_count
 	var shop: Dictionary = data.shop_data
 	shop_card_price = int(shop.get("card_price", 0))
