@@ -28,6 +28,8 @@ var reserve_ball_price: int = 0
 var reserve_ball_bonus: int = 0
 var shop_discount_price: int = 0
 var shop_discount_percent: float = 0.0
+var shop_discount_max: int = 0
+var shop_discount_purchases: int = 0
 var shop_entry_card_price: int = 0
 var shop_entry_card_count: int = 0
 var reroll_base_price: int = 0
@@ -67,6 +69,7 @@ func configure(config: Dictionary) -> void:
 	reserve_ball_bonus = int(config.get("reserve_ball_bonus", 0))
 	shop_discount_price = int(config.get("shop_discount_price", 0))
 	shop_discount_percent = float(config.get("shop_discount_percent", 0.0))
+	shop_discount_max = int(config.get("shop_discount_max", 0))
 	shop_entry_card_price = int(config.get("shop_entry_card_price", 0))
 	shop_entry_card_count = int(config.get("shop_entry_card_count", 0))
 	reroll_base_price = int(config.get("reroll_base_price", 0))
@@ -78,6 +81,9 @@ func configure(config: Dictionary) -> void:
 
 func set_callbacks(callbacks_map: Dictionary) -> void:
 	callbacks = callbacks_map
+
+func reset_shop_limits() -> void:
+	shop_discount_purchases = 0
 
 func reset_offers(pick_card: Callable, offer_count: int = 2) -> void:
 	reroll_count = 0
@@ -104,6 +110,11 @@ func get_card_offers() -> Array[String]:
 func get_reroll_price() -> int:
 	var multiplier_value: float = pow(reroll_multiplier, reroll_count)
 	return int(round(float(reroll_base_price) * multiplier_value))
+
+func _get_discount_remaining() -> int:
+	if shop_discount_max <= 0:
+		return -1
+	return max(0, shop_discount_max - shop_discount_purchases)
 
 func build_shop_buttons() -> void:
 	if shop_cards_buttons == null or shop_buffs_buttons == null or shop_ball_mods_buttons == null:
@@ -277,10 +288,22 @@ func _build_shop_buff_buttons() -> void:
 
 	if shop_discount_percent > 0.0:
 		var discount_buff := Button.new()
+		var remaining_discounts: int = _get_discount_remaining()
 		discount_buff.text = "Shop Discount (-%d%% prices) (%dg)" % [int(round(shop_discount_percent)), shop_discount_price]
+		if shop_discount_max > 0:
+			discount_buff.text = "%s (%d left)" % [discount_buff.text, remaining_discounts]
+		if shop_discount_max > 0 and remaining_discounts <= 0:
+			discount_buff.disabled = true
+			discount_buff.tooltip_text = "Shop discounts are maxed out."
 		discount_buff.pressed.connect(func() -> void:
+			var press_remaining: int = _get_discount_remaining()
+			if shop_discount_max > 0 and press_remaining <= 0:
+				_call_set_info("Shop discounts are maxed out.")
+				purchase_failed.emit("discount_max")
+				return
 			if _call_can_afford(shop_discount_price):
 				_call_spend_gold(shop_discount_price)
+				shop_discount_purchases += 1
 				_call_apply_shop_discount(shop_discount_percent)
 				_call_set_info("Shop prices discounted by %d%%." % int(round(shop_discount_percent)))
 				_call_update_labels()
@@ -295,8 +318,11 @@ func _build_shop_buff_buttons() -> void:
 
 	if shop_entry_card_count > 0:
 		var entry_buff := Button.new()
+		var remaining_offers: int = max_card_offers - card_offers.size() if max_card_offers > 0 else 0
 		entry_buff.text = "Shop Scribe (+%d card on entry) (%dg)" % [shop_entry_card_count, shop_entry_card_price]
-		if max_card_offers > 0 and card_offers.size() >= max_card_offers:
+		if max_card_offers > 0:
+			entry_buff.text = "%s (%d left)" % [entry_buff.text, max(0, remaining_offers)]
+		if max_card_offers > 0 and remaining_offers <= 0:
 			entry_buff.disabled = true
 			entry_buff.tooltip_text = "Shop is at max card offers."
 		entry_buff.pressed.connect(func() -> void:

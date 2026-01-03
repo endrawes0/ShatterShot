@@ -32,6 +32,7 @@ class_name BalanceData
 	"reserve_ball_bonus": 1,
 	"discount_price": 50,
 	"discount_percent": 20.0,
+	"discount_max": 5,
 	"entry_card_price": 70,
 	"entry_card_count": 1
 }

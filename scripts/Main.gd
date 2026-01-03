@@ -153,6 +153,7 @@ var shop_reserve_ball_price: int = 0
 var shop_reserve_ball_bonus: int = 0
 var shop_discount_price: int = 0
 var shop_discount_percent: float = 0.0
+var shop_discount_max: int = 0
 var shop_entry_card_price: int = 0
 var shop_entry_card_count: int = 0
 
@@ -416,6 +417,7 @@ func _apply_balance_data(data: Resource) -> void:
 	shop_reserve_ball_bonus = int(shop.get("reserve_ball_bonus", 0))
 	shop_discount_price = int(shop.get("discount_price", 0))
 	shop_discount_percent = float(shop.get("discount_percent", 0.0))
+	shop_discount_max = int(shop.get("discount_max", 0))
 	shop_entry_card_price = int(shop.get("entry_card_price", 0))
 	shop_entry_card_count = int(shop.get("entry_card_count", 0))
 
@@ -1125,6 +1127,7 @@ func _show_shop() -> void:
 	info_label.text = ""
 	shop_discount_multiplier = 1.0
 	if shop_manager:
+		shop_manager.reset_shop_limits()
 		shop_manager.reset_offers(Callable(self, "_pick_random_card"))
 		_configure_shop_manager()
 	_apply_shop_entry_bonus()
@@ -1263,6 +1266,7 @@ func _configure_shop_manager() -> void:
 		"reserve_ball_bonus": shop_reserve_ball_bonus,
 		"shop_discount_price": _get_discounted_shop_price(shop_discount_price),
 		"shop_discount_percent": shop_discount_percent,
+		"shop_discount_max": shop_discount_max,
 		"shop_entry_card_price": _get_discounted_shop_price(shop_entry_card_price),
 		"shop_entry_card_count": shop_entry_card_count,
 		"reroll_base_price": shop_reroll_base_price,
