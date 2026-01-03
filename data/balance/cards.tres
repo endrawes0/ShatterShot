@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://c1nrgx2dp2c32"]
 
-[ext_resource type="Script" uid="uid://b0p2w0v2a5t34" path="res://scripts/data/CardData.gd" id="1"]
+[ext_resource type="Script" uid="uid://jh14sn6ualhk" path="res://scripts/data/CardData.gd" id="1"]
 
 [resource]
 script = ExtResource("1")
@@ -11,20 +11,6 @@ card_data = {
 "emoji": "💣",
 "name": "Bomb",
 "type": "offense"
-},
-"moab": {
-"cost": 3,
-"desc": "Destroy up to 10 random bricks.",
-"emoji": "💥💣",
-"name": "MOAB",
-"type": "offense"
-},
-"parry": {
-"cost": 1,
-"desc": "Block the next Wound gained this volley.",
-"emoji": "🛡️",
-"name": "Parry",
-"type": "defense"
 },
 "focus": {
 "cost": 0,
@@ -47,6 +33,20 @@ card_data = {
 "name": "Haste",
 "type": "utility"
 },
+"moab": {
+"cost": 3,
+"desc": "Destroy up to 10 random bricks.",
+"emoji": "💣‼️",
+"name": "MOAB",
+"type": "offense"
+},
+"parry": {
+"cost": 1,
+"desc": "Block the next Wound gained this volley.",
+"emoji": "⚔️",
+"name": "Parry",
+"type": "defense"
+},
 "punch": {
 "cost": 1,
 "desc": "+1 volley damage.",
@@ -64,7 +64,7 @@ card_data = {
 "riposte": {
 "cost": 1,
 "desc": "If you have a Parry in hand, discard it to block a Wound this volley and destroy a random brick.",
-"emoji": "⚔️",
+"emoji": "🛡️⚔️",
 "name": "Riposte",
 "type": "offense"
 },
