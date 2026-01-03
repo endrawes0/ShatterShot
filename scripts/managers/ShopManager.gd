@@ -216,8 +216,10 @@ func _build_shop_buff_buttons() -> void:
 
 	if energy_buff_bonus > 0:
 		var energy_buff := Button.new()
+		var max_energy_remaining: int = 2 - _call_get_max_energy_bonus()
 		energy_buff.text = "Surge (+%d max energy) (%dg)" % [energy_buff_bonus, energy_buff_price]
-		if _call_get_max_energy_bonus() >= 2:
+		energy_buff.text = "%s (%d left)" % [energy_buff.text, max(0, max_energy_remaining)]
+		if max_energy_remaining <= 0:
 			energy_buff.disabled = true
 			energy_buff.tooltip_text = "Max energy bonus is capped at 2."
 		energy_buff.pressed.connect(func() -> void:
@@ -277,9 +279,10 @@ func _build_shop_buff_buttons() -> void:
 
 	if reserve_ball_bonus > 0:
 		var reserve_buff := Button.new()
+		var reserve_remaining: int = 1 - _call_get_reserve_ball_bonus()
 		reserve_buff.text = "Reserve Ball (+%d per volley) (%dg)" % [reserve_ball_bonus, reserve_ball_price]
-		var reserve_current: int = _call_get_reserve_ball_bonus()
-		if reserve_current >= 1:
+		reserve_buff.text = "%s (%d left)" % [reserve_buff.text, max(0, reserve_remaining)]
+		if reserve_remaining <= 0:
 			reserve_buff.disabled = true
 			reserve_buff.tooltip_text = "Reserve ball bonus is maxed out."
 		reserve_buff.pressed.connect(func() -> void:
