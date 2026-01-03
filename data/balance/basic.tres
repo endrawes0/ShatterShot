@@ -85,7 +85,13 @@ card_data = {
 }
 card_pool = Array[String](["punch", "twin", "guard", "widen", "bomb", "rally", "focus", "haste", "slow", "what_doesnt_kill_us"])
 starting_deck = Array[String](["punch", "punch", "punch", "punch", "twin", "twin", "guard", "guard", "rally", "focus"])
-ball_mod_data = {
+ball_mods = {
+"colors": {
+"explosive": Color(0.95, 0.35, 0.35, 1),
+"miracle": Color(0.45, 0.75, 1, 1),
+"spikes": Color(0.95, 0.85, 0.25, 1)
+},
+"data": {
 "explosive": {
 "cost": 50,
 "desc": "Explode bricks on hit.",
@@ -101,28 +107,33 @@ ball_mod_data = {
 "desc": "Ignore brick shields on hit.",
 "name": "Spikes"
 }
+},
+"order": Array[String](["explosive", "spikes", "miracle"])
 }
-ball_mod_order = Array[String](["explosive", "spikes", "miracle"])
-ball_mod_colors = {
-"explosive": Color(0.95, 0.35, 0.35, 1),
-"miracle": Color(0.45, 0.75, 1, 1),
-"spikes": Color(0.95, 0.85, 0.25, 1)
+shop_data = {
+"card_price": 40,
+"remove_price": 30,
+"upgrade_price": 60,
+"upgrade_hand_bonus": 1,
+"vitality_price": 60,
+"vitality_max_hp_bonus": 25,
+"vitality_heal": 30,
+"reroll_base_price": 20,
+"reroll_multiplier": 1.8,
+"energy_price": 70,
+"energy_bonus": 1,
+"paddle_width_price": 60,
+"paddle_width_bonus": 10.0,
+"paddle_speed_price": 60,
+"paddle_speed_bonus_percent": 10.0,
+"reserve_ball_price": 80,
+"reserve_ball_bonus": 1,
+"threat_reduction_price": 70,
+"threat_reduction_amount": 4,
+"energy_refund_price": 90,
+"energy_refund_amount": 1,
+"discount_price": 50,
+"discount_percent": 20.0,
+"entry_card_price": 70,
+"entry_card_count": 1
 }
-shop_energy_price = 70
-shop_energy_bonus = 1
-shop_paddle_width_price = 60
-shop_paddle_width_bonus = 10.0
-shop_paddle_speed_price = 60
-shop_paddle_speed_bonus_percent = 10.0
-shop_reserve_ball_price = 80
-shop_reserve_ball_bonus = 1
-shop_threat_reduction_price = 70
-shop_threat_reduction_amount = 4
-shop_energy_refund_price = 90
-shop_energy_refund_amount = 1
-shop_discount_price = 50
-shop_discount_percent = 20.0
-shop_entry_card_price = 70
-shop_entry_card_count = 1
-shop_vitality_max_hp_bonus = 25
-shop_vitality_heal = 30

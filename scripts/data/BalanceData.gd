@@ -5,33 +5,38 @@ class_name BalanceData
 @export var card_pool: Array[String] = []
 @export var starting_deck: Array[String] = []
 
-@export var ball_mod_data: Dictionary = {}
-@export var ball_mod_order: Array[String] = []
-@export var ball_mod_colors: Dictionary = {}
+@export var ball_mods: Dictionary = {
+	"data": {},
+	"order": [],
+	"colors": {}
+}
 
-@export var shop_card_price: int = 40
-@export var shop_remove_price: int = 30
-@export var shop_upgrade_price: int = 60
-@export var shop_upgrade_hand_bonus: int = 1
-@export var shop_vitality_price: int = 60
-@export var shop_vitality_max_hp_bonus: int = 10
-@export var shop_vitality_heal: int = 10
-@export var shop_reroll_base_price: int = 20
-@export var shop_reroll_multiplier: float = 1.8
+@export var shop_data: Dictionary = {
+	"card_price": 40,
+	"remove_price": 30,
+	"upgrade_price": 60,
+	"upgrade_hand_bonus": 1,
+	"vitality_price": 60,
+	"vitality_max_hp_bonus": 10,
+	"vitality_heal": 10,
+	"reroll_base_price": 20,
+	"reroll_multiplier": 1.8,
+	"energy_price": 70,
+	"energy_bonus": 1,
+	"paddle_width_price": 60,
+	"paddle_width_bonus": 10.0,
+	"paddle_speed_price": 60,
+	"paddle_speed_bonus_percent": 10.0,
+	"reserve_ball_price": 80,
+	"reserve_ball_bonus": 1,
+	"threat_reduction_price": 70,
+	"threat_reduction_amount": 4,
+	"energy_refund_price": 90,
+	"energy_refund_amount": 1,
+	"discount_price": 50,
+	"discount_percent": 20.0,
+	"entry_card_price": 70,
+	"entry_card_count": 1
+}
+
 @export var reward_card_count: int = 3
-@export var shop_energy_price: int = 70
-@export var shop_energy_bonus: int = 1
-@export var shop_paddle_width_price: int = 60
-@export var shop_paddle_width_bonus: float = 10.0
-@export var shop_paddle_speed_price: int = 60
-@export var shop_paddle_speed_bonus_percent: float = 10.0
-@export var shop_reserve_ball_price: int = 80
-@export var shop_reserve_ball_bonus: int = 1
-@export var shop_threat_reduction_price: int = 70
-@export var shop_threat_reduction_amount: int = 4
-@export var shop_energy_refund_price: int = 90
-@export var shop_energy_refund_amount: int = 1
-@export var shop_discount_price: int = 50
-@export var shop_discount_percent: float = 20.0
-@export var shop_entry_card_price: int = 70
-@export var shop_entry_card_count: int = 1
