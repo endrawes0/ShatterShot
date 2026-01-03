@@ -178,11 +178,14 @@ func build_shop_card_buttons() -> void:
 func _build_shop_buff_buttons() -> void:
 	if shop_buffs_buttons == null:
 		return
-	var upgrade := Button.new()
-	upgrade.text = "Upgrade starting hand (+%d) (%dg)" % [upgrade_hand_bonus, upgrade_price]
-	if max_hand_size > 0 and _call_get_starting_hand_size() >= max_hand_size:
-		upgrade.disabled = true
-		upgrade.tooltip_text = "Starting hand is at max size."
+var upgrade := Button.new()
+upgrade.text = "Upgrade starting hand (+%d) (%dg)" % [upgrade_hand_bonus, upgrade_price]
+if max_hand_size > 0:
+	var hand_remaining: int = max(0, max_hand_size - _call_get_starting_hand_size())
+	upgrade.text = "%s (%d remaining)" % [upgrade.text, hand_remaining]
+if max_hand_size > 0 and _call_get_starting_hand_size() >= max_hand_size:
+	upgrade.disabled = true
+	upgrade.tooltip_text = "Starting hand is at max size."
 	upgrade.pressed.connect(func() -> void:
 		if max_hand_size > 0 and _call_get_starting_hand_size() >= max_hand_size:
 			_call_set_info("Starting hand is at max size.")
@@ -228,7 +231,7 @@ func _build_shop_buff_buttons() -> void:
 		var energy_buff := Button.new()
 		var max_energy_remaining: int = 2 - _call_get_max_energy_bonus()
 		energy_buff.text = "Surge (+%d max energy) (%dg)" % [energy_buff_bonus, energy_buff_price]
-		energy_buff.text = "%s (%d left)" % [energy_buff.text, max(0, max_energy_remaining)]
+		energy_buff.text = "%s (%d remaining)" % [energy_buff.text, max(0, max_energy_remaining)]
 		if max_energy_remaining <= 0:
 			energy_buff.disabled = true
 			energy_buff.tooltip_text = "Max energy bonus is capped at 2."
@@ -292,7 +295,7 @@ func _build_shop_buff_buttons() -> void:
 		var reserve_buff := Button.new()
 		var reserve_remaining: int = 1 - _call_get_reserve_ball_bonus()
 		reserve_buff.text = "Reserve Ball (+%d per volley) (%dg)" % [reserve_ball_bonus, reserve_ball_price]
-		reserve_buff.text = "%s (%d left)" % [reserve_buff.text, max(0, reserve_remaining)]
+		reserve_buff.text = "%s (%d remaining)" % [reserve_buff.text, max(0, reserve_remaining)]
 		if reserve_remaining <= 0:
 			reserve_buff.disabled = true
 			reserve_buff.tooltip_text = "Reserve ball bonus is maxed out."
@@ -321,7 +324,7 @@ func _build_shop_buff_buttons() -> void:
 		var remaining_discounts: int = _get_discount_remaining()
 		discount_buff.text = "Shop Discount (-%d%% prices) (%dg)" % [int(round(shop_discount_percent)), shop_discount_price]
 		if shop_discount_max > 0:
-			discount_buff.text = "%s (%d left)" % [discount_buff.text, remaining_discounts]
+			discount_buff.text = "%s (%d remaining)" % [discount_buff.text, remaining_discounts]
 		if shop_discount_max > 0 and remaining_discounts <= 0:
 			discount_buff.disabled = true
 			discount_buff.tooltip_text = "Shop discounts are maxed out."
@@ -351,7 +354,7 @@ func _build_shop_buff_buttons() -> void:
 		var remaining_offers: int = max_card_offers - card_offers.size() if max_card_offers > 0 else 0
 		entry_buff.text = "Shop Scribe (+%d card on entry) (%dg)" % [shop_entry_card_count, shop_entry_card_price]
 		if max_card_offers > 0:
-			entry_buff.text = "%s (%d left)" % [entry_buff.text, max(0, remaining_offers)]
+			entry_buff.text = "%s (%d remaining)" % [entry_buff.text, max(0, remaining_offers)]
 		if max_card_offers > 0 and remaining_offers <= 0:
 			entry_buff.disabled = true
 			entry_buff.tooltip_text = "Shop is at max card offers."
