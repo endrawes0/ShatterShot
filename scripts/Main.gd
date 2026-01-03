@@ -1685,14 +1685,26 @@ func _on_brick_destroyed(_brick: Node) -> void:
 				suppress = bool(_brick.get("suppress_curse_on_destroy"))
 			if not suppress and parry_wound_blocks > 0:
 				parry_wound_blocks -= 1
+				var riposte_target_pos = null
+				var riposte_on_arrive := Callable()
 				if riposte_wound_blocks > 0:
 					riposte_wound_blocks -= 1
-					_destroy_random_bricks(1)
+					var riposte_target: Node = _pick_random_brick()
+					if riposte_target != null and riposte_target is Node2D:
+						riposte_target_pos = (riposte_target as Node2D).global_position
+						riposte_on_arrive = func() -> void:
+							if is_instance_valid(riposte_target):
+								_apply_brick_damage_cap(riposte_target, 999)
 					info_label.text = "Riposte deflects a wound."
 				else:
 					info_label.text = "Parry blocks a wound."
 				if _brick is Node2D:
-					_spawn_wound_flyout((_brick as Node2D).global_position, true)
+					_spawn_wound_flyout(
+						(_brick as Node2D).global_position,
+						true,
+						riposte_target_pos,
+						riposte_on_arrive
+					)
 				_update_labels()
 			elif not suppress:
 				deck_manager.add_card("wound")
@@ -1741,6 +1753,16 @@ func _destroy_random_bricks(amount: int) -> void:
 	for i in range(min(amount, bricks.size())):
 		var brick: Node = bricks[i]
 		_apply_brick_damage_cap(brick, 999)
+
+func _pick_random_brick() -> Node:
+	if bricks_root == null:
+		return null
+	var bricks: Array = bricks_root.get_children()
+	_shuffle_array(bricks)
+	for brick in bricks:
+		if brick != null:
+			return brick
+	return null
 
 func _apply_brick_damage_cap(brick: Node, amount: int) -> void:
 	if brick == null:
@@ -1810,18 +1832,22 @@ func _update_labels() -> void:
 		max_floors
 	)
 
-func _spawn_wound_flyout(start_pos: Vector2, is_blocked: bool) -> void:
+func _spawn_wound_flyout(start_pos: Vector2, is_blocked: bool, target_pos = null, on_arrive: Callable = Callable()) -> void:
 	var fly_label := Label.new()
-	fly_label.text = "🤕"
+	fly_label.text = "🗡️"
 	fly_label.position = start_pos
 	fly_label.add_theme_font_size_override("font_size", 20)
 	hud.add_child(fly_label)
 	var target: Vector2 = deck_stack.get_global_rect().get_center()
+	if target_pos != null:
+		target = target_pos
 	var tween := get_tree().create_tween()
 	tween.tween_property(fly_label, "global_position", target, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_property(fly_label, "scale", Vector2(0.6, 0.6), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	if is_blocked:
+	if is_blocked and target_pos == null:
 		tween.tween_callback(_spawn_wound_block_shield)
+	tween.tween_property(fly_label, "scale", Vector2(0.6, 0.6), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	if on_arrive.is_valid():
+		tween.tween_callback(on_arrive)
 	tween.tween_callback(fly_label.queue_free)
 
 func _spawn_wound_block_shield() -> void:
