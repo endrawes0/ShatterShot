@@ -1832,22 +1832,22 @@ func _update_labels() -> void:
 		max_floors
 	)
 
-func _spawn_wound_flyout(start_pos: Vector2, is_blocked: bool, target_pos = null, on_arrive: Callable = Callable()) -> void:
+func _spawn_wound_flyout(start_pos: Vector2, is_blocked: bool, reflect_pos = null, on_reflect: Callable = Callable()) -> void:
 	var fly_label := Label.new()
 	fly_label.text = "🗡️"
 	fly_label.position = start_pos
 	fly_label.add_theme_font_size_override("font_size", 20)
 	hud.add_child(fly_label)
-	var target: Vector2 = deck_stack.get_global_rect().get_center()
-	if target_pos != null:
-		target = target_pos
+	var deck_center: Vector2 = deck_stack.get_global_rect().get_center()
 	var tween := get_tree().create_tween()
-	tween.tween_property(fly_label, "global_position", target, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	if is_blocked and target_pos == null:
+	tween.tween_property(fly_label, "global_position", deck_center, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if is_blocked:
 		tween.tween_callback(_spawn_wound_block_shield)
 	tween.tween_property(fly_label, "scale", Vector2(0.6, 0.6), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	if on_arrive.is_valid():
-		tween.tween_callback(on_arrive)
+	if reflect_pos != null:
+		tween.tween_property(fly_label, "global_position", reflect_pos, 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		if on_reflect.is_valid():
+			tween.tween_callback(on_reflect)
 	tween.tween_callback(fly_label.queue_free)
 
 func _spawn_wound_block_shield() -> void:
