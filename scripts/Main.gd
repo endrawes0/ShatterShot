@@ -1240,6 +1240,7 @@ func _shop_callbacks() -> Dictionary:
 		"get_reserve_ball_bonus": Callable(self, "_get_reserve_ball_bonus"),
 		"apply_shop_discount": Callable(self, "_apply_shop_discount"),
 		"apply_shop_entry_cards": Callable(self, "_apply_shop_entry_cards"),
+		"refresh_shop_buttons": Callable(self, "_build_shop_buttons"),
 		"refresh_mod_buttons": Callable(self, "_refresh_mod_buttons")
 	}
 

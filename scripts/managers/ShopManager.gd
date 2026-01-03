@@ -232,6 +232,7 @@ func _build_shop_buff_buttons() -> void:
 				var new_max: int = _call_apply_max_energy(energy_buff_bonus)
 				_call_set_info("Max energy increased to %d." % new_max)
 				_call_update_labels()
+				_call_refresh_shop_buttons()
 				purchase_completed.emit()
 			else:
 				_call_set_info("Not enough gold.")
@@ -295,6 +296,7 @@ func _build_shop_buff_buttons() -> void:
 				var new_bonus: int = _call_apply_reserve_ball(reserve_ball_bonus)
 				_call_set_info("Reserve balls per volley increased to %d." % new_bonus)
 				_call_update_labels()
+				_call_refresh_shop_buttons()
 				purchase_completed.emit()
 			else:
 				_call_set_info("Not enough gold.")
@@ -500,6 +502,10 @@ func _call_apply_shop_entry_cards(amount: int) -> int:
 	if callbacks.has("apply_shop_entry_cards") and callbacks.apply_shop_entry_cards.is_valid():
 		return int(callbacks.apply_shop_entry_cards.call(amount))
 	return 0
+
+func _call_refresh_shop_buttons() -> void:
+	if callbacks.has("refresh_shop_buttons") and callbacks.refresh_shop_buttons.is_valid():
+		callbacks.refresh_shop_buttons.call()
 
 func _call_refresh_mod_buttons() -> void:
 	if callbacks.has("refresh_mod_buttons") and callbacks.refresh_mod_buttons.is_valid():
