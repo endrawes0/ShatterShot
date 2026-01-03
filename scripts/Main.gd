@@ -1894,7 +1894,7 @@ func _retarget_riposte_flyout(fly_label_id: int, retries_left: int) -> void:
 		riposte_flyouts.erase(fly_label_id)
 		(fly_label as Node).queue_free()
 		return
-	var existing := riposte_flyouts.get(fly_label_id, {})
+	var existing: Dictionary = riposte_flyouts.get(fly_label_id, {})
 	var tween: Tween = existing.get("tween", null)
 	if tween != null and is_instance_valid(tween):
 		tween.kill()
