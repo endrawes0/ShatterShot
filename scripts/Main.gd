@@ -36,6 +36,8 @@ const OUTCOME_PARTICLE_SPEED_Y_VICTORY: Vector2 = Vector2(-220.0, -60.0)
 const OUTCOME_PARTICLE_SPEED_Y_DEFEAT: Vector2 = Vector2(40.0, 200.0)
 const VOLLEY_PROMPT_OFFSET_Y: float = -70.0
 const START_PROMPT_EXTRA_OFFSET_Y: float = 40.0
+const VICTORY_REVIVE_HP_BONUS: int = 25
+const VICTORY_REVIVE_TOAST: String = "Resurrection: You pull yourself back from the brink of death! (+25 HP)"
 
 @export var brick_size: Vector2 = Vector2(64, 24)
 @export var brick_gap: Vector2 = Vector2(8, 8)
@@ -527,6 +529,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if reserve_launch_cooldown > 0.0:
 		reserve_launch_cooldown = max(0.0, reserve_launch_cooldown - delta)
+	if state == GameState.GAME_OVER and encounter_manager and encounter_manager.check_victory():
+		_handle_gameover_victory()
 
 func _start_run() -> void:
 	hp = max_hp
@@ -857,6 +861,7 @@ func _end_turn() -> void:
 	_discard_hand()
 	var incoming: int = max(0, encounter_manager.calculate_threat(act_threat_multiplier) - block)
 	hp -= incoming
+	hp = max(0, hp)
 	info_label.text = "You take %d damage." % incoming
 	if hp <= 0:
 		_show_game_over()
@@ -957,6 +962,7 @@ func _apply_volley_threat() -> void:
 	if encounter_manager:
 		threat = encounter_manager.calculate_threat(act_threat_multiplier)
 	hp -= threat
+	hp = max(0, hp)
 	if hp <= 0:
 		_show_game_over()
 		return
@@ -1008,11 +1014,38 @@ func _get_planning_victory_message() -> String:
 	return String(planning_victory_messages[index])
 
 func _play_planning_victory_message(message: String) -> void:
-	if info_label == null or hud == null:
+	var toast_data := _create_toast(message, Color(1.0, 0.9, 0.2, 1.0))
+	if toast_data.is_empty():
 		return
+	var tween := _animate_toast(toast_data)
+	await tween.finished
+	(toast_data["toast"] as Label).queue_free()
+
+func _apply_victory_revive() -> void:
+	hp = max(0, hp)
+	hp = min(max_hp, hp + VICTORY_REVIVE_HP_BONUS)
+	_update_labels()
+	var toast_data := _create_toast(VICTORY_REVIVE_TOAST, Color(1.0, 0.9, 0.2, 1.0))
+	if toast_data.is_empty():
+		return
+	var tween := _animate_toast(toast_data)
+	tween.finished.connect(func() -> void:
+		(toast_data["toast"] as Label).queue_free()
+	)
+
+func _handle_gameover_victory() -> void:
+	if gameover_panel:
+		gameover_panel.visible = false
+	info_label.text = ""
+	_apply_victory_revive()
+	_end_encounter()
+
+func _create_toast(message: String, tint: Color) -> Dictionary:
+	if info_label == null or hud == null:
+		return {}
 	var toast := Label.new()
 	toast.text = message
-	toast.modulate = Color(1.0, 0.9, 0.2, 1.0)
+	toast.modulate = tint
 	toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	toast.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	toast.size = info_label.size
@@ -1025,12 +1058,16 @@ func _play_planning_victory_message(message: String) -> void:
 		original_pos.y = volley_prompt_label.global_position.y
 	var viewport_width: float = get_viewport_rect().size.x
 	toast.global_position = Vector2(viewport_width + toast.size.x, original_pos.y)
+	return {"toast": toast, "pos": original_pos}
+
+func _animate_toast(toast_data: Dictionary) -> Tween:
+	var toast := toast_data.get("toast") as Label
+	var original_pos: Vector2 = toast_data.get("pos", Vector2.ZERO)
 	var tween := create_tween()
 	tween.tween_property(toast, "global_position:x", original_pos.x, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_interval(0.5)
+	tween.tween_interval(2.0)
 	tween.tween_property(toast, "global_position:x", -toast.size.x, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	await tween.finished
-	toast.queue_free()
+	return tween
 
 func _reset_deck_for_next_floor() -> void:
 	if deck_manager:

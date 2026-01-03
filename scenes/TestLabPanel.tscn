@@ -141,6 +141,10 @@ text = "Refill Energy"
 layout_mode = 2
 text = "Heal Full"
 
+[node name="SpawnBounceBall" type="Button" parent="DebugPanel/VBox/ButtonColumns/RightColumn"]
+layout_mode = 2
+text = "Spawn Bounce Ball"
+
 [node name="ClearBricks" type="Button" parent="DebugPanel/VBox/ButtonColumns/RightColumn"]
 layout_mode = 2
 text = "Clear Bricks"

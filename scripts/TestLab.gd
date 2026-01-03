@@ -1,5 +1,7 @@
 extends Control
 
+const BOUNCE_BALL_SCENE := preload("res://scenes/BounceBall.tscn")
+
 var main: Node = null
 @onready var debug_panel: Control = $DebugPanel
 @onready var toggle_button: Button = $ToggleDebug
@@ -116,6 +118,31 @@ func _ready() -> void:
 		_with_main(func(main_node: Node) -> void:
 			main_node.hp = main_node.max_hp
 			main_node._update_labels()
+		)
+	)
+	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/SpawnBounceBall", func() -> void:
+		_with_main(func(main_node: Node) -> void:
+			var bricks_root := main_node.get("bricks_root") as Node
+			if bricks_root == null:
+				return
+			var bounce_ball := BOUNCE_BALL_SCENE.instantiate()
+			if bounce_ball == null:
+				return
+			bricks_root.add_child(bounce_ball)
+			var spawn_pos := App.get_layout_size() * 0.5
+			var paddle := main_node.get("paddle") as Node2D
+			if paddle != null:
+				spawn_pos = paddle.global_position + main_node.BALL_SPAWN_OFFSET
+			if bounce_ball is Node2D:
+				var node := bounce_ball as Node2D
+				node.global_position = spawn_pos
+			if bounce_ball.has_method("setup"):
+				var rng := RandomNumberGenerator.new()
+				rng.randomize()
+				var velocity := Vector2(rng.randf_range(-160.0, 160.0), rng.randf_range(-420.0, -220.0))
+				bounce_ball.call("setup", Color(0.95, 0.85, 0.25), velocity)
+			if bounce_ball.has_method("set"):
+				bounce_ball.set("paddle_path_override", "Paddle")
 		)
 	)
 	_connect_button("DebugPanel/VBox/ButtonColumns/RightColumn/ClearBricks", func() -> void:
