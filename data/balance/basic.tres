@@ -108,8 +108,6 @@ ball_mod_colors = {
 "miracle": Color(0.45, 0.75, 1, 1),
 "spikes": Color(0.95, 0.85, 0.25, 1)
 }
-shop_vitality_max_hp_bonus = 25
-shop_vitality_heal = 30
 shop_energy_price = 70
 shop_energy_bonus = 1
 shop_paddle_width_price = 60
@@ -126,3 +124,5 @@ shop_discount_price = 50
 shop_discount_percent = 20.0
 shop_entry_card_price = 70
 shop_entry_card_count = 1
+shop_vitality_max_hp_bonus = 25
+shop_vitality_heal = 30
