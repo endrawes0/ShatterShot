@@ -134,6 +134,7 @@ var ball_mod_order: Array[String] = []
 var ball_mod_colors: Dictionary = {}
 var reward_card_count: int = 3
 var shop_card_price: int = 0
+var shop_max_cards: int = 0
 var shop_remove_price: int = 0
 var shop_upgrade_price: int = 0
 var shop_upgrade_hand_bonus: int = 0
@@ -396,6 +397,7 @@ func _apply_balance_data(data: Resource) -> void:
 	reward_card_count = data.reward_card_count
 	var shop: Dictionary = data.shop_data
 	shop_card_price = int(shop.get("card_price", 0))
+	shop_max_cards = int(shop.get("max_cards", 0))
 	shop_remove_price = int(shop.get("remove_price", 0))
 	shop_upgrade_price = int(shop.get("upgrade_price", 0))
 	shop_upgrade_hand_bonus = int(shop.get("upgrade_hand_bonus", 0))
@@ -1244,6 +1246,7 @@ func _configure_shop_manager() -> void:
 	shop_manager.configure({
 		"card_data": card_data,
 		"card_price": _get_discounted_shop_price(shop_card_price),
+		"max_card_offers": shop_max_cards,
 		"remove_price": _get_discounted_shop_price(shop_remove_price),
 		"upgrade_hand_bonus": shop_upgrade_hand_bonus,
 		"upgrade_price": _get_discounted_shop_price(shop_upgrade_price),

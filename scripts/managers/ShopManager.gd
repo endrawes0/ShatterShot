@@ -11,6 +11,7 @@ var shop_ball_mods_buttons: Container
 
 var card_data: Dictionary = {}
 var card_price: int = 0
+var max_card_offers: int = 0
 var remove_price: int = 0
 var upgrade_price: int = 0
 var upgrade_hand_bonus: int = 0
@@ -49,6 +50,7 @@ func setup(hud: HudController, cards_container: Container, buffs_container: Cont
 func configure(config: Dictionary) -> void:
 	card_data = config.get("card_data", {})
 	card_price = int(config.get("card_price", 0))
+	max_card_offers = int(config.get("max_card_offers", 0))
 	remove_price = int(config.get("remove_price", 0))
 	upgrade_price = int(config.get("upgrade_price", 0))
 	upgrade_hand_bonus = int(config.get("upgrade_hand_bonus", 0))
@@ -86,7 +88,12 @@ func reroll_offers(pick_card: Callable, offer_count: int = 2) -> void:
 	card_offers = _roll_shop_card_offers(pick_card, offer_count)
 
 func add_card_offers(pick_card: Callable, offer_count: int = 1) -> Array[String]:
-	var offers: Array[String] = _roll_shop_card_offers(pick_card, offer_count)
+	var remaining: int = offer_count
+	if max_card_offers > 0:
+		remaining = min(remaining, max_card_offers - card_offers.size())
+	if remaining <= 0:
+		return []
+	var offers: Array[String] = _roll_shop_card_offers(pick_card, remaining)
 	for card_id in offers:
 		card_offers.append(card_id)
 	return offers
@@ -289,7 +296,14 @@ func _build_shop_buff_buttons() -> void:
 	if shop_entry_card_count > 0:
 		var entry_buff := Button.new()
 		entry_buff.text = "Shop Scribe (+%d card on entry) (%dg)" % [shop_entry_card_count, shop_entry_card_price]
+		if max_card_offers > 0 and card_offers.size() >= max_card_offers:
+			entry_buff.disabled = true
+			entry_buff.tooltip_text = "Shop is at max card offers."
 		entry_buff.pressed.connect(func() -> void:
+			if entry_buff.disabled:
+				_call_set_info("Shop has the max card offers.")
+				purchase_failed.emit("max_cards")
+				return
 			if _call_can_afford(shop_entry_card_price):
 				_call_spend_gold(shop_entry_card_price)
 				var new_count: int = _call_apply_shop_entry_cards(shop_entry_card_count)

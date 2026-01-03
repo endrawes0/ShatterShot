@@ -13,6 +13,7 @@ class_name BalanceData
 
 @export var shop_data: Dictionary = {
 	"card_price": 40,
+	"max_cards": 7,
 	"remove_price": 30,
 	"upgrade_price": 60,
 	"upgrade_hand_bonus": 1,
