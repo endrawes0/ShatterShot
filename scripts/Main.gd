@@ -1835,13 +1835,17 @@ func _spawn_wound_block_shield() -> void:
 	hud.add_child(shield)
 	shield.size = shield.get_minimum_size()
 	shield.pivot_offset = shield.size * 0.5
-	var center: Vector2 = deck_stack.get_global_rect().get_center()
-	shield.global_position = center - shield.size * 0.5
-	shield.scale = Vector2(0.5, 0.5)
+	var deck_rect := deck_stack.get_global_rect()
+	var center: Vector2 = deck_rect.get_center()
+	shield.global_position = center - shield.pivot_offset
+	var target_scale_x: float = deck_rect.size.x / max(1.0, shield.size.x)
+	var target_scale_y: float = deck_rect.size.y / max(1.0, shield.size.y)
+	var target_scale: float = max(target_scale_x, target_scale_y) * 1.35
+	shield.scale = Vector2.ONE * 0.2
 	shield.modulate = Color(1.0, 1.0, 1.0, 0.9)
 	var tween := get_tree().create_tween()
-	tween.tween_property(shield, "scale", Vector2(1.6, 1.6), 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(shield, "modulate:a", 0.0, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(shield, "scale", Vector2.ONE * target_scale, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(shield, "modulate:a", 0.0, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_callback(shield.queue_free)
 
 func _refresh_mod_buttons() -> void:
