@@ -1684,12 +1684,10 @@ func _on_brick_destroyed(_brick: Node) -> void:
 			if _brick.has_method("get"):
 				suppress = bool(_brick.get("suppress_curse_on_destroy"))
 			if not suppress and parry_wound_active:
-				var riposte_target_pos = null
 				var riposte_target_id: int = -1
 				if riposte_wound_active:
 					var riposte_target: Node = _pick_random_brick()
 					if riposte_target != null and riposte_target is Node2D:
-						riposte_target_pos = (riposte_target as Node2D).global_position
 						riposte_target_id = riposte_target.get_instance_id()
 					info_label.text = "Riposte deflects a wound."
 				else:
@@ -1698,7 +1696,6 @@ func _on_brick_destroyed(_brick: Node) -> void:
 					_spawn_wound_flyout(
 						(_brick as Node2D).global_position,
 						true,
-						riposte_target_pos,
 						riposte_target_id
 					)
 				_update_labels()
@@ -1828,7 +1825,7 @@ func _update_labels() -> void:
 		max_floors
 	)
 
-func _spawn_wound_flyout(start_pos: Vector2, is_blocked: bool, reflect_pos = null, reflect_target_id: int = -1) -> void:
+func _spawn_wound_flyout(start_pos: Vector2, is_blocked: bool, reflect_target_id: int = -1) -> void:
 	var fly_label := Label.new()
 	fly_label.text = "🗡️"
 	fly_label.position = start_pos
@@ -1840,32 +1837,66 @@ func _spawn_wound_flyout(start_pos: Vector2, is_blocked: bool, reflect_pos = nul
 	if is_blocked:
 		tween.tween_callback(_spawn_wound_block_shield)
 	tween.tween_property(fly_label, "scale", Vector2(0.6, 0.6), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	if reflect_pos != null:
-		tween.tween_property(fly_label, "global_position", reflect_pos, 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tween.tween_callback(_resolve_riposte_hit.bind(fly_label, reflect_target_id, 2))
+	if reflect_target_id != -1:
+		tween.tween_callback(_start_riposte_reflect.bind(fly_label, reflect_target_id, 2))
 		return
 	tween.tween_callback(fly_label.queue_free)
 
-func _resolve_riposte_hit(fly_label: Label, target_id: int, retries_left: int) -> void:
+func _start_riposte_reflect(fly_label: Label, target_id: int, retries_left: int) -> void:
 	if fly_label == null or not is_instance_valid(fly_label):
 		return
-	var target: Object = null
-	if target_id != -1:
-		target = instance_from_id(target_id)
-	if target != null and is_instance_valid(target):
-		_apply_brick_damage_cap(target as Node, 999)
-		fly_label.queue_free()
+	var target: Object = instance_from_id(target_id)
+	if target == null or not is_instance_valid(target):
+		_retarget_riposte_flyout(fly_label, retries_left)
+		return
+	fly_label.set_meta("riposte_target_id", target_id)
+	fly_label.set_meta("riposte_retries_left", retries_left)
+	var target_node := target as Node
+	if target_node.has_signal("destroyed"):
+		target_node.destroyed.connect(
+			_on_riposte_target_destroyed.bind(fly_label),
+			CONNECT_ONE_SHOT
+		)
+	var tween := get_tree().create_tween()
+	fly_label.set_meta("riposte_tween", tween)
+	tween.tween_property(
+		fly_label,
+		"global_position",
+		(target_node as Node2D).global_position,
+		0.6
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(_resolve_riposte_hit.bind(fly_label, target_id))
+
+func _on_riposte_target_destroyed(_brick: Node, fly_label: Label) -> void:
+	var retries_left: int = int(fly_label.get_meta("riposte_retries_left", 0))
+	_retarget_riposte_flyout(fly_label, retries_left)
+
+func _retarget_riposte_flyout(fly_label: Label, retries_left: int) -> void:
+	if fly_label == null or not is_instance_valid(fly_label):
 		return
 	if retries_left <= 0:
 		fly_label.queue_free()
 		return
+	var tween: Tween = fly_label.get_meta("riposte_tween", null)
+	if tween != null:
+		tween.kill()
 	var new_target: Node = _pick_random_brick()
 	if new_target == null or not (new_target is Node2D):
 		fly_label.queue_free()
 		return
-	var tween := get_tree().create_tween()
-	tween.tween_property(fly_label, "global_position", (new_target as Node2D).global_position, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_callback(_resolve_riposte_hit.bind(fly_label, new_target.get_instance_id(), retries_left - 1))
+	fly_label.set_meta("riposte_retries_left", retries_left - 1)
+	_start_riposte_reflect(fly_label, new_target.get_instance_id(), retries_left - 1)
+
+func _resolve_riposte_hit(fly_label: Label, target_id: int) -> void:
+	if fly_label == null or not is_instance_valid(fly_label):
+		return
+	var target: Object = instance_from_id(target_id)
+	if target == null or not is_instance_valid(target):
+		var retries_left: int = int(fly_label.get_meta("riposte_retries_left", 0))
+		_retarget_riposte_flyout(fly_label, retries_left)
+		return
+	_apply_brick_damage_cap(target as Node, 999)
+	fly_label.queue_free()
 
 func _spawn_wound_block_shield() -> void:
 	if hud == null or deck_stack == null:
