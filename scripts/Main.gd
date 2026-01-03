@@ -1691,12 +1691,13 @@ func _on_brick_destroyed(_brick: Node) -> void:
 					info_label.text = "Riposte deflects a wound."
 				else:
 					info_label.text = "Parry blocks a wound."
-				_spawn_wound_block_shield()
+				if _brick is Node2D:
+					_spawn_wound_flyout((_brick as Node2D).global_position, true)
 				_update_labels()
 			elif not suppress:
 				deck_manager.add_card("wound")
 				if _brick is Node2D:
-					_spawn_wound_flyout((_brick as Node2D).global_position)
+					_spawn_wound_flyout((_brick as Node2D).global_position, false)
 				_update_labels()
 	if encounter_manager.check_victory():
 		_end_encounter()
@@ -1809,7 +1810,7 @@ func _update_labels() -> void:
 		max_floors
 	)
 
-func _spawn_wound_flyout(start_pos: Vector2) -> void:
+func _spawn_wound_flyout(start_pos: Vector2, is_blocked: bool) -> void:
 	var fly_label := Label.new()
 	fly_label.text = "🤕"
 	fly_label.position = start_pos
@@ -1817,8 +1818,10 @@ func _spawn_wound_flyout(start_pos: Vector2) -> void:
 	hud.add_child(fly_label)
 	var target: Vector2 = deck_stack.get_global_rect().get_center()
 	var tween := get_tree().create_tween()
-	tween.tween_property(fly_label, "global_position", target, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_property(fly_label, "scale", Vector2(0.6, 0.6), 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_property(fly_label, "global_position", target, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(fly_label, "scale", Vector2(0.6, 0.6), 0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	if is_blocked:
+		tween.tween_callback(_spawn_wound_block_shield)
 	tween.tween_callback(fly_label.queue_free)
 
 func _spawn_wound_block_shield() -> void:
