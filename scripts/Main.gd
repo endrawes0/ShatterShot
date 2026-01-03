@@ -26,6 +26,7 @@ const FLOOR_PLAN_GENERATOR := preload("res://scripts/data/FloorPlanGenerator.gd"
 const FLOOR_PLAN_GENERATOR_CONFIG := preload("res://scripts/data/FloorPlanGeneratorConfig.gd")
 const ACT_MANAGER_SCRIPT := preload("res://scripts/managers/ActManager.gd")
 const ACT_CONFIG_SCRIPT := preload("res://scripts/data/ActConfig.gd")
+const CardEffectRegistry = preload("res://scripts/cards/CardEffectRegistry.gd")
 const BALANCE_DATA_PATH: String = "res://data/balance/basic.tres"
 const EMOJI_FONT_PATH: String = "res://assets/fonts/NotoColorEmoji.ttf"
 const OUTCOME_PARTICLE_SCENE: PackedScene = preload("res://scenes/HitParticle.tscn")
@@ -123,6 +124,7 @@ var hud_controller: HudController
 var reward_manager: RewardManager
 var shop_manager: ShopManager
 var balance_data: Resource
+var card_effect_registry: CardEffectRegistry
 
 var card_data: Dictionary = {}
 var card_pool: Array[String] = []
@@ -231,6 +233,7 @@ func _ready() -> void:
 	_apply_act_limits()
 	deck_manager = DeckManager.new()
 	add_child(deck_manager)
+	card_effect_registry = CardEffectRegistry.new()
 	hud_controller = HudController.new()
 	add_child(hud_controller)
 	card_emoji_font = load(EMOJI_FONT_PATH)
@@ -961,12 +964,13 @@ func _apply_volley_threat() -> void:
 	var threat: int = 0
 	if encounter_manager:
 		threat = encounter_manager.calculate_threat(act_threat_multiplier)
-	hp -= threat
+	var incoming: int = max(0, threat - block)
+	hp -= incoming
 	hp = max(0, hp)
 	if hp <= 0:
 		_show_game_over()
 		return
-	info_label.text = "Ball lost. You take %d damage." % threat
+	info_label.text = "Ball lost. You take %d damage." % incoming
 	_start_turn()
 
 func _on_ball_mod_consumed(mod_id: String) -> void:
@@ -1549,50 +1553,9 @@ func _play_card(instance_id: int) -> void:
 	_update_labels()
 
 func _apply_card_effect(card_id: String, instance_id: int) -> bool:
-	var should_discard := true
-	# TODO: Move card behavior into a card class; this match is getting too complex.
-	match card_id:
-		"what_doesnt_kill_us":
-			var wound_instance_id: int = -1
-			for card in deck_manager.hand:
-				if card is Dictionary:
-					var found_id: int = int(card.get("id", -1))
-					if found_id == instance_id:
-						continue
-					if String(card.get("card_id", "")) == "wound":
-						wound_instance_id = found_id
-						break
-			if wound_instance_id != -1:
-				deck_manager.remove_card_instance_from_all(wound_instance_id, true)
-				energy += 2
-				info_label.text = "Wound removed. +2 energy."
-		"punch":
-			volley_damage_bonus += 1
-		"twin":
-			volley_ball_bonus += 1
-		"guard":
-			block += 5
-		"widen":
-			paddle_buff_turns = max(paddle_buff_turns, 2)
-			paddle.set_half_width(base_paddle_half_width + 30.0)
-		"bomb":
-			_destroy_random_bricks(3)
-		"rally":
-			deck_manager.draw_cards(2)
-		"focus":
-			energy += 1
-		"haste":
-			paddle_speed_buff_turns = max(paddle_speed_buff_turns, 2)
-			paddle.speed = base_paddle_speed * paddle_speed_multiplier
-		"slow":
-			volley_ball_speed_multiplier = 0.7
-		"wound":
-			deck_manager.remove_card_instance_from_all(instance_id, true)
-			info_label.text = "Wound removed from your deck."
-			should_discard = false
-		_:
-			pass
-	return should_discard
+	if card_effect_registry == null:
+		return true
+	return card_effect_registry.apply(card_id, self, instance_id)
 
 func _destroy_random_bricks(amount: int) -> void:
 	var bricks: Array = bricks_root.get_children()
