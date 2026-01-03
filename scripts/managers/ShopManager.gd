@@ -85,6 +85,12 @@ func reroll_offers(pick_card: Callable, offer_count: int = 2) -> void:
 	reroll_count += 1
 	card_offers = _roll_shop_card_offers(pick_card, offer_count)
 
+func add_card_offers(pick_card: Callable, offer_count: int = 1) -> Array[String]:
+	var offers: Array[String] = _roll_shop_card_offers(pick_card, offer_count)
+	for card_id in offers:
+		card_offers.append(card_id)
+	return offers
+
 func get_card_offers() -> Array[String]:
 	return card_offers.duplicate()
 

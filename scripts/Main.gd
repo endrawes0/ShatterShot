@@ -1135,17 +1135,19 @@ func _show_shop() -> void:
 func _apply_shop_entry_bonus() -> void:
 	if shop_entry_card_bonus <= 0:
 		return
-	_add_shop_entry_cards(shop_entry_card_bonus, "Shop bonus")
+	_add_shop_entry_offers(shop_entry_card_bonus, "Shop bonus")
 
-func _add_shop_entry_cards(amount: int, label_prefix: String) -> void:
+func _add_shop_entry_offers(amount: int, label_prefix: String) -> void:
 	if amount <= 0:
 		return
+	if shop_manager == null:
+		return
+	var added_cards := shop_manager.add_card_offers(Callable(self, "_pick_random_card"), amount)
+	if added_cards.is_empty():
+		return
+	_build_shop_card_buttons()
 	var added_names: Array[String] = []
-	for _i in range(amount):
-		var card_id: String = _pick_random_card()
-		if card_id == "":
-			continue
-		_add_card_to_deck(card_id)
+	for card_id in added_cards:
 		if card_data.has(card_id):
 			added_names.append(String(card_data[card_id]["name"]))
 		else:
@@ -1329,7 +1331,7 @@ func _apply_shop_discount(percent: float) -> void:
 func _apply_shop_entry_cards(amount: int) -> int:
 	shop_entry_card_bonus += amount
 	if state == GameState.SHOP:
-		_add_shop_entry_cards(amount, "Shop Scribe")
+		_add_shop_entry_offers(amount, "Shop Scribe")
 	return shop_entry_card_bonus
 
 func _show_rest() -> void:
