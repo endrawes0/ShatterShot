@@ -529,8 +529,8 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if reserve_launch_cooldown > 0.0:
 		reserve_launch_cooldown = max(0.0, reserve_launch_cooldown - delta)
-	if state == GameState.GAME_OVER and hp <= 0 and encounter_manager and encounter_manager.check_victory():
-		_apply_victory_revive()
+	if state == GameState.GAME_OVER and encounter_manager and encounter_manager.check_victory():
+		_handle_gameover_victory()
 
 func _start_run() -> void:
 	hp = max_hp
@@ -1029,6 +1029,13 @@ func _apply_victory_revive() -> void:
 	tween.finished.connect(func() -> void:
 		(toast_data["toast"] as Label).queue_free()
 	)
+
+func _handle_gameover_victory() -> void:
+	if gameover_panel:
+		gameover_panel.visible = false
+	info_label.text = ""
+	_apply_victory_revive()
+	_end_encounter()
 
 func _create_toast(message: String, tint: Color) -> Dictionary:
 	if info_label == null or hud == null:
