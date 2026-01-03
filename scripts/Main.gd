@@ -1690,9 +1690,11 @@ func _on_brick_destroyed(_brick: Node) -> void:
 					var riposte_target: Node = _pick_random_brick()
 					if riposte_target != null and riposte_target is Node2D:
 						riposte_target_pos = (riposte_target as Node2D).global_position
+						var riposte_target_id: int = riposte_target.get_instance_id()
 						riposte_on_arrive = func() -> void:
-							if is_instance_valid(riposte_target):
-								_apply_brick_damage_cap(riposte_target, 999)
+							var target: Object = instance_from_id(riposte_target_id)
+							if target != null and is_instance_valid(target):
+								_apply_brick_damage_cap(target as Node, 999)
 					info_label.text = "Riposte deflects a wound."
 				else:
 					info_label.text = "Parry blocks a wound."
