@@ -822,7 +822,7 @@ func _update_map_graph(choices: Array[Dictionary]) -> void:
 	var plan := map_manager.get_active_plan_summary(choices)
 	var boss_label: String = ""
 	if act_manager != null:
-		var act_config := act_manager.get_active_act_config()
+		var act_config: Resource = act_manager.get_active_act_config()
 		if act_config != null:
 			boss_label = String(act_config.boss_label)
 	plan["boss_label"] = boss_label
