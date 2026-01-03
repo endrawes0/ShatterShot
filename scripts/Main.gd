@@ -1852,7 +1852,7 @@ func _add_wound_to_deck() -> void:
 	deck_manager.add_card("wound")
 	_update_labels()
 
-func _start_riposte_reflect(fly_label: Label, target_id: int, retries_left: int) -> void:
+func _start_riposte_reflect(fly_label, target_id: int, retries_left: int) -> void:
 	if fly_label == null or not is_instance_valid(fly_label):
 		return
 	var target: Object = instance_from_id(target_id)
@@ -1877,11 +1877,11 @@ func _start_riposte_reflect(fly_label: Label, target_id: int, retries_left: int)
 	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_callback(_resolve_riposte_hit.bind(fly_label, target_id))
 
-func _on_riposte_target_destroyed(_brick: Node, fly_label: Label) -> void:
+func _on_riposte_target_destroyed(_brick: Node, fly_label) -> void:
 	var retries_left: int = int(fly_label.get_meta("riposte_retries_left", 0))
 	_retarget_riposte_flyout(fly_label, retries_left)
 
-func _retarget_riposte_flyout(fly_label: Label, retries_left: int) -> void:
+func _retarget_riposte_flyout(fly_label, retries_left: int) -> void:
 	if fly_label == null or not is_instance_valid(fly_label):
 		return
 	if retries_left <= 0:
@@ -1897,7 +1897,7 @@ func _retarget_riposte_flyout(fly_label: Label, retries_left: int) -> void:
 	fly_label.set_meta("riposte_retries_left", retries_left - 1)
 	_start_riposte_reflect(fly_label, new_target.get_instance_id(), retries_left - 1)
 
-func _resolve_riposte_hit(fly_label: Label, target_id: int) -> void:
+func _resolve_riposte_hit(fly_label, target_id: int) -> void:
 	if fly_label == null or not is_instance_valid(fly_label):
 		return
 	var target: Object = instance_from_id(target_id)
