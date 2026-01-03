@@ -394,9 +394,14 @@ func _get_encounter_gold_reward() -> int:
 	return active_act_config.combat_gold_reward
 
 func _apply_balance_data(data: Resource) -> void:
-	card_data = data.card_data
-	card_pool = data.card_pool
-	starting_deck = data.starting_deck
+	if data.card_config != null:
+		card_data = data.card_config.card_data
+		card_pool = data.card_config.card_pool
+		starting_deck = data.card_config.starting_deck
+	else:
+		card_data = data.card_data
+		card_pool = data.card_pool
+		starting_deck = data.starting_deck
 	var mods: Dictionary = data.ball_mods
 	ball_mod_data = mods.get("data", {})
 	ball_mod_order = mods.get("order", [])

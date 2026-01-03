@@ -1,111 +1,11 @@
-[gd_resource type="Resource" script_class="BalanceData" load_steps=2 format=3 uid="uid://d0j48q0kssw7f"]
+[gd_resource type="Resource" script_class="BalanceData" load_steps=3 format=3 uid="uid://d0j48q0kssw7f"]
 
 [ext_resource type="Script" uid="uid://hipkidm5slye" path="res://scripts/data/BalanceData.gd" id="1"]
+[ext_resource type="Resource" uid="uid://c1nrgx2dp2c32" path="res://data/balance/cards.tres" id="2"]
 
 [resource]
 script = ExtResource("1")
-card_data = {
-"bomb": {
-"cost": 2,
-"desc": "Destroy up to 3 random bricks.",
-"emoji": "💣",
-"name": "Bomb",
-"type": "offense"
-},
-"moab": {
-"cost": 3,
-"desc": "Destroy up to 10 random bricks.",
-"emoji": "💥💣",
-"name": "MOAB",
-"type": "offense"
-},
-"parry": {
-"cost": 1,
-"desc": "Block the next Wound gained this volley.",
-"emoji": "🛡️",
-"name": "Parry",
-"type": "defense"
-},
-"focus": {
-"cost": 0,
-"desc": "+1 energy this turn.",
-"emoji": "🧠",
-"name": "Focus",
-"type": "utility"
-},
-"guard": {
-"cost": 1,
-"desc": "Gain 5 block. Block reduces threat damage this turn.",
-"emoji": "🛡️",
-"name": "Guard",
-"type": "defense"
-},
-"haste": {
-"cost": 1,
-"desc": "Paddle moves faster for 2 turns.",
-"emoji": "⚡⚡",
-"name": "Haste",
-"type": "utility"
-},
-"punch": {
-"cost": 1,
-"desc": "+1 volley damage.",
-"emoji": "👊",
-"name": "Punch",
-"type": "offense"
-},
-"rally": {
-"cost": 0,
-"desc": "Draw 2 cards.",
-"emoji": "🎴🎴",
-"name": "Rally",
-"type": "utility"
-},
-"riposte": {
-"cost": 1,
-"desc": "If you have a Parry in hand, discard it to block a Wound this volley and destroy a random brick.",
-"emoji": "⚔️",
-"name": "Riposte",
-"type": "offense"
-},
-"slow": {
-"cost": 1,
-"desc": "Slow balls this volley.",
-"emoji": "🐌",
-"name": "Slowness",
-"type": "defense"
-},
-"twin": {
-"cost": 1,
-"desc": "Gain an extra launch this volley.",
-"emoji": "‼️",
-"name": "Twin Launch",
-"type": "offense"
-},
-"what_doesnt_kill_us": {
-"cost": 1,
-"desc": "If you have a Wound in hand, remove it and gain 2 energy.",
-"emoji": "💪",
-"name": "What Doesn't Kill Us",
-"type": "utility"
-},
-"widen": {
-"cost": 1,
-"desc": "Widen paddle for 2 turns.",
-"emoji": "➖",
-"name": "Widen Paddle",
-"type": "utility"
-},
-"wound": {
-"cost": 1,
-"desc": "Pay 1 energy to remove it from your deck.",
-"emoji": "🤕🗡️",
-"name": "Wound",
-"type": "curse"
-}
-}
-card_pool = Array[String](["punch", "twin", "guard", "widen", "bomb", "moab", "parry", "rally", "riposte", "focus", "haste", "slow", "what_doesnt_kill_us"])
-starting_deck = Array[String](["punch", "punch", "punch", "punch", "twin", "twin", "guard", "guard", "rally", "focus"])
+card_config = ExtResource("2")
 ball_mods = {
 "data": {
 "explosive": {

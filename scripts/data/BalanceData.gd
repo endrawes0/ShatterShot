@@ -1,6 +1,7 @@
 extends Resource
 class_name BalanceData
 
+@export var card_config: CardData
 @export var card_data: Dictionary = {}
 @export var card_pool: Array[String] = []
 @export var starting_deck: Array[String] = []
