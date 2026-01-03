@@ -287,7 +287,6 @@ func _build_shop_buff_buttons() -> void:
 			if _call_can_afford(shop_entry_card_price):
 				_call_spend_gold(shop_entry_card_price)
 				var new_count: int = _call_apply_shop_entry_cards(shop_entry_card_count)
-				_call_set_info("Shop entry card bonus increased to %d." % new_count)
 				_call_update_labels()
 				purchase_completed.emit()
 			else:

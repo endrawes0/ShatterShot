@@ -1135,8 +1135,13 @@ func _show_shop() -> void:
 func _apply_shop_entry_bonus() -> void:
 	if shop_entry_card_bonus <= 0:
 		return
+	_add_shop_entry_cards(shop_entry_card_bonus, "Shop bonus")
+
+func _add_shop_entry_cards(amount: int, label_prefix: String) -> void:
+	if amount <= 0:
+		return
 	var added_names: Array[String] = []
-	for _i in range(shop_entry_card_bonus):
+	for _i in range(amount):
 		var card_id: String = _pick_random_card()
 		if card_id == "":
 			continue
@@ -1152,7 +1157,7 @@ func _apply_shop_entry_bonus() -> void:
 		if i > 0:
 			names_text += ", "
 		names_text += added_names[i]
-	info_label.text = "Shop bonus: added %s." % names_text
+	info_label.text = "%s: added %s." % [label_prefix, names_text]
 
 func _apply_hud_theme() -> void:
 	if hud == null:
@@ -1323,6 +1328,8 @@ func _apply_shop_discount(percent: float) -> void:
 
 func _apply_shop_entry_cards(amount: int) -> int:
 	shop_entry_card_bonus += amount
+	if state == GameState.SHOP:
+		_add_shop_entry_cards(amount, "Shop Scribe")
 	return shop_entry_card_bonus
 
 func _show_rest() -> void:
