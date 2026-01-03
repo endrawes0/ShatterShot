@@ -964,12 +964,13 @@ func _apply_volley_threat() -> void:
 	var threat: int = 0
 	if encounter_manager:
 		threat = encounter_manager.calculate_threat(act_threat_multiplier)
-	hp -= threat
+	var incoming: int = max(0, threat - block)
+	hp -= incoming
 	hp = max(0, hp)
 	if hp <= 0:
 		_show_game_over()
 		return
-	info_label.text = "Ball lost. You take %d damage." % threat
+	info_label.text = "Ball lost. You take %d damage." % incoming
 	_start_turn()
 
 func _on_ball_mod_consumed(mod_id: String) -> void:
