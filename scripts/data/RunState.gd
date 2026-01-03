@@ -18,9 +18,13 @@ enum GameState { MAP, PLANNING, VOLLEY, REWARD, SHOP, REST, GAME_OVER, VICTORY }
 
 @export var volley_damage_bonus: int = 0
 @export var volley_ball_bonus: int = 0
+@export var volley_ball_bonus_base: int = 0
 @export var volley_ball_reserve: int = 0
 @export var volley_piercing: bool = false
 @export var volley_ball_speed_multiplier: float = 1.0
+@export var incoming_threat_reduction: int = 0
+@export var energy_refund_per_turn: int = 0
+@export var shop_entry_card_bonus: int = 0
 
 @export var paddle_buff_turns: int = 0
 @export var paddle_speed_buff_turns: int = 0
