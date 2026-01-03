@@ -6,6 +6,7 @@
 - If you notice unexpected changes you didn't make, show the diff when asking how to proceed.
 - When commenting in a PR, start the comment with "🤖:" to indicate it's from Codex.
 - Avoid double-escaping newlines in `gh` API/CLI calls (use literal newlines in bodies).
+- GDScript type inference can fail with "Cannot infer the type" parse errors; avoid relying on inference and prefer explicit types for variables/values.
 
 ## Export Process (Windows/Linux/macOS)
 
