@@ -19,10 +19,10 @@ room_weights = {
 "shop": 1,
 "treasure": 1
 }
-acts = [{
+acts = Array[Dictionary]([{
 "floors": 5
 }, {
 "floors": 6
 }, {
 "floors": 7
-}]
+}])

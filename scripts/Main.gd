@@ -1264,7 +1264,7 @@ func _configure_shop_manager() -> void:
 		"paddle_speed_bonus_percent": shop_paddle_speed_bonus_percent,
 		"reserve_ball_price": _get_discounted_shop_price(shop_reserve_ball_price),
 		"reserve_ball_bonus": shop_reserve_ball_bonus,
-		"shop_discount_price": _get_discounted_shop_price(shop_discount_price),
+		"shop_discount_price": shop_discount_price,
 		"shop_discount_percent": shop_discount_percent,
 		"shop_discount_max": shop_discount_max,
 		"shop_entry_card_price": _get_discounted_shop_price(shop_entry_card_price),
