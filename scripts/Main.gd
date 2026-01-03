@@ -1683,12 +1683,14 @@ func _on_brick_destroyed(_brick: Node) -> void:
 			var suppress: bool = false
 			if _brick.has_method("get"):
 				suppress = bool(_brick.get("suppress_curse_on_destroy"))
-			if not suppress and parry_wound_blocks > 0:
-				parry_wound_blocks -= 1
+			if not suppress and parry_wound_blocks != 0:
+				if parry_wound_blocks > 0:
+					parry_wound_blocks -= 1
 				var riposte_target_pos = null
 				var riposte_on_arrive := Callable()
-				if riposte_wound_blocks > 0:
-					riposte_wound_blocks -= 1
+				if riposte_wound_blocks != 0:
+					if riposte_wound_blocks > 0:
+						riposte_wound_blocks -= 1
 					var riposte_target: Node = _pick_random_brick()
 					if riposte_target != null and riposte_target is Node2D:
 						riposte_target_pos = (riposte_target as Node2D).global_position

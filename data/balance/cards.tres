@@ -70,7 +70,7 @@ card_data = {
 "type": "utility"
 },
 "riposte": {
-"cost": 1,
+"cost": 2,
 "desc": "If you have a Parry in hand, discard it to block a Wound this volley and destroy a random brick.",
 "emoji": "🗡️",
 "emoji_rotation": 180.0,

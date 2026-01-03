@@ -14,6 +14,6 @@ func apply(main: Node, instance_id: int) -> bool:
 	if parry_instance_id == -1:
 		return true
 	main.deck_manager.discard_card_instance(parry_instance_id)
-	main.parry_wound_blocks += 1
-	main.riposte_wound_blocks += 1
+	main.parry_wound_blocks = -1
+	main.riposte_wound_blocks = -1
 	return true
