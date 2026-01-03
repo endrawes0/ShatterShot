@@ -168,6 +168,8 @@ var max_floors: int = 6
 
 var max_energy: int = 3
 var energy: int = 3
+var base_max_energy: int = 3
+var max_energy_bonus: int = 0
 var block: int = 0
 var starting_hand_size: int = BASE_STARTING_HAND_SIZE
 var ball_mod_counts: Dictionary = {}
@@ -224,6 +226,7 @@ func _ready() -> void:
 		push_error("Missing balance data at %s" % BALANCE_DATA_PATH)
 		return
 	_apply_balance_data(balance_data)
+	base_max_energy = max_energy
 	outcome_rng.randomize()
 	if get_viewport():
 		get_viewport().size_changed.connect(_fit_to_viewport)
@@ -1230,6 +1233,7 @@ func _shop_callbacks() -> Dictionary:
 		"upgrade_hand": Callable(self, "_upgrade_starting_hand"),
 		"apply_vitality": Callable(self, "_apply_vitality"),
 		"apply_max_energy": Callable(self, "_apply_max_energy_buff"),
+		"get_max_energy_bonus": Callable(self, "_get_max_energy_bonus"),
 		"apply_paddle_width": Callable(self, "_apply_paddle_width_buff"),
 		"apply_paddle_speed": Callable(self, "_apply_paddle_speed_buff"),
 		"apply_reserve_ball": Callable(self, "_apply_reserve_ball_buff"),
@@ -1303,9 +1307,13 @@ func _apply_vitality(max_bonus: int, heal: int) -> int:
 	return max_hp
 
 func _apply_max_energy_buff(bonus: int) -> int:
-	max_energy += bonus
+	max_energy_bonus = min(2, max_energy_bonus + bonus)
+	max_energy = base_max_energy + max_energy_bonus
 	energy = min(max_energy, energy)
 	return max_energy
+
+func _get_max_energy_bonus() -> int:
+	return max_energy_bonus
 
 func _apply_paddle_width_buff(bonus: float) -> float:
 	base_paddle_half_width += bonus

@@ -217,7 +217,14 @@ func _build_shop_buff_buttons() -> void:
 	if energy_buff_bonus > 0:
 		var energy_buff := Button.new()
 		energy_buff.text = "Surge (+%d max energy) (%dg)" % [energy_buff_bonus, energy_buff_price]
+		if _call_get_max_energy_bonus() >= 2:
+			energy_buff.disabled = true
+			energy_buff.tooltip_text = "Max energy bonus is capped at 2."
 		energy_buff.pressed.connect(func() -> void:
+			if _call_get_max_energy_bonus() >= 2:
+				_call_set_info("Max energy bonus is capped.")
+				purchase_failed.emit("energy_max")
+				return
 			if _call_can_afford(energy_buff_price):
 				_call_spend_gold(energy_buff_price)
 				var new_max: int = _call_apply_max_energy(energy_buff_bonus)
@@ -455,6 +462,11 @@ func _call_apply_vitality(max_bonus: int, heal: int) -> int:
 func _call_apply_max_energy(bonus: int) -> int:
 	if callbacks.has("apply_max_energy") and callbacks.apply_max_energy.is_valid():
 		return int(callbacks.apply_max_energy.call(bonus))
+	return 0
+
+func _call_get_max_energy_bonus() -> int:
+	if callbacks.has("get_max_energy_bonus") and callbacks.get_max_energy_bonus.is_valid():
+		return int(callbacks.get_max_energy_bonus.call())
 	return 0
 
 func _call_apply_paddle_width(bonus: float) -> float:
