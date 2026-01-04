@@ -71,7 +71,7 @@ card_data = {
 },
 "riposte": {
 "cost": 2,
-"desc": "Discard a Parry card, block Wounds and destroy a random brick.",
+"desc": "Discard a Parry card. Destroy a brick when when Parry is used.",
 "emoji": "🗡️",
 "emoji_rotation": 180.0,
 "name": "Riposte",
