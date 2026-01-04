@@ -47,7 +47,7 @@ card_data = {
 },
 "parry": {
 "cost": 1,
-"desc": "Block the next Wound gained this volley.",
+"desc": "Block wounds this volley.",
 "emoji": "⚔️",
 "emoji_rotation": 0.0,
 "name": "Parry",
@@ -71,7 +71,7 @@ card_data = {
 },
 "riposte": {
 "cost": 2,
-"desc": "If you have a Parry in hand, discard it to block a Wound this volley and destroy a random brick.",
+"desc": "Discard a Parry card. Destroy a brick when Parry is used.",
 "emoji": "🗡️",
 "emoji_rotation": 180.0,
 "name": "Riposte",

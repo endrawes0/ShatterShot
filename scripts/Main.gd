@@ -625,6 +625,7 @@ func _restart_run_same_seed() -> void:
 
 func _show_map() -> void:
 	state = GameState.MAP
+	App.stop_shop_music()
 	_hide_all_panels()
 	map_panel.visible = true
 	_update_map_label()
@@ -933,6 +934,7 @@ func _launch_volley() -> void:
 	if state != GameState.PLANNING:
 		return
 	state = GameState.VOLLEY
+	App.start_combat_music()
 	var total_balls: int = 1 + volley_ball_bonus
 	volley_ball_reserve = max(0, total_balls - 1)
 	_update_reserve_indicator()
@@ -1044,6 +1046,7 @@ func _on_ball_mod_consumed(mod_id: String) -> void:
 	_refresh_mod_buttons()
 
 func _end_encounter() -> void:
+	App.stop_combat_music()
 	_hide_all_panels()
 	_clear_active_balls()
 	_reset_deck_for_next_floor()
@@ -1076,24 +1079,13 @@ func _get_planning_victory_message() -> String:
 	return String(planning_victory_messages[index])
 
 func _play_planning_victory_message(message: String) -> void:
-	var toast_data := _create_toast(message, Color(1.0, 0.9, 0.2, 1.0))
-	if toast_data.is_empty():
-		return
-	var tween := _animate_toast(toast_data)
-	await tween.finished
-	(toast_data["toast"] as Label).queue_free()
+	await _show_toast(message, Color(1.0, 0.9, 0.2, 1.0), 2.0)
 
 func _apply_victory_revive() -> void:
 	hp = max(0, hp)
 	hp = min(max_hp, hp + VICTORY_REVIVE_HP_BONUS)
 	_update_labels()
-	var toast_data := _create_toast(VICTORY_REVIVE_TOAST, Color(1.0, 0.9, 0.2, 1.0))
-	if toast_data.is_empty():
-		return
-	var tween := _animate_toast(toast_data)
-	tween.finished.connect(func() -> void:
-		(toast_data["toast"] as Label).queue_free()
-	)
+	_show_toast(VICTORY_REVIVE_TOAST, Color(1.0, 0.9, 0.2, 1.0), 2.0)
 
 func _handle_gameover_victory() -> void:
 	if gameover_panel:
@@ -1102,7 +1094,7 @@ func _handle_gameover_victory() -> void:
 	_apply_victory_revive()
 	_end_encounter()
 
-func _create_toast(message: String, tint: Color) -> Dictionary:
+func _create_toast(message: String, tint: Color, hold_duration: float) -> Dictionary:
 	if info_label == null or hud == null:
 		return {}
 	var toast := Label.new()
@@ -1120,16 +1112,28 @@ func _create_toast(message: String, tint: Color) -> Dictionary:
 		original_pos.y = volley_prompt_label.global_position.y
 	var viewport_width: float = get_viewport_rect().size.x
 	toast.global_position = Vector2(viewport_width + toast.size.x, original_pos.y)
-	return {"toast": toast, "pos": original_pos}
+	return {"toast": toast, "pos": original_pos, "hold": max(0.0, hold_duration)}
 
 func _animate_toast(toast_data: Dictionary) -> Tween:
 	var toast := toast_data.get("toast") as Label
 	var original_pos: Vector2 = toast_data.get("pos", Vector2.ZERO)
+	var hold_duration: float = float(toast_data.get("hold", 2.0))
 	var tween := create_tween()
 	tween.tween_property(toast, "global_position:x", original_pos.x, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_interval(2.0)
+	tween.tween_interval(hold_duration)
 	tween.tween_property(toast, "global_position:x", -toast.size.x, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.finished.connect(func() -> void:
+		if toast and is_instance_valid(toast):
+			toast.queue_free()
+	)
 	return tween
+
+func _show_toast(message: String, tint: Color, hold_duration: float) -> void:
+	var toast_data := _create_toast(message, tint, hold_duration)
+	if toast_data.is_empty():
+		return
+	var tween := _animate_toast(toast_data)
+	await tween.finished
 
 func _reset_deck_for_next_floor() -> void:
 	if deck_manager:
@@ -1148,6 +1152,7 @@ func _on_reward_selected(card_id: String) -> void:
 
 func _show_shop() -> void:
 	state = GameState.SHOP
+	App.start_shop_music()
 	_show_single_panel(shop_panel)
 	info_label.text = ""
 	shop_discount_multiplier = 1.0
@@ -1395,6 +1400,7 @@ func _show_rest() -> void:
 
 func _show_game_over() -> void:
 	state = GameState.GAME_OVER
+	App.notify_run_completed()
 	_clear_active_balls()
 	_hide_all_panels()
 	gameover_panel.visible = true
@@ -1529,6 +1535,8 @@ func _render_treasure_rewards(rewards: Array[Dictionary]) -> void:
 
 func _show_victory() -> void:
 	state = GameState.VICTORY
+	App.stop_combat_music()
+	App.notify_run_completed()
 	_clear_active_balls()
 	_hide_all_panels()
 	gameover_panel.visible = true
@@ -1734,6 +1742,9 @@ func _play_card(instance_id: int) -> void:
 	var card_id: String = deck_manager.get_card_id_from_hand(instance_id)
 	if card_id == "":
 		return
+	if card_id == "riposte" and not _hand_has_card("parry", instance_id):
+		_show_toast("Riposte requires a Parry in hand.", Color(1, 1, 1, 1), 1.6)
+		return
 	var cost: int = card_data[card_id]["cost"]
 	if energy < cost:
 		info_label.text = "Not enough energy."
@@ -1750,6 +1761,18 @@ func _apply_card_effect(card_id: String, instance_id: int) -> bool:
 	if card_effect_registry == null:
 		return true
 	return card_effect_registry.apply(card_id, self, instance_id)
+
+func _hand_has_card(card_id: String, exclude_instance_id: int = -1) -> bool:
+	if deck_manager == null:
+		return false
+	for card in deck_manager.hand:
+		if card is Dictionary:
+			var card_instance_id: int = int(card.get("id", -1))
+			if card_instance_id == exclude_instance_id:
+				continue
+			if String(card.get("card_id", "")) == card_id:
+				return true
+	return false
 
 func _destroy_random_bricks(amount: int) -> void:
 	var bricks: Array = _get_active_bricks()
