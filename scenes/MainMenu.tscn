@@ -75,8 +75,8 @@ text = "Quit"
 oversampling_override = 1.0
 title = "Start Run"
 size = Vector2i(350, 150)
-ok_button_text = "Start"
 borderless = true
+ok_button_text = "Start"
 
 [node name="SeedDialogPanel" type="VBoxContainer" parent="SeedDialog"]
 offset_left = 8.0

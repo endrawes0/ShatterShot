@@ -625,6 +625,7 @@ func _restart_run_same_seed() -> void:
 
 func _show_map() -> void:
 	state = GameState.MAP
+	App.stop_shop_music()
 	_hide_all_panels()
 	map_panel.visible = true
 	_update_map_label()
@@ -933,6 +934,7 @@ func _launch_volley() -> void:
 	if state != GameState.PLANNING:
 		return
 	state = GameState.VOLLEY
+	App.start_combat_music()
 	var total_balls: int = 1 + volley_ball_bonus
 	volley_ball_reserve = max(0, total_balls - 1)
 	_update_reserve_indicator()
@@ -1044,6 +1046,7 @@ func _on_ball_mod_consumed(mod_id: String) -> void:
 	_refresh_mod_buttons()
 
 func _end_encounter() -> void:
+	App.stop_combat_music()
 	_hide_all_panels()
 	_clear_active_balls()
 	_reset_deck_for_next_floor()
@@ -1148,6 +1151,7 @@ func _on_reward_selected(card_id: String) -> void:
 
 func _show_shop() -> void:
 	state = GameState.SHOP
+	App.start_shop_music()
 	_show_single_panel(shop_panel)
 	info_label.text = ""
 	shop_discount_multiplier = 1.0
@@ -1395,6 +1399,7 @@ func _show_rest() -> void:
 
 func _show_game_over() -> void:
 	state = GameState.GAME_OVER
+	App.notify_run_completed()
 	_clear_active_balls()
 	_hide_all_panels()
 	gameover_panel.visible = true
@@ -1529,6 +1534,8 @@ func _render_treasure_rewards(rewards: Array[Dictionary]) -> void:
 
 func _show_victory() -> void:
 	state = GameState.VICTORY
+	App.stop_combat_music()
+	App.notify_run_completed()
 	_clear_active_balls()
 	_hide_all_panels()
 	gameover_panel.visible = true

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="MusicConfig" load_steps=9 format=3 uid="uid://o2c4eo55m1a"]
+
+[ext_resource type="Script" uid="uid://drmh3ei843k43" path="res://scripts/data/MusicConfig.gd" id="1"]
+[ext_resource type="Script" uid="uid://brshiufambvgh" path="res://scripts/data/MusicTrackConfig.gd" id="2"]
+[ext_resource type="AudioStream" uid="uid://ca2msuoxqplek" path="res://assets/music/MainMenuTheme.ogg" id="3"]
+[ext_resource type="AudioStream" uid="uid://codhgu0ti50u2" path="res://assets/music/CombatTheme.ogg" id="4"]
+[ext_resource type="AudioStream" uid="uid://dksvmu40t3f7o" path="res://assets/music/ShopTheme.ogg" id="5"]
+
+[sub_resource type="Resource" id="2"]
+script = ExtResource("2")
+stream = ExtResource("4")
+fade_out = 2.0
+
+[sub_resource type="Resource" id="1"]
+script = ExtResource("2")
+stream = ExtResource("3")
+fade_in = 1.0
+fade_out = 2.0
+
+[sub_resource type="Resource" id="3"]
+script = ExtResource("2")
+stream = ExtResource("5")
+fade_in = 1.0
+fade_out = 2.0
+
+[resource]
+script = ExtResource("1")
+menu = SubResource("1")
+combat = SubResource("2")
+shop = SubResource("3")
