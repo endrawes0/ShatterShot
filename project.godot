@@ -19,6 +19,7 @@ config/size/mode=0
 
 [autoload]
 
+Audio="*res://scripts/Audio.gd"
 App="*res://scripts/App.gd"
 
 [display]

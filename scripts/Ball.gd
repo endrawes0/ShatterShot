@@ -28,18 +28,14 @@ var active_mod_effect: BallModEffect = null
 
 const EXPLOSION_RADIUS: float = 80.0
 const DEFAULT_MOD_COLOR: Color = Color(0.95, 0.95, 1, 1)
-const BOUNCE_BASE_FREQ: float = 200.0
-const BOUNCE_FREQ_VARIANCE: float = 20.0
 const GHOST_SPACING: float = 10.0
 const GHOST_LIFETIME: float = 0.22
 const GHOST_ALPHA: float = 0.45
 var mod_colors: Dictionary = {}
-static var _bounce_stream: AudioStreamWAV = null
 var _ghost_last_pos: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	base_damage = damage
-	_ensure_bounce_stream()
 	_init_mod_effects()
 	_update_ball_color()
 	_ghost_last_pos = position
@@ -64,10 +60,11 @@ func _physics_process(delta: float) -> void:
 				var mod_context: Dictionary = {}
 				if mod_effect != null:
 					mod_context = mod_effect.on_before_damage(self, collider, collision)
+				var ignore_shield: bool = mod_effect != null and mod_effect.get_overkill_flag(self, collider, collision)
 				var remaining: int = collider.apply_damage_with_overkill(
 					damage,
 					collision.get_normal(),
-					mod_effect != null and mod_effect.get_overkill_flag(self, collider, collision)
+					ignore_shield
 				)
 				if mod_effect != null:
 					mod_effect.on_after_overkill(self, collider, collision, remaining, mod_context)
@@ -99,6 +96,7 @@ func launch_with_angle(angle: float) -> void:
 	base_damage = damage
 	velocity = Vector2(0, -1).rotated(angle) * speed
 
+
 func _bounce_from_paddle(paddle_node: Node2D) -> void:
 	var half_width := 60.0
 	if paddle_node.has_method("get"):
@@ -115,6 +113,7 @@ func _reset() -> void:
 	launched = false
 	velocity = Vector2.ZERO
 	_ghost_last_pos = position
+
 
 func set_ball_mod(mod_id: String) -> void:
 	if mod_effects.is_empty():
@@ -136,16 +135,7 @@ func _resolve_paddle() -> Node2D:
 	return fallback if fallback is Node2D else null
 
 func _play_bounce_sfx() -> void:
-	if bounce_player == null:
-		return
-	if _bounce_stream == null:
-		_ensure_bounce_stream()
-	if bounce_player.stream == null:
-		bounce_player.stream = _bounce_stream
-	var min_ratio: float = (BOUNCE_BASE_FREQ - BOUNCE_FREQ_VARIANCE) / BOUNCE_BASE_FREQ
-	var max_ratio: float = (BOUNCE_BASE_FREQ + BOUNCE_FREQ_VARIANCE) / BOUNCE_BASE_FREQ
-	bounce_player.pitch_scale = randf_range(min_ratio, max_ratio)
-	bounce_player.play()
+	App.play_bounce_sfx(bounce_player)
 
 func _update_ball_color() -> void:
 	if rect == null:
@@ -223,27 +213,3 @@ func _init_mod_effects() -> void:
 		"spikes": SpikesMod.new(),
 		"miracle": MiracleMod.new()
 	}
-
-func _ensure_bounce_stream() -> void:
-	if _bounce_stream != null:
-		return
-	var stream := AudioStreamWAV.new()
-	stream.format = AudioStreamWAV.FORMAT_16_BITS
-	stream.stereo = false
-	stream.mix_rate = 22050
-	var freq: float = BOUNCE_BASE_FREQ
-	var duration: float = 0.1
-	var samples: int = int(stream.mix_rate * duration)
-	var data := PackedByteArray()
-	data.resize(samples * 2)
-	for i in range(samples):
-		var t: float = float(i) / float(stream.mix_rate)
-		var env: float = exp(-18.0 * t)
-		var sample: float = sin(TAU * freq * t) * env * 0.5
-		var value: int = int(clamp(sample, -1.0, 1.0) * 32767.0)
-		data[i * 2] = value & 0xFF
-		data[i * 2 + 1] = (value >> 8) & 0xFF
-	stream.data = data
-	_bounce_stream = stream
-	if bounce_player:
-		bounce_player.stream = _bounce_stream

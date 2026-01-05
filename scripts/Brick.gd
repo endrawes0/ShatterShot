@@ -2,6 +2,7 @@ extends StaticBody2D
 
 signal destroyed(brick: Node)
 signal damaged(brick: Node)
+signal core_blocked_hit(brick: Node)
 
 const HIT_PARTICLE_SCENE := preload("res://scenes/HitParticle.tscn")
 const BOUNCE_BALL_SCENE := preload("res://scenes/BounceBall.tscn")
@@ -10,16 +11,21 @@ const BOUNCE_BALL_SCENE := preload("res://scenes/BounceBall.tscn")
 @onready var hp_label: Label = $Rect/HpLabel
 @onready var curse_label: Label = $Rect/CurseLabel
 @onready var regen_label: Label = $Rect/RegenLabel
+@onready var core_label: Label = $Rect/CoreLabel
 @onready var shield_left: ColorRect = $Rect/ShieldLeft
 @onready var shield_right: ColorRect = $Rect/ShieldRight
 @onready var shield_top: ColorRect = $Rect/ShieldTop
 @onready var shield_bottom: ColorRect = $Rect/ShieldBottom
 
 var hp: int = 1
+var max_hp: int = 1
 var shielded_sides: Array = []
 var regen_on_drop: bool = false
 var regen_amount: int = 1
 var is_cursed: bool = false
+var is_armor_core: bool = false
+var core_cluster_id: int = -1
+var core_locked: bool = false
 var suppress_curse_on_destroy: bool = false
 var particle_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 func _ready() -> void:
@@ -34,6 +40,8 @@ func setup(new_hp: int, color: Color, data: Dictionary = {}) -> void:
 		curse_label = rect.get_node("CurseLabel") as Label
 	if regen_label == null and rect != null:
 		regen_label = rect.get_node("RegenLabel") as Label
+	if core_label == null and rect != null:
+		core_label = rect.get_node("CoreLabel") as Label
 	if rect != null:
 		if shield_left == null:
 			shield_left = rect.get_node("ShieldLeft") as ColorRect
@@ -43,17 +51,23 @@ func setup(new_hp: int, color: Color, data: Dictionary = {}) -> void:
 			shield_top = rect.get_node("ShieldTop") as ColorRect
 		if shield_bottom == null:
 			shield_bottom = rect.get_node("ShieldBottom") as ColorRect
-	hp = max(1, new_hp)
+	max_hp = max(1, new_hp)
+	hp = max_hp
 	shielded_sides = data.get("shielded_sides", [])
 	regen_on_drop = data.get("regen_on_drop", false)
 	regen_amount = data.get("regen_amount", 1)
 	is_cursed = data.get("is_cursed", false)
+	is_armor_core = data.get("is_armor_core", false)
+	core_cluster_id = int(data.get("core_cluster_id", -1))
+	core_locked = data.get("core_locked", false)
 	if rect != null:
 		rect.color = color
 	if curse_label != null:
 		curse_label.visible = is_cursed
 	if regen_label != null:
 		regen_label.visible = regen_on_drop
+	if core_label != null:
+		core_label.visible = is_armor_core
 	_update_shield_visuals()
 	_update_label()
 
@@ -61,6 +75,9 @@ func apply_damage(amount: int) -> void:
 	apply_damage_with_overkill(amount)
 
 func apply_damage_with_overkill(amount: int, normal: Vector2 = Vector2.ZERO, ignore_shield: bool = false) -> int:
+	if is_armor_core and core_locked:
+		emit_signal("core_blocked_hit", self)
+		return 0
 	if _is_shielded(normal, ignore_shield):
 		return 0
 	var damage: int = max(1, amount)
@@ -90,6 +107,10 @@ func on_ball_drop() -> void:
 		hp += regen_amount
 		_update_label()
 
+func restore_to_max() -> void:
+	hp = max_hp
+	_update_label()
+
 func _is_shielded(normal: Vector2, ignore_shield: bool = false) -> bool:
 	if ignore_shield:
 		return false
@@ -117,6 +138,9 @@ func _update_shield_visuals() -> void:
 
 func suppress_curse() -> void:
 	suppress_curse_on_destroy = true
+
+func set_core_locked(locked: bool) -> void:
+	core_locked = locked
 
 func _spawn_hit_particles(count: int) -> void:
 	if rect == null:
