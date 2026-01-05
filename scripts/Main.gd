@@ -1013,6 +1013,7 @@ func _start_turn() -> void:
 	_update_volley_prompt_position()
 
 func _end_turn() -> void:
+	print("POTENTIAL DEAD CODE: _end_turn invoked")
 	if state != GameState.PLANNING:
 		return
 	_discard_hand()
