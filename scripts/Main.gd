@@ -935,7 +935,7 @@ func _enter_room(room_type: String) -> void:
 		"shop":
 			_transition_event("enter_room_shop")
 		"victory":
-			_transition_event("enter_room_victory")
+			push_warning("Victory rooms do not transition directly from the map.")
 		"elite":
 			floor_index += 1
 			_transition_event("enter_room_elite")
@@ -1013,6 +1013,7 @@ func _start_turn() -> void:
 	_update_volley_prompt_position()
 
 func _end_turn() -> void:
+	print("POTENTIAL DEAD CODE: _end_turn invoked")
 	if state != GameState.PLANNING:
 		return
 	_discard_hand()

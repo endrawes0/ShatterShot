@@ -42,7 +42,6 @@ const ALLOWED_TRANSITIONS: Dictionary = {
 		"enter_room_shop": GameState.SHOP,
 		"enter_room_treasure": GameState.TREASURE,
 		"enter_room_rest": GameState.REST,
-		"enter_room_victory": GameState.VICTORY,
 		"open_menu": GameState.MAIN_MENU
 	},
 	GameState.ENCOUNTER_COMBAT: {
