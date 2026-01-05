@@ -119,7 +119,12 @@ func _ensure_menu() -> void:
 
 func show_help() -> void:
 	_ensure_help()
-	_switch_to_scene(help_instance)
+	if run_instance and is_instance_valid(run_instance):
+		_show_menu_overlay()
+	else:
+		_ensure_menu()
+		_set_scene_active(menu_instance, true)
+	_show_help_overlay()
 
 func show_settings() -> void:
 	_ensure_settings()
@@ -139,14 +144,32 @@ func close_settings() -> void:
 	_ensure_menu()
 	_set_scene_active(menu_instance, true)
 
+func close_help() -> void:
+	if help_instance and is_instance_valid(help_instance):
+		_set_scene_active(help_instance, false)
+	if run_instance and is_instance_valid(run_instance):
+		_show_menu_overlay()
+		return
+	_ensure_menu()
+	_set_scene_active(menu_instance, true)
+
 func _show_settings_overlay() -> void:
 	if settings_instance == null or not is_instance_valid(settings_instance):
 		return
 	settings_instance.visible = true
 	settings_instance.process_mode = Node.PROCESS_MODE_INHERIT
 	if get_tree() and get_tree().root:
-		var root := get_tree().root
+		var root: Window = get_tree().root
 		root.move_child(settings_instance, root.get_child_count() - 1)
+
+func _show_help_overlay() -> void:
+	if help_instance == null or not is_instance_valid(help_instance):
+		return
+	help_instance.visible = true
+	help_instance.process_mode = Node.PROCESS_MODE_INHERIT
+	if get_tree() and get_tree().root:
+		var root: Window = get_tree().root
+		root.move_child(help_instance, root.get_child_count() - 1)
 
 func show_test_lab() -> void:
 	_menu_music_restart_after_run = false
