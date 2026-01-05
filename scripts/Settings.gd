@@ -1,15 +1,15 @@
 extends Control
 
-@onready var window_mode: OptionButton = $Center/VBox/Tabs/Visual/WindowMode
-@onready var resolution: OptionButton = $Center/VBox/Tabs/Visual/Resolution
-@onready var vfx_toggle: CheckBox = $Center/VBox/Tabs/Visual/VfxToggle
-@onready var vfx_intensity: HSlider = $Center/VBox/Tabs/Visual/VfxIntensity
-@onready var master_slider: HSlider = $Center/VBox/Tabs/Audio/MasterSlider
-@onready var music_slider: HSlider = $Center/VBox/Tabs/Audio/MusicSlider
-@onready var sfx_slider: HSlider = $Center/VBox/Tabs/Audio/SfxSlider
-@onready var ball_speed_slider: HSlider = $Center/VBox/Tabs/Gameplay/BallSpeedSlider
-@onready var paddle_speed_slider: HSlider = $Center/VBox/Tabs/Gameplay/PaddleSpeedSlider
-@onready var back_button: Button = $Center/VBox/BackButton
+@onready var window_mode: OptionButton = $Center/Card/VBox/Tabs/Visual/WindowMode
+@onready var resolution: OptionButton = $Center/Card/VBox/Tabs/Visual/Resolution
+@onready var vfx_toggle: CheckBox = $Center/Card/VBox/Tabs/Visual/VfxToggle
+@onready var vfx_intensity: HSlider = $Center/Card/VBox/Tabs/Visual/VfxIntensity
+@onready var master_slider: HSlider = $Center/Card/VBox/Tabs/Audio/MasterSlider
+@onready var music_slider: HSlider = $Center/Card/VBox/Tabs/Audio/MusicSlider
+@onready var sfx_slider: HSlider = $Center/Card/VBox/Tabs/Audio/SfxSlider
+@onready var ball_speed_slider: HSlider = $Center/Card/VBox/Tabs/Gameplay/BallSpeedSlider
+@onready var paddle_speed_slider: HSlider = $Center/Card/VBox/Tabs/Gameplay/PaddleSpeedSlider
+@onready var back_button: Button = $Center/Card/VBox/BackButton
 
 const MODE_LABELS: Array[String] = ["Windowed", "Fullscreen"]
 const RESOLUTIONS: Array[Vector2i] = [
