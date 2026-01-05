@@ -16,7 +16,10 @@ layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 
-[node name="VBox" type="VBoxContainer" parent="Center"]
+[node name="Card" type="PanelContainer" parent="Center"]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="Center/Card"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
