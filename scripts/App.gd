@@ -78,6 +78,7 @@ func is_test_lab_unlocked() -> bool:
 
 func start_new_run(seed_value: int = 0) -> void:
 	_menu_music_restart_after_run = false
+	stop_combat_music()
 	stop_rest_music()
 	if run_instance and is_instance_valid(run_instance):
 		run_instance.queue_free()
