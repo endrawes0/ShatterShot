@@ -1,6 +1,6 @@
 extends Node2D
 
-enum GameState { MAP, PLANNING, VOLLEY, REWARD, TREASURE, SHOP, REST, GAME_OVER, VICTORY }
+const GameState = StateManager.GameState
 
 const CARD_TYPE_COLORS: Dictionary = {
 	"offense": Color(1.0, 0.32, 0.02),
@@ -115,7 +115,9 @@ var map_preview_active: bool = false
 var map_preview_state: int = GameState.MAP
 var treasure_reward_entries: Array[Dictionary] = []
 var test_lab_enabled: bool = false
+var test_lab_entry: bool = false
 var test_lab_panel: Control = null
+var state_manager: StateManager = StateManager.new()
 
 var encounter_manager: EncounterManager
 var map_manager: MapManager
@@ -159,7 +161,7 @@ var shop_discount_max: int = 0
 var shop_entry_card_price: int = 0
 var shop_entry_card_count: int = 0
 
-var state: GameState = GameState.MAP
+var state: int = GameState.MAIN_MENU
 
 var max_hp: int = 150
 var hp: int = 150
@@ -218,6 +220,11 @@ var volley_prompt_tween: Tween = null
 var volley_prompt_pulsing: bool = false
 
 var active_act_config: Resource
+
+func _init() -> void:
+	state_manager.state_changed.connect(_on_state_changed)
+	state_manager.set_initial_state(GameState.MAIN_MENU)
+	state = state_manager.current_state()
 
 func _update_reserve_indicator() -> void:
 	if paddle and paddle.has_method("set_reserve_count"):
@@ -310,11 +317,11 @@ func _ready() -> void:
 	if deck_close_button:
 		deck_close_button.pressed.connect(_close_deck_panel)
 	if reward_skip_button:
-		reward_skip_button.pressed.connect(_show_map)
+		reward_skip_button.pressed.connect(_go_to_map)
 	if treasure_continue_button:
-		treasure_continue_button.pressed.connect(_show_map)
+		treasure_continue_button.pressed.connect(_go_to_map)
 	if shop_leave_button:
-		shop_leave_button.pressed.connect(_show_map)
+		shop_leave_button.pressed.connect(_go_to_map)
 	if mods_persist_checkbox:
 		mods_persist_checkbox.toggled.connect(func(pressed: bool) -> void:
 			persist_ball_mods = pressed
@@ -325,6 +332,8 @@ func _ready() -> void:
 
 func set_test_lab_enabled(enabled: bool, panel_visible: bool = true) -> void:
 	test_lab_enabled = enabled
+	if panel_visible:
+		test_lab_entry = true
 	_set_test_lab_enabled(enabled, panel_visible)
 
 func _set_test_lab_enabled(enabled: bool, panel_visible: bool = true) -> void:
@@ -581,7 +590,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			#avoids ui_accept mapping trigger
 			return
 	if state == GameState.PLANNING and event.is_action_pressed("ui_accept"):
-		_launch_volley()
+		_transition_event("launch_volley")
 		get_viewport().set_input_as_handled()
 	if state == GameState.VOLLEY and event.is_action_pressed("ui_accept") and reserve_launch_cooldown <= 0.0:
 		_launch_reserve_ball()
@@ -595,7 +604,69 @@ func _process(delta: float) -> void:
 	if state == GameState.GAME_OVER and encounter_manager and encounter_manager.check_victory():
 		_handle_gameover_victory()
 
-func _start_run() -> void:
+func _transition_event(event: String, context: Dictionary = {}) -> void:
+	var did_transition: bool = state_manager.transition_event(event, context)
+	if not did_transition:
+		push_warning("State transition '%s' not allowed from %s." % [event, str(state)])
+
+func _on_state_changed(prev_state: int, next_state: int, context: Dictionary) -> void:
+	_on_exit_state(prev_state, next_state, context)
+	state = next_state
+	_on_enter_state(next_state, prev_state, context)
+
+func _on_exit_state(_prev_state: int, _next_state: int, _context: Dictionary) -> void:
+	pass
+
+func _on_enter_state(next_state: int, _prev_state: int, context: Dictionary) -> void:
+	if context.get("resume", false):
+		_restore_panels_for_state(next_state)
+		return
+	match next_state:
+		GameState.MAP:
+			_show_map()
+		GameState.SHOP:
+			_show_shop()
+		GameState.TREASURE:
+			var reroll: bool = true
+			if context.has("reroll"):
+				reroll = bool(context["reroll"])
+			_show_treasure_panel(reroll)
+		GameState.REWARD:
+			_show_reward_panel()
+		GameState.REST:
+			_show_rest()
+		GameState.GAME_OVER:
+			_show_game_over()
+		GameState.VICTORY:
+			_show_victory()
+		GameState.PLANNING:
+			if context.has("encounter_start") and bool(context["encounter_start"]):
+				var is_elite: bool = bool(context.get("is_elite", false))
+				var is_boss: bool = bool(context.get("is_boss", false))
+				_begin_encounter(is_elite, is_boss)
+			else:
+				_start_turn()
+		GameState.VOLLEY:
+			_launch_volley()
+		GameState.ENCOUNTER_COMBAT:
+			var encounter_context: Dictionary = context.duplicate()
+			encounter_context["encounter_start"] = true
+			encounter_context["is_elite"] = false
+			encounter_context["is_boss"] = false
+			state_manager.transition_event("start_encounter", encounter_context)
+		GameState.ENCOUNTER_ELITE:
+			var elite_context: Dictionary = context.duplicate()
+			elite_context["encounter_start"] = true
+			elite_context["is_elite"] = true
+			elite_context["is_boss"] = false
+			state_manager.transition_event("start_encounter", elite_context)
+		GameState.ENCOUNTER_BOSS:
+			var boss_context: Dictionary = context.duplicate()
+			boss_context["encounter_start"] = true
+			boss_context["is_elite"] = false
+			boss_context["is_boss"] = true
+			state_manager.transition_event("start_encounter", boss_context)
+func _start_run(event: String = "") -> void:
 	hp = max_hp
 	gold = 60
 	floor_index = 0
@@ -623,7 +694,10 @@ func _start_run() -> void:
 	if act_manager:
 		act_manager.refresh_limits(max_combat_floors)
 	_apply_act_limits()
-	_show_map()
+	var start_event: String = event
+	if start_event == "":
+		start_event = "start_test_lab" if test_lab_entry else "start_run"
+	_transition_event(start_event)
 
 func _restart_run_same_seed() -> void:
 	App.stop_combat_music()
@@ -633,10 +707,9 @@ func _restart_run_same_seed() -> void:
 		if map_manager:
 			seed_value = map_manager.runtime_seed
 		floor_plan_generator_config.seed = seed_value if seed_value > 0 else 0
-	_start_run()
+	_start_run("restart_run")
 
 func _show_map() -> void:
-	state = GameState.MAP
 	App.stop_shop_music()
 	App.start_menu_music()
 	_hide_all_panels()
@@ -652,6 +725,9 @@ func _show_map() -> void:
 	_update_seed_display()
 	map_preview_active = false
 	_update_volley_prompt_visibility()
+
+func _go_to_map() -> void:
+	_transition_event("go_to_map")
 
 func _update_map_label() -> void:
 	if map_label == null:
@@ -813,7 +889,6 @@ func _clear_map_buttons() -> void:
 		child.queue_free()
 
 func _restore_panels_for_state(target_state: int) -> void:
-	state = target_state
 	match target_state:
 		GameState.MAP:
 			_show_map()
@@ -827,6 +902,11 @@ func _restore_panels_for_state(target_state: int) -> void:
 			_hide_all_panels()
 			if gameover_panel:
 				gameover_panel.visible = true
+			_hide_outcome_overlays()
+			if target_state == GameState.VICTORY and victory_overlay:
+				victory_overlay.visible = true
+			elif target_state == GameState.GAME_OVER and defeat_overlay:
+				defeat_overlay.visible = true
 		_:
 			_hide_all_panels()
 
@@ -843,29 +923,28 @@ func _update_map_graph(choices: Array[Dictionary]) -> void:
 	map_graph.call("set_plan", plan, choices)
 
 func _enter_room(room_type: String) -> void:
-	if room_type == "victory":
-		_show_victory()
-		return
 	if room_type == "mystery":
 		var revealed := _reveal_mystery_room()
 		_enter_room(revealed)
 		return
 	match room_type:
 		"rest":
-			_show_rest()
+			_transition_event("enter_room_rest")
 		"treasure":
-			_show_treasure()
+			_transition_event("enter_room_treasure")
 		"shop":
-			_show_shop()
+			_transition_event("enter_room_shop")
+		"victory":
+			assert(false, "Victory rooms should not be reachable from the map.")
 		"elite":
 			floor_index += 1
-			_start_encounter(true)
+			_transition_event("enter_room_elite")
 		"boss":
 			floor_index += 1
-			_start_boss()
+			_transition_event("enter_room_boss")
 		_:
 			floor_index += 1
-			_start_encounter(false)
+			_transition_event("enter_room_combat")
 
 func _reveal_mystery_room() -> String:
 	if map_manager == null:
@@ -876,13 +955,13 @@ func _reveal_mystery_room() -> String:
 	return revealed
 
 func _start_encounter(is_elite: bool) -> void:
-	_begin_encounter(is_elite, false)
+	var event_name: String = "enter_room_elite" if is_elite else "enter_room_combat"
+	_transition_event(event_name)
 
 func _start_boss() -> void:
-	_begin_encounter(false, true)
+	_transition_event("enter_room_boss")
 
 func _begin_encounter(is_elite: bool, is_boss: bool) -> void:
-	state = GameState.PLANNING
 	_hide_all_panels()
 	current_is_elite = is_elite
 	encounter_has_launched = false
@@ -913,7 +992,6 @@ func _begin_encounter(is_elite: bool, is_boss: bool) -> void:
 	_start_turn()
 
 func _start_turn() -> void:
-	state = GameState.PLANNING
 	if not encounter_has_launched:
 		App.start_menu_music()
 	energy = max_energy
@@ -935,6 +1013,7 @@ func _start_turn() -> void:
 	_update_volley_prompt_position()
 
 func _end_turn() -> void:
+	print("POTENTIAL DEAD CODE: _end_turn invoked")
 	if state != GameState.PLANNING:
 		return
 	_discard_hand()
@@ -943,14 +1022,11 @@ func _end_turn() -> void:
 	hp = max(0, hp)
 	info_label.text = "You take %d damage." % incoming
 	if hp <= 0:
-		_show_game_over()
+		_transition_event("planning_lose")
 		return
 	_start_turn()
 
 func _launch_volley() -> void:
-	if state != GameState.PLANNING:
-		return
-	state = GameState.VOLLEY
 	encounter_has_launched = true
 	App.stop_menu_music()
 	App.start_combat_music()
@@ -1050,10 +1126,10 @@ func _apply_volley_threat() -> void:
 	hp -= incoming
 	hp = max(0, hp)
 	if hp <= 0:
-		_show_game_over()
+		_transition_event("volley_lose")
 		return
 	info_label.text = "Ball lost. You take %d damage." % incoming
-	_start_turn()
+	_transition_event("volley_continue")
 
 func _on_ball_mod_consumed(mod_id: String) -> void:
 	if active_ball_mod != mod_id:
@@ -1067,7 +1143,7 @@ func _on_ball_mod_consumed(mod_id: String) -> void:
 	_apply_ball_mod_to_active_balls()
 	_refresh_mod_buttons()
 
-func _end_encounter() -> void:
+func _end_encounter(win_event: String = "volley_win") -> void:
 	App.stop_combat_music()
 	_hide_all_panels()
 	_clear_active_balls()
@@ -1076,7 +1152,7 @@ func _end_encounter() -> void:
 		if map_manager != null and map_manager.has_acts():
 			var act_index := map_manager.get_active_act_index()
 			if map_manager.is_final_act():
-				_show_victory()
+				_transition_event("victory")
 			else:
 				_spawn_act_complete_particles()
 				await _play_planning_victory_message("Well done! Act %d Complete!" % (act_index + 1))
@@ -1084,15 +1160,15 @@ func _end_encounter() -> void:
 				if act_manager:
 					act_manager.refresh_limits()
 				_apply_act_limits()
-				_show_map()
+				_transition_event("advance_act")
 			return
 		else:
-			_show_victory()
+			_transition_event("victory")
 		return
 	gold += _get_encounter_gold_reward()
 	if state == GameState.PLANNING:
 		await _play_planning_victory_message(_get_planning_victory_message())
-	_show_reward_panel()
+	_transition_event(win_event)
 
 func _get_planning_victory_message() -> String:
 	if planning_victory_messages.is_empty():
@@ -1114,7 +1190,7 @@ func _handle_gameover_victory() -> void:
 		gameover_panel.visible = false
 	info_label.text = ""
 	_apply_victory_revive()
-	_end_encounter()
+	_end_encounter("resurrect")
 
 func _create_toast(message: String, tint: Color, hold_duration: float) -> Dictionary:
 	if info_label == null or hud == null:
@@ -1170,10 +1246,9 @@ func _build_reward_buttons() -> void:
 
 func _on_reward_selected(card_id: String) -> void:
 	_add_card_to_deck(card_id)
-	_show_map()
+	_go_to_map()
 
 func _show_shop() -> void:
-	state = GameState.SHOP
 	App.stop_menu_music()
 	App.start_shop_music()
 	_show_single_panel(shop_panel)
@@ -1413,16 +1488,14 @@ func _apply_shop_entry_cards(amount: int) -> int:
 	return shop_entry_card_bonus
 
 func _show_rest() -> void:
-	state = GameState.REST
 	_hide_all_panels()
 	info_label.text = "Rest to heal."
 	hp = min(max_hp, hp + 20)
 	_update_labels()
-	_show_map()
+	_transition_event("go_to_map")
 	_update_volley_prompt_visibility()
 
 func _show_game_over() -> void:
-	state = GameState.GAME_OVER
 	App.stop_combat_music()
 	App.stop_shop_music()
 	App.notify_run_completed()
@@ -1435,7 +1508,6 @@ func _show_game_over() -> void:
 	_update_volley_prompt_visibility()
 
 func _show_reward_panel() -> void:
-	state = GameState.REWARD
 	_show_single_panel(reward_panel)
 	if reward_manager:
 		reward_manager.apply_panel_copy()
@@ -1444,7 +1516,6 @@ func _show_reward_panel() -> void:
 	_update_volley_prompt_visibility()
 
 func _show_treasure_panel(reroll: bool = true) -> void:
-	state = GameState.TREASURE
 	_show_single_panel(treasure_panel)
 	if treasure_label:
 		treasure_label.text = "Treasure found"
@@ -1559,7 +1630,6 @@ func _render_treasure_rewards(rewards: Array[Dictionary]) -> void:
 		treasure_rewards.add_child(label)
 
 func _show_victory() -> void:
-	state = GameState.VICTORY
 	App.stop_combat_music()
 	App.notify_run_completed()
 	_clear_active_balls()
@@ -1693,6 +1763,7 @@ func apply_gameplay_settings() -> void:
 		paddle.speed = base_paddle_speed
 
 func on_menu_opened() -> void:
+	_transition_event("open_menu")
 	process_mode = Node.PROCESS_MODE_DISABLED
 	if hud:
 		hud_layer_cache = hud.layer
@@ -1702,6 +1773,7 @@ func on_menu_opened() -> void:
 			node.visible = false
 
 func on_menu_closed() -> void:
+	_transition_event("continue_run")
 	for node in [paddle, bricks_root, playfield, hud]:
 		if node:
 			node.visible = true

@@ -1,9 +1,9 @@
 extends Resource
 class_name RunState
 
-enum GameState { MAP, PLANNING, VOLLEY, REWARD, SHOP, REST, GAME_OVER, VICTORY }
+const GameState = StateManager.GameState
 
-@export var state: GameState = GameState.MAP
+@export var state: int = GameState.MAP
 @export var hp: int = 150
 @export var max_hp: int = 150
 @export var gold: int = 0
