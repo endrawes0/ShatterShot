@@ -125,6 +125,16 @@ func show_settings() -> void:
 	_ensure_settings()
 	_switch_to_scene(settings_instance)
 
+func close_settings() -> void:
+	if settings_instance and is_instance_valid(settings_instance):
+		_set_scene_active(settings_instance, false)
+	if run_instance and is_instance_valid(run_instance):
+		_show_menu_overlay()
+		get_tree().current_scene = run_instance
+		return
+	_ensure_menu()
+	_switch_to_scene(menu_instance)
+
 func show_test_lab() -> void:
 	_menu_music_restart_after_run = false
 	stop_menu_music()

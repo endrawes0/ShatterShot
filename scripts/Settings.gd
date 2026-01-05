@@ -47,7 +47,7 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		App.show_menu()
+		App.close_settings()
 
 func _sync_window_mode() -> void:
 	var current: int = DisplayServer.window_get_mode()
@@ -92,7 +92,7 @@ func _update_resolution_enabled() -> void:
 	resolution.disabled = is_fullscreen
 
 func _back_to_menu() -> void:
-	App.show_menu()
+	App.close_settings()
 
 func _build_resolution_options() -> void:
 	resolution.clear()
