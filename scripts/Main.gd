@@ -97,6 +97,7 @@ const VICTORY_REVIVE_TOAST: String = "Resurrection: You pull yourself back from 
 @onready var restart_button: Button = $HUD/GameOverPanel/RestartButton
 @onready var menu_button: Button = $HUD/GameOverPanel/MenuButton
 @onready var forfeit_dialog: ConfirmationDialog = $HUD/ForfeitDialog
+@onready var boss_drop_player: AudioStreamPlayer = $BossDropSfx
 @onready var left_wall: CollisionShape2D = $Walls/LeftWall
 @onready var right_wall: CollisionShape2D = $Walls/RightWall
 @onready var top_wall: CollisionShape2D = $Walls/TopWall
@@ -208,6 +209,7 @@ var current_is_boss: bool = false
 var current_is_elite: bool = false
 var current_pattern: String = "grid"
 var encounter_speed_boost: bool = false
+var encounter_has_launched: bool = false
 var act_ball_speed_multiplier: float = 1.0
 var act_threat_multiplier: float = 1.0
 var deck_return_panel: int = ReturnPanel.NONE
@@ -382,9 +384,17 @@ func _apply_act_config_to_encounter(config: EncounterConfig, is_elite: bool, is_
 		return
 	if is_boss:
 		config.base_hp = max(1, int(round(float(config.base_hp) * act_config.boss_hp_multiplier)))
+		if act_config.boss_pattern_id != "":
+			config.pattern_id = act_config.boss_pattern_id
+		if act_config.boss_variant_policy != null:
+			config.variant_policy = act_config.boss_variant_policy
+			if act_config.boss_variant_chance_multiplier != 1.0:
+				config.variant_policy = _scaled_variant_policy(config.variant_policy, act_config.boss_variant_chance_multiplier)
+		elif config.variant_policy != null and act_config.variant_chance_multiplier != 1.0:
+			config.variant_policy = _scaled_variant_policy(config.variant_policy, act_config.variant_chance_multiplier)
 	elif is_elite:
 		config.base_hp = max(1, int(round(float(config.base_hp) * act_config.elite_hp_multiplier)))
-	if config.variant_policy != null and act_config.variant_chance_multiplier != 1.0:
+	if not is_boss and config.variant_policy != null and act_config.variant_chance_multiplier != 1.0:
 		config.variant_policy = _scaled_variant_policy(config.variant_policy, act_config.variant_chance_multiplier)
 
 func _get_encounter_gold_reward() -> int:
@@ -616,6 +626,8 @@ func _start_run() -> void:
 	_show_map()
 
 func _restart_run_same_seed() -> void:
+	App.stop_combat_music()
+	App.stop_shop_music()
 	if floor_plan_generator_config is FLOOR_PLAN_GENERATOR_CONFIG:
 		var seed_value: int = 0
 		if map_manager:
@@ -626,6 +638,7 @@ func _restart_run_same_seed() -> void:
 func _show_map() -> void:
 	state = GameState.MAP
 	App.stop_shop_music()
+	App.start_menu_music()
 	_hide_all_panels()
 	map_panel.visible = true
 	_update_map_label()
@@ -872,6 +885,8 @@ func _begin_encounter(is_elite: bool, is_boss: bool) -> void:
 	state = GameState.PLANNING
 	_hide_all_panels()
 	current_is_elite = is_elite
+	encounter_has_launched = false
+	App.start_menu_music()
 	if act_manager != null:
 		active_act_config = act_manager.get_active_act_config()
 		act_ball_speed_multiplier = act_manager.get_ball_speed_multiplier()
@@ -899,6 +914,8 @@ func _begin_encounter(is_elite: bool, is_boss: bool) -> void:
 
 func _start_turn() -> void:
 	state = GameState.PLANNING
+	if not encounter_has_launched:
+		App.start_menu_music()
 	energy = max_energy
 	block = 0
 	volley_damage_bonus = 0
@@ -934,6 +951,8 @@ func _launch_volley() -> void:
 	if state != GameState.PLANNING:
 		return
 	state = GameState.VOLLEY
+	encounter_has_launched = true
+	App.stop_menu_music()
 	App.start_combat_music()
 	var total_balls: int = 1 + volley_ball_bonus
 	volley_ball_reserve = max(0, total_balls - 1)
@@ -985,6 +1004,9 @@ func _on_ball_lost(ball: Node) -> void:
 	if is_instance_valid(ball):
 		ball.queue_free()
 	encounter_manager.regen_bricks_on_drop()
+	if current_is_boss and encounter_manager:
+		encounter_manager.drop_bricks_one_row()
+		App.play_boss_drop_sfx(boss_drop_player)
 	if active_balls.is_empty():
 		if encounter_manager.check_victory():
 			_end_encounter()
@@ -1152,6 +1174,7 @@ func _on_reward_selected(card_id: String) -> void:
 
 func _show_shop() -> void:
 	state = GameState.SHOP
+	App.stop_menu_music()
 	App.start_shop_music()
 	_show_single_panel(shop_panel)
 	info_label.text = ""
@@ -1400,6 +1423,8 @@ func _show_rest() -> void:
 
 func _show_game_over() -> void:
 	state = GameState.GAME_OVER
+	App.stop_combat_music()
+	App.stop_shop_music()
 	App.notify_run_completed()
 	_clear_active_balls()
 	_hide_all_panels()
@@ -1639,6 +1664,8 @@ func _spawn_outcome_particles(color: Color, is_victory: bool, index: int = 0, to
 			particle.call("setup", color, velocity)
 
 func _go_to_menu() -> void:
+	App.stop_combat_music()
+	App.stop_shop_music()
 	_hide_outcome_overlays()
 	if gameover_panel:
 		gameover_panel.visible = false

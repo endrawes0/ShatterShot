@@ -15,13 +15,6 @@ const UI_PARTICLE_SPEED_Y: Vector2 = Vector2(-220.0, -80.0)
 const NEUTRAL_BUTTON_NORMAL: Color = Color(0.14, 0.14, 0.16)
 const NEUTRAL_BUTTON_HOVER: Color = Color(0.18, 0.18, 0.22)
 const NEUTRAL_BUTTON_PRESSED: Color = Color(0.12, 0.12, 0.14)
-const MUSIC_CONFIG_RESOURCE_PATH: String = "res://data/music.tres"
-const MENU_THEME_STREAM_PATH: String = "res://assets/music/MainMenuTheme.ogg"
-const COMBAT_THEME_STREAM_PATH: String = "res://assets/music/CombatTheme.ogg"
-const SHOP_THEME_STREAM_PATH: String = "res://assets/music/ShopTheme.ogg"
-const MUSIC_MENU: String = "menu"
-const MUSIC_COMBAT: String = "combat"
-const MUSIC_SHOP: String = "shop"
 
 var menu_instance: Node = null
 var run_instance: Node = null
@@ -34,15 +27,8 @@ var _ui_particles_layer: CanvasLayer = null
 var _ui_particles_root: Node2D = null
 var _ui_particle_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _menu_music_restart_after_run: bool = false
-var _music_players: Dictionary = {}
-var _music_should_play: Dictionary = {}
-var _music_tweens: Dictionary = {}
-var _music_config: MusicConfig = null
 var _settings_window_mode: int = DisplayServer.WINDOW_MODE_FULLSCREEN
 var _settings_resolution: Vector2i = Vector2i.ZERO
-var _settings_audio_master: float = 1.0
-var _settings_audio_music: float = 1.0
-var _settings_audio_sfx: float = 1.0
 var _settings_vfx_enabled: bool = true
 var _settings_vfx_intensity: float = 1.0
 var _settings_ball_speed_multiplier: float = 1.0
@@ -54,10 +40,9 @@ func _ready() -> void:
 	_ensure_paddle_keyboard_inputs()
 	_apply_global_theme()
 	_apply_saved_settings()
-	_load_music_config()
 	_refresh_layout_cache()
 	_connect_window_signals()
-	_start_menu_music()
+	start_menu_music()
 	var current: Node = get_tree().current_scene
 	if current and current.scene_file_path == "res://scenes/MainMenu.tscn":
 		menu_instance = current
@@ -92,7 +77,6 @@ func is_test_lab_unlocked() -> bool:
 
 func start_new_run(seed_value: int = 0) -> void:
 	_menu_music_restart_after_run = false
-	_stop_menu_music()
 	if run_instance and is_instance_valid(run_instance):
 		run_instance.queue_free()
 	run_instance = RUN_SCENE.instantiate()
@@ -112,7 +96,6 @@ func continue_run() -> void:
 	if not has_run():
 		return
 	_menu_music_restart_after_run = false
-	_stop_menu_music()
 	if run_instance.has_method("on_menu_closed"):
 		run_instance.on_menu_closed()
 	_switch_to_scene(run_instance)
@@ -120,7 +103,7 @@ func continue_run() -> void:
 func show_menu() -> void:
 	_ensure_menu()
 	if _menu_music_restart_after_run:
-		_start_menu_music()
+		start_menu_music()
 		_menu_music_restart_after_run = false
 	if run_instance and is_instance_valid(run_instance):
 		if run_instance.has_method("on_menu_opened"):
@@ -144,7 +127,7 @@ func show_settings() -> void:
 
 func show_test_lab() -> void:
 	_menu_music_restart_after_run = false
-	_stop_menu_music()
+	stop_menu_music()
 	if run_instance and is_instance_valid(run_instance):
 		run_instance.queue_free()
 	run_instance = RUN_SCENE.instantiate()
@@ -197,9 +180,9 @@ func _apply_saved_settings() -> void:
 	var err: int = config.load(SETTINGS_PATH)
 	_settings_window_mode = DisplayServer.WINDOW_MODE_FULLSCREEN
 	_settings_resolution = DisplayServer.screen_get_size()
-	_settings_audio_master = 1.0
-	_settings_audio_music = 1.0
-	_settings_audio_sfx = 1.0
+	var audio_master: float = 1.0
+	var audio_music: float = 1.0
+	var audio_sfx: float = 1.0
 	_settings_vfx_enabled = true
 	_settings_vfx_intensity = 1.0
 	_settings_ball_speed_multiplier = 1.0
@@ -209,21 +192,20 @@ func _apply_saved_settings() -> void:
 		var saved: Vector2i = config.get_value("graphics", "resolution", _settings_resolution)
 		if saved.x > 0 and saved.y > 0:
 			_settings_resolution = saved
-		_settings_audio_master = float(config.get_value("audio", "master", _settings_audio_master))
-		_settings_audio_music = float(config.get_value("audio", "music", _settings_audio_music))
-		_settings_audio_sfx = float(config.get_value("audio", "sfx", _settings_audio_sfx))
+		audio_master = float(config.get_value("audio", "master", audio_master))
+		audio_music = float(config.get_value("audio", "music", audio_music))
+		audio_sfx = float(config.get_value("audio", "sfx", audio_sfx))
 		_settings_vfx_enabled = bool(config.get_value("visual", "vfx_enabled", _settings_vfx_enabled))
 		_settings_vfx_intensity = float(config.get_value("visual", "vfx_intensity", _settings_vfx_intensity))
 		_settings_ball_speed_multiplier = float(config.get_value("gameplay", "ball_speed_multiplier", _settings_ball_speed_multiplier))
 		_settings_paddle_speed_multiplier = float(config.get_value("gameplay", "paddle_speed_multiplier", _settings_paddle_speed_multiplier))
-	_settings_audio_master = clampf(_settings_audio_master, 0.0, 1.0)
-	_settings_audio_music = clampf(_settings_audio_music, 0.0, 1.0)
-	_settings_audio_sfx = clampf(_settings_audio_sfx, 0.0, 1.0)
+	audio_master = clampf(audio_master, 0.0, 1.0)
+	audio_music = clampf(audio_music, 0.0, 1.0)
+	audio_sfx = clampf(audio_sfx, 0.0, 1.0)
 	_settings_vfx_intensity = clampf(_settings_vfx_intensity, 0.0, 1.0)
 	_settings_ball_speed_multiplier = clampf(_settings_ball_speed_multiplier, 0.5, 1.5)
 	_settings_paddle_speed_multiplier = clampf(_settings_paddle_speed_multiplier, 0.5, 1.5)
-	_ensure_audio_buses()
-	_apply_audio_settings()
+	_audio_call("set_audio_levels", [audio_master, audio_music, audio_sfx])
 	_apply_graphics_settings()
 
 func _apply_global_theme() -> void:
@@ -403,197 +385,17 @@ func _apply_graphics_settings() -> void:
 		root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 		root.content_scale_size = Vector2(get_layout_resolution())
 
-func _ensure_audio_buses() -> void:
-	_ensure_audio_bus("Music")
-	_ensure_audio_bus("SFX")
-
-func _ensure_audio_bus(name: String) -> void:
-	var index: int = AudioServer.get_bus_index(name)
-	if index != -1:
-		return
-	AudioServer.add_bus(AudioServer.get_bus_count())
-	index = AudioServer.get_bus_count() - 1
-	AudioServer.set_bus_name(index, name)
-	AudioServer.set_bus_send(index, "Master")
-
-func _load_music_config() -> void:
-	var loaded := ResourceLoader.load(MUSIC_CONFIG_RESOURCE_PATH, "", ResourceLoader.CACHE_MODE_IGNORE)
-	if loaded is MusicConfig:
-		_music_config = loaded
-	else:
-		_music_config = _build_default_music_config()
-
-func _build_default_music_config() -> MusicConfig:
-	var config := MusicConfig.new()
-	config.menu = _build_track_config(MENU_THEME_STREAM_PATH, 1.6, 1.2)
-	config.combat = _build_track_config(COMBAT_THEME_STREAM_PATH, 1.0, 2.0)
-	config.shop = _build_track_config(SHOP_THEME_STREAM_PATH, 1.0, 2.0)
-	return config
-
-func _build_track_config(path: String, fade_in: float, fade_out: float) -> MusicTrackConfig:
-	var track := MusicTrackConfig.new()
-	track.stream = _load_audio_stream(path)
-	track.fade_in = max(0.0, fade_in)
-	track.fade_out = max(0.0, fade_out)
-	return track
-
-func _load_audio_stream(path: String) -> AudioStream:
-	if path.is_empty():
-		return null
-	var loaded := ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
-	return loaded as AudioStream
-
 func notify_run_completed() -> void:
 	_menu_music_restart_after_run = true
-
-func start_combat_music() -> void:
-	_start_music_with_config(MUSIC_COMBAT)
-
-func stop_combat_music() -> void:
-	_stop_music_with_config(MUSIC_COMBAT)
-
-func start_shop_music() -> void:
-	_start_music_with_config(MUSIC_SHOP)
-
-func stop_shop_music() -> void:
-	_stop_music_with_config(MUSIC_SHOP)
-
-func _start_menu_music() -> void:
-	_start_music_with_config(MUSIC_MENU)
-
-func _stop_menu_music() -> void:
-	_stop_music_with_config(MUSIC_MENU)
-
-func _start_music_with_config(key: String) -> void:
-	var track := _get_music_track(key)
-	_start_music(key, track)
-
-func _stop_music_with_config(key: String) -> void:
-	var track := _get_music_track(key)
-	_stop_music(key, track)
-
-func _get_music_track(key: String) -> MusicTrackConfig:
-	if _music_config == null:
-		return null
-	match key:
-		MUSIC_MENU:
-			return _music_config.menu
-		MUSIC_COMBAT:
-			return _music_config.combat
-		MUSIC_SHOP:
-			return _music_config.shop
-	return null
-
-func _start_music(key: String, track: MusicTrackConfig) -> void:
-	_music_should_play[key] = true
-	if track == null or track.stream == null:
-		return
-	var fade_in: float = max(0.0, track.fade_in)
-	_ensure_music_player(key, track.stream)
-	_fade_in_music(key, fade_in)
-
-func _stop_music(key: String, track: MusicTrackConfig) -> void:
-	_music_should_play[key] = false
-	if track == null:
-		return
-	var fade_out: float = max(0.0, track.fade_out)
-	_fade_out_music(key, fade_out)
-
-func _ensure_music_player(key: String, stream: AudioStream) -> AudioStreamPlayer:
-	var player := _get_music_player(key)
-	if player != null:
-		if player.stream != stream:
-			player.stream = stream
-			_configure_stream_loop(player.stream)
-		return player
-	player = AudioStreamPlayer.new()
-	player.stream = stream
-	player.bus = "Music"
-	player.process_mode = Node.PROCESS_MODE_ALWAYS
-	_configure_stream_loop(player.stream)
-	var on_finished := Callable(self, "_on_music_finished").bind(key)
-	if not player.finished.is_connected(on_finished):
-		player.finished.connect(on_finished)
-	add_child(player)
-	_music_players[key] = player
-	return player
-
-func _configure_stream_loop(stream: AudioStream) -> void:
-	if stream is AudioStreamOggVorbis:
-		(stream as AudioStreamOggVorbis).loop = true
-	elif stream is AudioStreamWAV:
-		(stream as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
-
-func _get_music_player(key: String) -> AudioStreamPlayer:
-	if _music_players.has(key):
-		var player: AudioStreamPlayer = _music_players.get(key)
-		if player != null and is_instance_valid(player):
-			return player
-		_music_players.erase(key)
-	return null
-
-func _on_music_finished(key: String) -> void:
-	if not bool(_music_should_play.get(key, false)):
-		return
-	var player := _get_music_player(key)
-	if player and is_instance_valid(player):
-		player.play()
-
-func _fade_in_music(key: String, duration: float) -> void:
-	var player := _get_music_player(key)
-	if player == null:
-		return
-	_kill_music_tween(key)
-	player.volume_db = -80.0
-	if not player.playing:
-		player.play()
-	var tween := create_tween()
-	tween.tween_property(player, "volume_db", 0.0, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	_music_tweens[key] = tween
-
-func _fade_out_music(key: String, duration: float) -> void:
-	var player := _get_music_player(key)
-	if player == null:
-		return
-	if not player.playing:
-		player.stop()
-		return
-	_kill_music_tween(key)
-	var tween := create_tween()
-	tween.tween_property(player, "volume_db", -80.0, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	tween.tween_callback(func() -> void:
-		if player and is_instance_valid(player):
-			player.stop()
-			player.volume_db = 0.0
-	)
-	_music_tweens[key] = tween
-
-func _kill_music_tween(key: String) -> void:
-	var tween: Tween = _music_tweens.get(key)
-	if tween and tween.is_running():
-		tween.kill()
-	_music_tweens.erase(key)
-
-func _apply_audio_settings() -> void:
-	_apply_bus_volume("Master", _settings_audio_master)
-	_apply_bus_volume("Music", _settings_audio_music)
-	_apply_bus_volume("SFX", _settings_audio_sfx)
-
-func _apply_bus_volume(name: String, value: float) -> void:
-	var index: int = AudioServer.get_bus_index(name)
-	if index == -1:
-		return
-	var db: float = -80.0 if value <= 0.0 else linear_to_db(value)
-	AudioServer.set_bus_volume_db(index, db)
 
 func _save_settings() -> void:
 	var config := ConfigFile.new()
 	config.load(SETTINGS_PATH)
 	config.set_value("graphics", "window_mode", _settings_window_mode)
 	config.set_value("graphics", "resolution", _settings_resolution)
-	config.set_value("audio", "master", _settings_audio_master)
-	config.set_value("audio", "music", _settings_audio_music)
-	config.set_value("audio", "sfx", _settings_audio_sfx)
+	config.set_value("audio", "master", get_audio_master())
+	config.set_value("audio", "music", get_audio_music())
+	config.set_value("audio", "sfx", get_audio_sfx())
 	config.set_value("visual", "vfx_enabled", _settings_vfx_enabled)
 	config.set_value("visual", "vfx_intensity", _settings_vfx_intensity)
 	config.set_value("gameplay", "ball_speed_multiplier", _settings_ball_speed_multiplier)
@@ -614,20 +416,57 @@ func get_graphics_resolution() -> Vector2i:
 	return _settings_resolution
 
 func set_audio_levels(master: float, music: float, sfx: float) -> void:
-	_settings_audio_master = clampf(master, 0.0, 1.0)
-	_settings_audio_music = clampf(music, 0.0, 1.0)
-	_settings_audio_sfx = clampf(sfx, 0.0, 1.0)
-	_apply_audio_settings()
+	_audio_call("set_audio_levels", [master, music, sfx])
 	_save_settings()
 
 func get_audio_master() -> float:
-	return _settings_audio_master
+	return _audio_get_float("get_audio_master", 1.0)
 
 func get_audio_music() -> float:
-	return _settings_audio_music
+	return _audio_get_float("get_audio_music", 1.0)
 
 func get_audio_sfx() -> float:
-	return _settings_audio_sfx
+	return _audio_get_float("get_audio_sfx", 1.0)
+
+func start_combat_music() -> void:
+	_audio_call("start_combat_music")
+
+func stop_combat_music() -> void:
+	_audio_call("stop_combat_music")
+
+func start_shop_music() -> void:
+	_audio_call("start_shop_music")
+
+func stop_shop_music() -> void:
+	_audio_call("stop_shop_music")
+
+func start_menu_music() -> void:
+	_audio_call("start_menu_music")
+
+func stop_menu_music() -> void:
+	_audio_call("stop_menu_music")
+
+func play_bounce_sfx(player: AudioStreamPlayer) -> void:
+	_audio_call("play_bounce_sfx", [player])
+
+func play_boss_drop_sfx(player: AudioStreamPlayer) -> void:
+	_audio_call("play_boss_drop_sfx", [player])
+
+func _audio_node() -> Node:
+	return get_node_or_null("/root/Audio")
+
+func _audio_call(method: String, args: Array = []) -> void:
+	var audio := _audio_node()
+	if audio == null or not audio.has_method(method):
+		return
+	audio.callv(method, args)
+
+func _audio_get_float(method: String, default_value: float) -> float:
+	var audio := _audio_node()
+	if audio == null or not audio.has_method(method):
+		return default_value
+	var value: Variant = audio.call(method)
+	return float(value)
 
 func set_vfx_enabled(enabled: bool) -> void:
 	_settings_vfx_enabled = enabled

@@ -17,3 +17,6 @@ class_name ActConfig
 @export var block_threat_multiplier: float = 1.0
 @export var elite_hp_multiplier: float = 1.0
 @export var boss_hp_multiplier: float = 1.0
+@export var boss_pattern_id: String = ""
+@export var boss_variant_policy: VariantPolicy
+@export var boss_variant_chance_multiplier: float = 1.0
