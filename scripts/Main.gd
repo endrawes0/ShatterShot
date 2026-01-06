@@ -711,7 +711,9 @@ func _restart_run_same_seed() -> void:
 
 func _show_map() -> void:
 	App.stop_shop_music()
-	App.start_menu_music()
+	var rest_active: bool = App.is_rest_music_active()
+	if not rest_active:
+		App.start_menu_music()
 	_hide_all_panels()
 	map_panel.visible = true
 	_update_map_label()
@@ -965,6 +967,7 @@ func _begin_encounter(is_elite: bool, is_boss: bool) -> void:
 	_hide_all_panels()
 	current_is_elite = is_elite
 	encounter_has_launched = false
+	App.stop_rest_music()
 	App.start_menu_music()
 	if act_manager != null:
 		active_act_config = act_manager.get_active_act_config()
@@ -993,6 +996,7 @@ func _begin_encounter(is_elite: bool, is_boss: bool) -> void:
 
 func _start_turn() -> void:
 	if not encounter_has_launched:
+		App.stop_rest_music()
 		App.start_menu_music()
 	energy = max_energy
 	block = 0
@@ -1250,7 +1254,9 @@ func _on_reward_selected(card_id: String) -> void:
 
 func _show_shop() -> void:
 	App.stop_menu_music()
-	App.start_shop_music()
+	var rest_active: bool = App.is_rest_music_active()
+	if not rest_active:
+		App.start_shop_music()
 	_show_single_panel(shop_panel)
 	info_label.text = ""
 	shop_discount_multiplier = 1.0
@@ -1488,6 +1494,10 @@ func _apply_shop_entry_cards(amount: int) -> int:
 	return shop_entry_card_bonus
 
 func _show_rest() -> void:
+	App.stop_menu_music()
+	App.stop_combat_music()
+	App.stop_shop_music()
+	App.start_rest_music()
 	_hide_all_panels()
 	info_label.text = "Rest to heal."
 	hp = min(max_hp, hp + 20)
@@ -1498,6 +1508,7 @@ func _show_rest() -> void:
 func _show_game_over() -> void:
 	App.stop_combat_music()
 	App.stop_shop_music()
+	App.stop_rest_music()
 	App.notify_run_completed()
 	_clear_active_balls()
 	_hide_all_panels()

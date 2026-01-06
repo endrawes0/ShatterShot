@@ -27,6 +27,7 @@ var _ui_particles_layer: CanvasLayer = null
 var _ui_particles_root: Node2D = null
 var _ui_particle_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var _menu_music_restart_after_run: bool = false
+var _rest_music_active_until_planning: bool = false
 var _settings_window_mode: int = DisplayServer.WINDOW_MODE_FULLSCREEN
 var _settings_resolution: Vector2i = Vector2i.ZERO
 var _settings_vfx_enabled: bool = true
@@ -77,6 +78,8 @@ func is_test_lab_unlocked() -> bool:
 
 func start_new_run(seed_value: int = 0) -> void:
 	_menu_music_restart_after_run = false
+	stop_combat_music()
+	stop_rest_music()
 	if run_instance and is_instance_valid(run_instance):
 		run_instance.queue_free()
 	run_instance = RUN_SCENE.instantiate()
@@ -96,6 +99,7 @@ func continue_run() -> void:
 	if not has_run():
 		return
 	_menu_music_restart_after_run = false
+	stop_rest_music()
 	if run_instance.has_method("on_menu_closed"):
 		run_instance.on_menu_closed()
 	_switch_to_scene(run_instance)
@@ -159,7 +163,7 @@ func _show_settings_overlay() -> void:
 	settings_instance.visible = true
 	settings_instance.process_mode = Node.PROCESS_MODE_INHERIT
 	if get_tree() and get_tree().root:
-		var root := get_tree().root
+		var root: Window = get_tree().root
 		root.move_child(settings_instance, root.get_child_count() - 1)
 
 func _show_help_overlay() -> void:
@@ -168,12 +172,13 @@ func _show_help_overlay() -> void:
 	help_instance.visible = true
 	help_instance.process_mode = Node.PROCESS_MODE_INHERIT
 	if get_tree() and get_tree().root:
-		var root := get_tree().root
+		var root: Window = get_tree().root
 		root.move_child(help_instance, root.get_child_count() - 1)
 
 func show_test_lab() -> void:
 	_menu_music_restart_after_run = false
 	stop_menu_music()
+	stop_rest_music()
 	if run_instance and is_instance_valid(run_instance):
 		run_instance.queue_free()
 	run_instance = RUN_SCENE.instantiate()
@@ -485,6 +490,17 @@ func start_shop_music() -> void:
 
 func stop_shop_music() -> void:
 	_audio_call("stop_shop_music")
+
+func start_rest_music() -> void:
+	_rest_music_active_until_planning = true
+	_audio_call("start_rest_music")
+
+func stop_rest_music() -> void:
+	_rest_music_active_until_planning = false
+	_audio_call("stop_rest_music")
+
+func is_rest_music_active() -> bool:
+	return _rest_music_active_until_planning
 
 func start_menu_music() -> void:
 	_audio_call("start_menu_music")
