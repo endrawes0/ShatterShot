@@ -129,12 +129,23 @@ func _load_audio_stream(path: String) -> AudioStream:
 	return loaded as AudioStream
 
 func _start_music_with_config(key: String) -> void:
+	_stop_other_music(key)
 	var track := _get_music_track(key)
 	_start_music(key, track)
 
 func _stop_music_with_config(key: String) -> void:
 	var track := _get_music_track(key)
 	_stop_music(key, track)
+
+func _all_music_keys() -> Array[String]:
+	return [MUSIC_MENU, MUSIC_COMBAT, MUSIC_SHOP, MUSIC_REST]
+
+func _stop_other_music(active_key: String) -> void:
+	for key in _all_music_keys():
+		if key == active_key:
+			continue
+		var track := _get_music_track(key)
+		_stop_music(key, track)
 
 func _get_music_track(key: String) -> MusicTrackConfig:
 	if _music_config == null:
