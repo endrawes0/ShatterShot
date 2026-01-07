@@ -12,6 +12,19 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var discovered_rooms: Dictionary = {}
 var discovered_edges: Dictionary = {}
 
+func _to_dict_array(source) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	if source == null:
+		return result
+	if typeof(source) != TYPE_ARRAY:
+		return result
+	for element in source:
+		if element is Dictionary:
+			result.append(element)
+		else:
+			result.append(Dictionary(element))
+	return result
+
 func set_rng(rng_instance: RandomNumberGenerator) -> void:
 	if rng_instance != null:
 		rng = rng_instance
@@ -36,7 +49,7 @@ func set_runtime_floor_plan(plan: Dictionary) -> void:
 		else:
 			runtime_acts.append(Dictionary(entry))
 	if runtime_acts.is_empty():
-		runtime_rooms = plan.get("rooms", [])
+		runtime_rooms = _to_dict_array(plan.get("rooms", []))
 		runtime_start_room_id = String(plan.get("start_room_id", ""))
 	else:
 		runtime_rooms = []
@@ -270,7 +283,7 @@ func _active_rooms() -> Array[Dictionary]:
 	var acts := _active_acts()
 	if not acts.is_empty():
 		if active_act_index >= 0 and active_act_index < acts.size():
-			return Array(acts[active_act_index].get("rooms", []))
+			return _to_dict_array(acts[active_act_index].get("rooms", []))
 		return []
 	if not runtime_rooms.is_empty():
 		return runtime_rooms
