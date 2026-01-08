@@ -102,7 +102,7 @@ func _build_resolution_options() -> void:
 	display_resolution = DisplayServer.screen_get_size()
 	var items: Array = []
 	for resolution_size in RESOLUTIONS:
-		items.append({"size": resolution_size, "label": "%dx%d" % [size.x, size.y]})
+		items.append({"size": resolution_size, "label": "%dx%d" % [resolution_size.x, resolution_size.y]})
 	var has_display: bool = false
 	for item in items:
 		if item["size"] == display_resolution:
