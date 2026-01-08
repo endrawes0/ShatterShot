@@ -243,11 +243,11 @@ func _ready() -> void:
 	outcome_rng.randomize()
 	if get_viewport():
 		get_viewport().size_changed.connect(_fit_to_viewport)
-	_fit_to_viewport()
-	base_paddle_half_width = paddle.half_width
-	paddle_speed_setting_multiplier = App.get_paddle_speed_multiplier()
-	base_paddle_speed = paddle.speed * paddle_speed_setting_multiplier
-	paddle.speed = base_paddle_speed
+		_fit_to_viewport()
+		base_paddle_half_width = paddle.half_width
+		paddle_speed_setting_multiplier = App.get_paddle_speed_multiplier()
+		base_paddle_speed = paddle.speed * paddle_speed_setting_multiplier
+		paddle.speed = base_paddle_speed
 		encounter_manager = EncounterManager.new()
 		add_child(encounter_manager)
 		encounter_manager.setup(bricks_root, brick_scene, brick_size, brick_gap, top_margin, ROW_PALETTE)
@@ -264,13 +264,13 @@ func _ready() -> void:
 		add_child(act_manager)
 		act_manager.setup(floor_plan_generator_config, map_manager, ACT_CONFIG_DIR, ACT_CONFIG_SCRIPT, max_combat_floors)
 		_apply_act_limits()
-	deck_manager = DeckManager.new()
-	add_child(deck_manager)
-	card_effect_registry = CardEffectRegistry.new()
-	hud_controller = HudController.new()
-	add_child(hud_controller)
-	card_emoji_font = load(EMOJI_FONT_PATH)
-	hud_controller.setup({
+		deck_manager = DeckManager.new()
+		add_child(deck_manager)
+		card_effect_registry = CardEffectRegistry.new()
+		hud_controller = HudController.new()
+		add_child(hud_controller)
+		card_emoji_font = load(EMOJI_FONT_PATH)
+		hud_controller.setup({
 		"energy_label": energy_label,
 		"deck_label": deck_label,
 		"discard_label": discard_label,
