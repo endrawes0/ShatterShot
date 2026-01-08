@@ -1733,7 +1733,9 @@ func _spawn_outcome_particles(color: Color, is_victory: bool, total: int = 1) ->
 	var vfx_count: int = App.get_vfx_count(OUTCOME_PARTICLE_COUNT)
 	if vfx_count <= 0:
 		return
-	var parent_node: Node = hud if hud != null else get_tree().root
+	var parent_node: Node = get_tree().root
+	if hud != null:
+		parent_node = hud
 	if parent_node == null:
 		return
 	var screen: Vector2 = App.get_layout_size()
