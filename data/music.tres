@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="MusicConfig" load_steps=11 format=3 uid="uid://o2c4eo55m1a"]
 
-[ext_resource type="Script" uid="uid://drmh3ei843k43" path="res://scripts/data/MusicConfig.gd" id="1"]
-[ext_resource type="Script" uid="uid://brshiufambvgh" path="res://scripts/data/MusicTrackConfig.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/data/MusicConfig.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/data/MusicTrackConfig.gd" id="2"]
 [ext_resource type="AudioStream" uid="uid://ca2msuoxqplek" path="res://assets/music/MainMenuTheme.ogg" id="3"]
 [ext_resource type="AudioStream" uid="uid://codhgu0ti50u2" path="res://assets/music/CombatTheme.ogg" id="4"]
 [ext_resource type="AudioStream" uid="uid://dksvmu40t3f7o" path="res://assets/music/ShopTheme.ogg" id="5"]
