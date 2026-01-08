@@ -248,10 +248,10 @@ func _ready() -> void:
 	paddle_speed_setting_multiplier = App.get_paddle_speed_multiplier()
 	base_paddle_speed = paddle.speed * paddle_speed_setting_multiplier
 	paddle.speed = base_paddle_speed
-	encounter_manager = EncounterManager.new()
-	add_child(encounter_manager)
-	encounter_manager.setup(bricks_root, brick_scene, brick_size, brick_gap, top_margin, ROW_PALETTE)
-	encounter_manager.load_configs_from_dir(ENCOUNTER_CONFIG_DIR)
+		encounter_manager = EncounterManager.new()
+		add_child(encounter_manager)
+		encounter_manager.setup(bricks_root, brick_scene, brick_size, brick_gap, top_margin, ROW_PALETTE)
+		encounter_manager.load_configs_from_dir(ENCOUNTER_CONFIG_DIR)
 		map_manager = MapManager.new()
 		add_child(map_manager)
 		var generator_config_resource := load(FLOOR_PLAN_GENERATOR_CONFIG_PATH)
