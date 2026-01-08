@@ -55,7 +55,7 @@ func set_runtime_floor_plan(plan: Dictionary) -> void:
 		runtime_rooms = []
 		runtime_start_room_id = ""
 		active_act_index = 0
-	runtime_seed = int(plan.get("seed_plan", 0))
+	runtime_seed = int(plan.get("seed_value", plan.get("seed", plan.get("seed_plan", 0))))
 	current_room_id = ""
 	fallback_active = false
 	discovered_rooms.clear()
