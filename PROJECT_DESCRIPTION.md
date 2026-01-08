@@ -40,12 +40,12 @@ A single-player Godot project that fuses Breakout-style paddle/ball action with 
 ## Deck and Cards
 - Start with a small deck of offensive, defensive, and utility cards.
 - Energy limits the number of cards you can play each planning phase.
-- Card examples:
-  - Strike: increase volley damage.
-  - Twin Launch: add an extra ball.
+- Card examples (see `GAMEPLAY.md` for the full, current list):
+  - Punch: increase volley damage.
+  - Twin Launch: gain an extra launch this volley.
   - Guard: gain block to reduce threat damage.
-  - Widen/ Haste: buff paddle size or speed for multiple turns.
-  - Bomb: destroy random bricks.
+  - Widen Paddle / Haste: buff paddle size or speed for multiple turns.
+  - Bomb / MOAB: destroy random bricks.
 
 ## Progression
 - Rewards after combat grant new cards or allow skips.
