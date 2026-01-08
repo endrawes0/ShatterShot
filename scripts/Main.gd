@@ -255,11 +255,11 @@ func _ready() -> void:
 	map_manager = MapManager.new()
 	add_child(map_manager)
 	var generator_config_resource := load(FLOOR_PLAN_GENERATOR_CONFIG_PATH)
-	if generator_config_resource is FLOOR_PLAN_GENERATOR_CONFIG:
-		floor_plan_generator_config = generator_config_resource
-		if has_pending_seed_override:
-			floor_plan_generator_config.seed = pending_seed
-			has_pending_seed_override = false
+		if generator_config_resource is FLOOR_PLAN_GENERATOR_CONFIG:
+			floor_plan_generator_config = generator_config_resource
+			if has_pending_seed_override:
+				floor_plan_generator_config.seed_value = pending_seed
+				has_pending_seed_override = false
 	act_manager = ACT_MANAGER_SCRIPT.new()
 	add_child(act_manager)
 	act_manager.setup(floor_plan_generator_config, map_manager, ACT_CONFIG_DIR, ACT_CONFIG_SCRIPT, max_combat_floors)
@@ -716,7 +716,7 @@ func _restart_run_same_seed() -> void:
 		var seed_value: int = 0
 		if map_manager:
 			seed_value = map_manager.runtime_seed
-		floor_plan_generator_config.seed = seed_value if seed_value > 0 else 0
+		floor_plan_generator_config.seed_value = seed_value if seed_value > 0 else 0
 	_start_run("restart_run")
 
 func _show_map() -> void:

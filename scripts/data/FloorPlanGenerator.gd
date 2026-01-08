@@ -14,7 +14,8 @@ func generate(config: FloorPlanGeneratorConfig) -> Dictionary:
 
 	var plan := {
 		"acts": [],
-		"seed": seed_value
+		"seed": seed_value,
+		"seed_value": seed_value
 	}
 
 	var act_defs: Array[Dictionary] = []
