@@ -1706,7 +1706,9 @@ func _spawn_victory_particles() -> void:
 func _spawn_outcome_particle_cluster(color: Color, count: int, center: Vector2, radius: float, is_victory: bool) -> void:
 	if count <= 0:
 		return
-	var parent_node: Node = hud if hud != null else get_tree().root
+	var parent_node: Node = get_tree().root
+	if hud != null:
+		parent_node = hud
 	if parent_node == null:
 		return
 	for _i in range(count):
