@@ -911,23 +911,13 @@ func _apply_between_act_buff(buff_id: String) -> void:
 
 func _show_between_act_buff_choice() -> void:
 	_hide_all_panels()
-	_show_single_panel(shop_panel)
-	if shop_label:
-		shop_label.text = "Between Acts: Choose a Buff"
-	if shop_info_label:
-		shop_info_label.text = "Pick one of three random buffs."
-	if shop_gold_label:
-		shop_gold_label.visible = false
-	if shop_cards_panel:
-		shop_cards_panel.visible = false
-	if shop_ball_mods_panel:
-		shop_ball_mods_panel.visible = false
-	if shop_buffs_panel:
-		shop_buffs_panel.visible = true
-	if shop_leave_button:
-		shop_leave_button.visible = false
+	_show_single_panel(treasure_panel)
+	if treasure_label:
+		treasure_label.text = "Act Rewards: Buff"
+	if treasure_continue_button:
+		treasure_continue_button.visible = false
 
-	_clear_container_children(shop_buffs_buttons)
+	_clear_container_children(treasure_rewards)
 	var buffs := _roll_between_act_buffs(3)
 	if buffs.is_empty():
 		_between_act_step = BetweenActStep.TREASURE
@@ -946,17 +936,25 @@ func _show_between_act_buff_choice() -> void:
 		)
 		App.apply_neutral_button_style(button)
 		App.bind_button_feedback(button)
-		shop_buffs_buttons.add_child(button)
-	_focus_shop_buttons()
+		treasure_rewards.add_child(button)
+	_focus_treasure_buttons()
 	_update_volley_prompt_visibility()
+
+func _focus_treasure_buttons() -> void:
+	if treasure_panel == null:
+		return
+	var buttons: Array[BaseButton] = []
+	_collect_buttons(treasure_panel, buttons)
+	_apply_focus_chain(buttons)
 
 func _show_between_act_treasure() -> void:
 	_hide_all_panels()
 	_show_treasure_panel(true)
 	if treasure_label:
-		treasure_label.text = "Between Acts: Treasure"
+		treasure_label.text = "Act Rewards: Treasure"
 	if treasure_continue_button:
 		treasure_continue_button.text = "Continue"
+		treasure_continue_button.visible = true
 	_between_act_step = BetweenActStep.TREASURE
 
 func _begin_between_act_rest() -> void:
@@ -967,7 +965,7 @@ func _begin_between_act_shop() -> void:
 	_between_act_step = BetweenActStep.SHOP
 	_show_shop()
 	if shop_label:
-		shop_label.text = "Between Acts: Shop"
+		shop_label.text = "Act Rewards: Shop"
 	if shop_info_label:
 		shop_info_label.text = "Spend gold, then continue."
 	if shop_gold_label:
