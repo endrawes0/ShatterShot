@@ -139,7 +139,6 @@ var act_transition_manager: ActTransitionManager
 var balance_data: Resource
 var card_effect_registry: CardEffectRegistry
 
-var _fade_overlay: ColorRect = null
 var _map_label_override_act_index: int = -1
 
 var card_data: Dictionary = {}
@@ -260,7 +259,6 @@ func _ready() -> void:
 	_apply_balance_data(balance_data)
 	base_max_energy = max_energy
 	outcome_rng.randomize()
-	_ensure_fade_overlay()
 	if get_viewport():
 		get_viewport().size_changed.connect(_fit_to_viewport)
 		_fit_to_viewport()
@@ -323,25 +321,30 @@ func _ready() -> void:
 	act_transition_manager = ACT_TRANSITION_MANAGER_SCRIPT.new()
 	add_child(act_transition_manager)
 	act_transition_manager.setup(
+		self,
 		run_rng,
 		{
+			"hud": hud,
 			"treasure_panel": treasure_panel,
 			"treasure_label": treasure_label,
 			"treasure_rewards": treasure_rewards,
-			"treasure_continue_button": treasure_continue_button
+			"treasure_continue_button": treasure_continue_button,
+			"map_panel": map_panel,
+			"map_graph": map_graph,
+			"map_label": map_label,
+			"shop_leave_button": shop_leave_button,
+			"shop_label": shop_label,
+			"shop_info_label": shop_info_label
 		},
 		{
-			"get_config": Callable(self, "_act_rewards_config"),
-			"apply_buff": Callable(self, "_apply_between_act_buff"),
-			"apply_rest_rewards": Callable(self, "_apply_rest_rewards"),
 			"update_labels": Callable(self, "_update_labels"),
 			"hide_all_panels": Callable(self, "_hide_all_panels"),
 			"show_treasure_panel": Callable(self, "_show_treasure_panel"),
 			"show_single_panel": Callable(self, "_show_single_panel"),
-			"show_map_preview_from_plan": Callable(self, "_show_map_preview_from_plan"),
-			"fade_overlay_to": Callable(self, "_fade_overlay_to"),
-			"enter_shop_step": Callable(self, "_enter_act_rewards_shop_step"),
-			"exit_sequence": Callable(self, "_exit_act_rewards_sequence")
+			"show_shop": Callable(self, "_show_shop"),
+			"transition_event": Callable(self, "_transition_event"),
+			"update_volley_prompt_visibility": Callable(self, "_update_volley_prompt_visibility"),
+			"clear_map_buttons": Callable(self, "_clear_map_buttons")
 		}
 	)
 	_set_test_lab_enabled(test_lab_enabled)
@@ -376,42 +379,6 @@ func _ready() -> void:
 	_set_hud_tooltips()
 	if not _practice_pending:
 		_start_run()
-
-func _ensure_fade_overlay() -> void:
-	if _fade_overlay != null:
-		return
-	if hud == null:
-		return
-	var overlay := ColorRect.new()
-	overlay.name = "FadeOverlay"
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.top_level = true
-	overlay.color = Color(0.0, 0.0, 0.0, 0.0)
-	overlay.visible = false
-	hud.add_child(overlay)
-	overlay.z_index = 1000
-	_fade_overlay = overlay
-	_sync_fade_overlay_rect()
-
-func _sync_fade_overlay_rect() -> void:
-	if _fade_overlay == null:
-		return
-	_fade_overlay.position = Vector2.ZERO
-	_fade_overlay.size = get_viewport_rect().size
-
-func _fade_overlay_to(alpha: float, duration: float) -> void:
-	_ensure_fade_overlay()
-	if _fade_overlay == null:
-		return
-	_fade_overlay.visible = true
-	_sync_fade_overlay_rect()
-	var tween := create_tween()
-	tween.tween_property(_fade_overlay, "color:a", clamp(alpha, 0.0, 1.0), max(0.0, duration)) \
-		.set_trans(Tween.TRANS_QUAD) \
-		.set_ease(Tween.EASE_IN_OUT)
-	await tween.finished
-	if alpha <= 0.0 and _fade_overlay != null:
-		_fade_overlay.visible = false
 
 func start_practice(room_type: String, act_index: int, layout_id: String, floor_index: int = 1) -> void:
 	_practice_room_type = room_type.strip_edges().to_lower()
@@ -598,7 +565,6 @@ func _fit_to_viewport() -> void:
 	var size: Vector2 = App.get_layout_size()
 	_apply_world_offset(size)
 	_update_playfield_background(size)
-	_sync_fade_overlay_rect()
 	paddle.position = Vector2(size.x * 0.5, size.y - 240.0)
 	if paddle.has_method("set_locked_y"):
 		paddle.set_locked_y(paddle.position.y)
@@ -887,82 +853,6 @@ func _update_map_label() -> void:
 	else:
 		map_label.text = "Map"
 
-func _apply_between_act_buff(buff_id: String) -> void:
-	match buff_id:
-		"upgrade_hand":
-			_upgrade_starting_hand(shop_upgrade_hand_bonus)
-		"vitality":
-			_apply_vitality(shop_vitality_max_hp_bonus, shop_vitality_heal)
-		"surge":
-			_apply_max_energy_buff(shop_energy_bonus)
-		"paddle_width":
-			_apply_paddle_width_buff(shop_paddle_width_bonus)
-		"paddle_speed":
-			_apply_paddle_speed_buff(shop_paddle_speed_bonus_percent)
-		"reserve_ball":
-			_apply_reserve_ball_buff(shop_reserve_ball_bonus)
-		"shop_discount":
-			_apply_shop_discount(shop_discount_percent)
-		"shop_scribe":
-			_apply_shop_entry_cards(shop_entry_card_count)
-
-func _apply_rest_rewards() -> void:
-	hp = max_hp
-	var removed: int = 0
-	if deck_manager != null:
-		var wound_instance_ids: Array[int] = []
-		for card in deck_manager.deck:
-			if card is Dictionary and String(card.get("card_id", "")) == "wound":
-				wound_instance_ids.append(int(card.get("id", -1)))
-		for instance_id in wound_instance_ids:
-			if removed >= 5:
-				break
-			deck_manager.remove_card_instance_from_all(instance_id, true)
-			removed += 1
-
-func _act_rewards_config() -> Dictionary:
-	return {
-		"shop_upgrade_hand_bonus": shop_upgrade_hand_bonus,
-		"shop_max_hand_size": shop_max_hand_size,
-		"starting_hand_size": starting_hand_size,
-		"shop_vitality_max_hp_bonus": shop_vitality_max_hp_bonus,
-		"shop_vitality_heal": shop_vitality_heal,
-		"shop_energy_bonus": shop_energy_bonus,
-		"max_energy_bonus": max_energy_bonus,
-		"shop_paddle_width_bonus": shop_paddle_width_bonus,
-		"shop_paddle_speed_bonus_percent": shop_paddle_speed_bonus_percent,
-		"shop_reserve_ball_bonus": shop_reserve_ball_bonus,
-		"volley_ball_bonus_base": volley_ball_bonus_base,
-		"shop_discount_percent": shop_discount_percent,
-		"shop_entry_card_count": shop_entry_card_count,
-		"rest_fade_seconds": 4.0,
-		"rest_pause_seconds": 4.0
-	}
-
-func _enter_act_rewards_shop_step() -> void:
-	state_manager.transition_to(GameState.SHOP)
-	if shop_label:
-		shop_label.text = "Act Rewards: Shop"
-	if shop_info_label:
-		shop_info_label.text = "Spend gold, then continue."
-	if shop_gold_label:
-		shop_gold_label.visible = true
-	if shop_cards_panel:
-		shop_cards_panel.visible = true
-	if shop_ball_mods_panel:
-		shop_ball_mods_panel.visible = true
-	if shop_leave_button:
-		shop_leave_button.visible = true
-		shop_leave_button.text = "Continue"
-
-func _exit_act_rewards_sequence() -> void:
-	if shop_leave_button:
-		shop_leave_button.text = "Leave"
-	if state == GameState.MAP:
-		_show_map()
-	else:
-		_transition_event("go_to_map")
-
 func _on_treasure_continue_pressed() -> void:
 	if act_transition_manager != null and act_transition_manager.handle_treasure_continue():
 		return
@@ -1166,21 +1056,6 @@ func _map_plan_with_boss_label(plan: Dictionary, act_index: int) -> Dictionary:
 		boss_label = String(act_config.get("boss_label"))
 	merged["boss_label"] = boss_label
 	return merged
-
-func _show_map_preview_from_plan(plan: Dictionary) -> void:
-	if map_panel == null:
-		return
-	_hide_all_panels()
-	map_panel.visible = true
-	_clear_map_buttons()
-	_update_seed_display()
-	map_preview_active = false
-	_map_label_override_act_index = int(plan.get("active_act_index", -1))
-	if map_graph != null and map_graph.has_method("set_plan"):
-		var no_choices: Array[Dictionary] = []
-		map_graph.call("set_plan", plan, no_choices)
-	_update_map_label()
-	_update_volley_prompt_visibility()
 
 func _enter_room(room_type: String) -> void:
 	if room_type == "mystery":
@@ -1865,7 +1740,8 @@ func _show_rest() -> void:
 	App.start_rest_music()
 	_hide_all_panels()
 	info_label.text = "Rest: fully heal and remove wounds."
-	_apply_rest_rewards()
+	if act_transition_manager != null:
+		act_transition_manager.apply_rest_rewards()
 	_update_labels()
 	_transition_event("go_to_map")
 	_update_volley_prompt_visibility()
