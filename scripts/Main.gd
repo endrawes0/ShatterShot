@@ -349,6 +349,9 @@ func start_practice(room_type: String, act_index: int, layout_id: String, floor_
 	if is_node_ready():
 		call_deferred("_start_practice_now")
 
+func is_practice_mode() -> bool:
+	return practice_mode
+
 func _start_practice_now() -> void:
 	_practice_pending = false
 	practice_mode = true

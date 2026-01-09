@@ -82,6 +82,15 @@ func _action_has_key(action: String, keycode: int) -> bool:
 func has_run() -> bool:
 	return run_instance != null and is_instance_valid(run_instance)
 
+func is_practice_run() -> bool:
+	if not has_run():
+		return false
+	if run_instance == null or not is_instance_valid(run_instance):
+		return false
+	if run_instance.has_method("is_practice_mode"):
+		return bool(run_instance.call("is_practice_mode"))
+	return bool(run_instance.get("practice_mode"))
+
 func set_test_lab_unlocked(unlocked: bool) -> void:
 	_test_lab_unlocked = unlocked
 

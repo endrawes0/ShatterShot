@@ -1,7 +1,8 @@
 extends Control
 
 @onready var start_button: Button = $Center/VBox/Buttons/StartButton
-@onready var continue_button: Button = $Center/VBox/Buttons/ContinueButton
+@onready var continue_button: Button = $Center/VBox/Buttons/ContinueRow/ContinueButton
+@onready var end_button: Button = $Center/VBox/Buttons/ContinueRow/EndButton
 @onready var help_button: Button = $Center/VBox/Buttons/HelpButton
 @onready var settings_button: Button = $Center/VBox/Buttons/SettingsButton
 @onready var test_button: Button = $Center/VBox/Buttons/TestButton
@@ -35,6 +36,8 @@ var _menu_palette: Array[Color] = [
 func _ready() -> void:
 	start_button.pressed.connect(_open_seed_dialog)
 	continue_button.pressed.connect(_continue_or_practice)
+	if end_button:
+		end_button.pressed.connect(_end_run_or_practice)
 	help_button.pressed.connect(_open_help)
 	settings_button.pressed.connect(_open_settings)
 	test_button.pressed.connect(_open_test_lab)
@@ -109,6 +112,11 @@ func _continue_or_practice() -> void:
 		return
 	_open_practice_dialog()
 
+func _end_run_or_practice() -> void:
+	if not App.has_run():
+		return
+	App.end_run_to_menu()
+
 func _open_help() -> void:
 	App.show_help()
 
@@ -125,11 +133,17 @@ func _update_continue_button() -> void:
 	if continue_button == null:
 		return
 	if App.has_run():
-		continue_button.text = "Continue Run"
+		continue_button.text = "Continue"
 		continue_button.disabled = false
+		if end_button:
+			end_button.visible = true
+			end_button.disabled = false
+			end_button.text = "End Practice" if App.is_practice_run() else "End Run"
 	else:
 		continue_button.text = "Practice"
 		continue_button.disabled = false
+		if end_button:
+			end_button.visible = false
 	_apply_menu_palette()
 
 func _setup_practice_dialog() -> void:
@@ -389,6 +403,8 @@ func _menu_buttons() -> Array[Button]:
 		buttons.append(start_button)
 	if continue_button:
 		buttons.append(continue_button)
+	if end_button and end_button.visible:
+		buttons.append(end_button)
 	if help_button:
 		buttons.append(help_button)
 	if settings_button:
