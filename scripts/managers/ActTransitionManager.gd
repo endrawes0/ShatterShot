@@ -109,6 +109,11 @@ func handle_shop_continue() -> bool:
 	_map_label_override_act_index = -1
 	if _shop_leave_button != null:
 		_shop_leave_button.text = "Leave"
+	if _main != null:
+		var current_state: int = int(_main.get("state"))
+		if current_state == int(StateManager.GameState.MAP) and _main.has_method("_show_map"):
+			_main.call("_show_map")
+			return true
 	if _transition_event.is_valid():
 		_transition_event.call("go_to_map")
 	return true
@@ -323,6 +328,10 @@ func _run_rest_transition() -> void:
 	_enter_shop_step()
 
 func _enter_shop_step() -> void:
+	if _main != null and _main.get("state_manager") != null:
+		var state_manager: Object = _main.get("state_manager")
+		if state_manager != null and state_manager.has_method("transition_to"):
+			state_manager.transition_to(int(StateManager.GameState.SHOP))
 	if _show_shop.is_valid():
 		_show_shop.call()
 	if _shop_label != null:
