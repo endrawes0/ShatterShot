@@ -344,7 +344,7 @@ func start_practice(room_type: String, act_index: int, layout_id: String) -> voi
 	_practice_act_index = max(1, act_index)
 	_practice_layout_id = layout_id.strip_edges()
 	_practice_pending = true
-	if is_inside_tree():
+	if is_node_ready():
 		call_deferred("_start_practice_now")
 
 func _start_practice_now() -> void:
@@ -352,7 +352,7 @@ func _start_practice_now() -> void:
 	practice_mode = true
 	hp = max_hp
 	gold = 0
-	floor_index = 0
+	floor_index = 1
 	current_is_boss = false
 	current_is_elite = false
 	starting_hand_size = BASE_STARTING_HAND_SIZE
@@ -1049,9 +1049,9 @@ func _begin_encounter(is_elite: bool, is_boss: bool) -> void:
 	_reset_deck_for_next_floor()
 	current_is_boss = is_boss
 	var config := encounter_manager.build_config_from_floor(floor_index, is_elite, is_boss)
+	_apply_act_config_to_encounter(config, is_elite, is_boss, active_act_config)
 	if practice_mode and _practice_layout_id != "":
 		config.pattern_id = _practice_layout_id
-	_apply_act_config_to_encounter(config, is_elite, is_boss, active_act_config)
 	current_pattern = config.pattern_id
 	encounter_speed_boost = config.speed_boost
 	encounter_rows = config.rows
