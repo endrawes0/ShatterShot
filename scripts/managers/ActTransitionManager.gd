@@ -369,8 +369,12 @@ func _ensure_fade_overlay() -> void:
 func _sync_fade_overlay_rect() -> void:
 	if _fade_overlay == null:
 		return
+	var viewport := get_viewport()
+	if viewport == null and _hud != null:
+		viewport = _hud.get_viewport()
+	var rect := viewport.get_visible_rect() if viewport != null else Rect2(Vector2.ZERO, Vector2(0.0, 0.0))
 	_fade_overlay.position = Vector2.ZERO
-	_fade_overlay.size = get_viewport_rect().size
+	_fade_overlay.size = rect.size
 
 func _fade_overlay_to(alpha: float, duration: float) -> void:
 	_ensure_fade_overlay()
