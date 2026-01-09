@@ -38,6 +38,7 @@ var _test_lab_unlocked: bool = false
 
 func _ready() -> void:
 	_ui_particle_rng.randomize()
+	_ensure_spacebar_not_ui_select()
 	_ensure_paddle_keyboard_inputs()
 	_apply_global_theme()
 	_apply_saved_settings()
@@ -47,6 +48,17 @@ func _ready() -> void:
 	var current: Node = get_tree().current_scene
 	if current and current.scene_file_path == "res://scenes/MainMenu.tscn":
 		menu_instance = current
+
+func _ensure_spacebar_not_ui_select() -> void:
+	if not InputMap.has_action("ui_select"):
+		return
+	var events: Array[InputEvent] = InputMap.action_get_events("ui_select")
+	for input_event: InputEvent in events:
+		if not (input_event is InputEventKey):
+			continue
+		var key_event: InputEventKey = input_event as InputEventKey
+		if key_event.keycode == KEY_SPACE or key_event.physical_keycode == KEY_SPACE:
+			InputMap.action_erase_event("ui_select", input_event)
 
 func _ensure_paddle_keyboard_inputs() -> void:
 	_ensure_action_key("ui_left", KEY_A)
