@@ -11,12 +11,16 @@ extends Control
 @onready var seed_status: Label = $SeedDialog/SeedDialogPanel/SeedStatus
 @onready var practice_dialog: ConfirmationDialog = $PracticeDialog
 @onready var practice_room_type_option: OptionButton = $PracticeDialog/PracticeDialogPanel/RoomTypeRow/RoomTypeOption
+@onready var practice_floor_row: HBoxContainer = $PracticeDialog/PracticeDialogPanel/FloorRow
+@onready var practice_floor_slider: HSlider = $PracticeDialog/PracticeDialogPanel/FloorRow/FloorSlider
+@onready var practice_floor_value: Label = $PracticeDialog/PracticeDialogPanel/FloorRow/FloorValue
 @onready var practice_layout_grid: GridContainer = $PracticeDialog/PracticeDialogPanel/LayoutRow/LayoutScroll/LayoutGrid
 
 var suppress_seed_validation: bool = false
 var test_lab_unlocked: bool = false
 var _practice_room_type: String = "combat"
 var _practice_layout_id: String = "grid"
+var _practice_floor_index: int = 1
 var _layout_button_group: ButtonGroup = null
 var _pattern_registry: PatternRegistry = PatternRegistry.new()
 var _menu_palette: Array[Color] = [
@@ -142,11 +146,15 @@ func _setup_practice_dialog() -> void:
 		practice_room_type_option.add_item("Elite", 1)
 		practice_room_type_option.add_item("Boss", 2)
 		practice_room_type_option.item_selected.connect(_on_practice_room_type_selected)
+	if practice_floor_slider:
+		practice_floor_slider.value_changed.connect(_on_practice_floor_changed)
+		_sync_practice_floor_widgets()
 	_on_practice_room_type_selected(0)
 
 func _open_practice_dialog() -> void:
 	if practice_dialog == null:
 		return
+	_sync_practice_floor_widgets()
 	_refresh_practice_layout_grid()
 	practice_dialog.popup_centered()
 
@@ -158,7 +166,24 @@ func _on_practice_room_type_selected(index: int) -> void:
 			_practice_room_type = "elite"
 		_:
 			_practice_room_type = "combat"
+	if practice_floor_row:
+		practice_floor_row.visible = _practice_room_type != "boss"
+	if _practice_room_type == "boss":
+		_practice_floor_index = 1
+	_sync_practice_floor_widgets()
 	_refresh_practice_layout_grid()
+
+func _on_practice_floor_changed(value: float) -> void:
+	_practice_floor_index = max(1, int(round(value)))
+	_sync_practice_floor_widgets()
+
+func _sync_practice_floor_widgets() -> void:
+	if practice_floor_slider:
+		var safe_value: float = float(max(1, _practice_floor_index))
+		if absf(practice_floor_slider.value - safe_value) > 0.01:
+			practice_floor_slider.value = safe_value
+	if practice_floor_value:
+		practice_floor_value.text = str(max(1, _practice_floor_index))
 
 func _practice_layout_ids_for_selection() -> Array[String]:
 	if _practice_room_type == "boss":
@@ -306,7 +331,10 @@ func _start_practice() -> void:
 		var act_suffix: String = _practice_layout_id.trim_prefix("boss_act")
 		var parsed: int = act_suffix.to_int()
 		act_index = clampi(parsed, 1, 3)
-	App.start_practice(room_type, act_index, _practice_layout_id)
+	var floor_index: int = max(1, _practice_floor_index)
+	if room_type == "boss":
+		floor_index = 1
+	App.start_practice(room_type, act_index, _practice_layout_id, floor_index)
 	if practice_dialog:
 		practice_dialog.hide()
 
