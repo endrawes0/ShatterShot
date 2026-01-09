@@ -963,7 +963,7 @@ func _begin_between_act_rest() -> void:
 
 func _begin_between_act_shop() -> void:
 	_between_act_step = BetweenActStep.SHOP
-	_show_shop()
+	state_manager.transition_to(GameState.SHOP)
 	if shop_label:
 		shop_label.text = "Act Rewards: Shop"
 	if shop_info_label:
@@ -982,7 +982,10 @@ func _end_between_act_sequence() -> void:
 	_between_act_step = BetweenActStep.NONE
 	if shop_leave_button:
 		shop_leave_button.text = "Leave"
-	_transition_event("go_to_map")
+	if state == GameState.MAP:
+		_show_map()
+	else:
+		_transition_event("go_to_map")
 
 func _on_treasure_continue_pressed() -> void:
 	if _between_act_step == BetweenActStep.TREASURE:
