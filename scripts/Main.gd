@@ -362,21 +362,28 @@ func _ensure_fade_overlay() -> void:
 	var overlay := ColorRect.new()
 	overlay.name = "FadeOverlay"
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.color = Color(0.0, 0.0, 0.0, 1.0)
-	overlay.anchors_preset = Control.PRESET_FULL_RECT
+	overlay.top_level = true
+	overlay.color = Color(0.0, 0.0, 0.0, 0.0)
 	overlay.visible = false
-	overlay.modulate = Color(1.0, 1.0, 1.0, 0.0)
 	hud.add_child(overlay)
 	overlay.z_index = 1000
 	_fade_overlay = overlay
+	_sync_fade_overlay_rect()
+
+func _sync_fade_overlay_rect() -> void:
+	if _fade_overlay == null:
+		return
+	_fade_overlay.position = Vector2.ZERO
+	_fade_overlay.size = get_viewport_rect().size
 
 func _fade_overlay_to(alpha: float, duration: float) -> void:
 	_ensure_fade_overlay()
 	if _fade_overlay == null:
 		return
 	_fade_overlay.visible = true
+	_sync_fade_overlay_rect()
 	var tween := create_tween()
-	tween.tween_property(_fade_overlay, "modulate:a", clamp(alpha, 0.0, 1.0), max(0.0, duration)) \
+	tween.tween_property(_fade_overlay, "color:a", clamp(alpha, 0.0, 1.0), max(0.0, duration)) \
 		.set_trans(Tween.TRANS_QUAD) \
 		.set_ease(Tween.EASE_IN_OUT)
 	await tween.finished
@@ -568,6 +575,7 @@ func _fit_to_viewport() -> void:
 	var size: Vector2 = App.get_layout_size()
 	_apply_world_offset(size)
 	_update_playfield_background(size)
+	_sync_fade_overlay_rect()
 	paddle.position = Vector2(size.x * 0.5, size.y - 240.0)
 	if paddle.has_method("set_locked_y"):
 		paddle.set_locked_y(paddle.position.y)
