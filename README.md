@@ -14,7 +14,7 @@ Prereqs: Godot `4.5.1` (the project targets Godot `4.5`).
 ### Controls (Defaults)
 - Move paddle: `A/D` or `Left/Right`.
 - Launch volley / reserve ball: `Space` (Godot `ui_accept`).
-- End turn: Godot `ui_select`.
+- End turn: `Tab`.
 - Map preview: `M`.
 - Back/menu: `Esc` (Godot `ui_cancel`).
 - UI: mouse for cards, buttons, and tooltips.

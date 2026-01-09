@@ -35,7 +35,7 @@ A single-player Godot project that fuses Breakout-style paddle/ball action with 
 - Brick variants:
   - Shielded sides that negate hits from specific directions.
   - Regen-on-drop to grow HP after a ball is lost.
-  - Cursed bricks that add an unplayable Wound card to your deck (discard pile).
+  - Cursed bricks that add a Wound card to your deck (draw pile).
 
 ## Deck and Cards
 - Start with a small deck of offensive, defensive, and utility cards.
@@ -48,7 +48,7 @@ A single-player Godot project that fuses Breakout-style paddle/ball action with 
   - Bomb / MOAB: destroy random bricks.
 
 ## Progression
-- Rewards after combat grant new cards or allow skips.
+- Rewards after combat offer new cards; you can skip the reward to keep your deck lean.
 - Shops sell cards or let you pay to remove a card.
 - Rest rooms heal a flat amount.
 - Victory is earned by clearing the final boss room.

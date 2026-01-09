@@ -9,7 +9,7 @@
 
 ## Inputs
 - The paddle uses Godot actions `ui_left` / `ui_right`. `scripts/App.gd` ensures `A` and `D` are bound at runtime; arrow keys work via Godot’s defaults.
-- Combat flow uses `ui_accept` (launch volley / launch reserve ball) and `ui_select` (end turn) along with mouse UI for cards and buttons.
+- Combat flow uses `ui_accept` (launch volley / launch reserve ball) along with mouse UI for cards and buttons.
 
 ## Settings
 - Saved settings live at `user://settings.cfg` (see `scripts/App.gd`).
@@ -20,4 +20,3 @@
 - `data/`: balancing and run content (encounters, variant policies, floor plans).
 - `themes/`: UI theme resources.
 - `assets/`: icons, logo, fonts, and audio.
-
