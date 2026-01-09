@@ -1007,13 +1007,13 @@ func _run_between_act_rest() -> void:
 	App.start_rest_music()
 	_hide_all_panels()
 	info_label.text = ""
-	await _fade_overlay_to(1.0, 0.35)
+	await _fade_overlay_to(1.0, 2.0)
 
 	_apply_rest_rewards()
 	_update_labels()
 
-	await get_tree().create_timer(1.0).timeout
-	await _fade_overlay_to(0.0, 0.35)
+	await get_tree().create_timer(2.0).timeout
+	await _fade_overlay_to(0.0, 2.0)
 	_begin_between_act_shop()
 
 func _apply_rest_rewards() -> void:
