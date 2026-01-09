@@ -4,8 +4,6 @@ signal toast_request_completed(token: int)
 
 const GameState = StateManager.GameState
 
-enum BetweenActStep { NONE, BUFF, TREASURE, REST, SHOP }
-
 const CARD_TYPE_COLORS: Dictionary = {
 	"offense": Color(1.0, 0.32, 0.02),
 	"defense": Color(0.05, 0.5, 1.0),
@@ -30,6 +28,7 @@ const FLOOR_PLAN_GENERATOR := preload("res://scripts/data/FloorPlanGenerator.gd"
 const FLOOR_PLAN_GENERATOR_CONFIG := preload("res://scripts/data/FloorPlanGeneratorConfig.gd")
 const ACT_MANAGER_SCRIPT := preload("res://scripts/managers/ActManager.gd")
 const ACT_CONFIG_SCRIPT := preload("res://scripts/data/ActConfig.gd")
+const ACT_TRANSITION_MANAGER_SCRIPT := preload("res://scripts/managers/ActTransitionManager.gd")
 const CardEffectRegistry = preload("res://scripts/cards/CardEffectRegistry.gd")
 const BALANCE_DATA_PATH: String = "res://data/balance/basic.tres"
 const EMOJI_FONT_PATH: String = "res://assets/fonts/NotoColorEmoji.ttf"
@@ -136,13 +135,10 @@ var deck_manager: DeckManager
 var hud_controller: HudController
 var reward_manager: RewardManager
 var shop_manager: ShopManager
+var act_transition_manager: ActTransitionManager
 var balance_data: Resource
 var card_effect_registry: CardEffectRegistry
 
-var _between_act_step: int = BetweenActStep.NONE
-var _between_act_pending: bool = false
-var _between_act_prev_plan: Dictionary = {}
-var _between_act_next_plan: Dictionary = {}
 var _fade_overlay: ColorRect = null
 var _map_label_override_act_index: int = -1
 
@@ -324,6 +320,30 @@ func _ready() -> void:
 	add_child(shop_manager)
 	shop_manager.setup(hud_controller, shop_cards_buttons, shop_buffs_buttons, shop_ball_mods_buttons)
 	_configure_shop_manager()
+	act_transition_manager = ACT_TRANSITION_MANAGER_SCRIPT.new()
+	add_child(act_transition_manager)
+	act_transition_manager.setup(
+		run_rng,
+		{
+			"treasure_panel": treasure_panel,
+			"treasure_label": treasure_label,
+			"treasure_rewards": treasure_rewards,
+			"treasure_continue_button": treasure_continue_button
+		},
+		{
+			"get_config": Callable(self, "_act_rewards_config"),
+			"apply_buff": Callable(self, "_apply_between_act_buff"),
+			"apply_rest_rewards": Callable(self, "_apply_rest_rewards"),
+			"update_labels": Callable(self, "_update_labels"),
+			"hide_all_panels": Callable(self, "_hide_all_panels"),
+			"show_treasure_panel": Callable(self, "_show_treasure_panel"),
+			"show_single_panel": Callable(self, "_show_single_panel"),
+			"show_map_preview_from_plan": Callable(self, "_show_map_preview_from_plan"),
+			"fade_overlay_to": Callable(self, "_fade_overlay_to"),
+			"enter_shop_step": Callable(self, "_enter_act_rewards_shop_step"),
+			"exit_sequence": Callable(self, "_exit_act_rewards_sequence")
+		}
+	)
 	_set_test_lab_enabled(test_lab_enabled)
 	_apply_hud_theme()
 	App.bind_button_feedback(self)
@@ -828,10 +848,9 @@ func _restart_run_same_seed() -> void:
 	_start_run("restart_run")
 
 func _show_map() -> void:
-	if _between_act_pending:
-		_between_act_pending = false
-		_start_between_act_sequence()
-		return
+	if act_transition_manager != null and act_transition_manager.has_pending():
+		if act_transition_manager.maybe_start_sequence():
+			return
 	_map_label_override_act_index = -1
 	App.stop_shop_music()
 	var rest_active: bool = App.is_rest_music_active()
@@ -859,82 +878,14 @@ func _update_map_label() -> void:
 		return
 	if map_manager != null and map_manager.has_acts():
 		var act_number: int = map_manager.get_active_act_index() + 1
-		if _map_label_override_act_index >= 0:
-			act_number = _map_label_override_act_index + 1
+		var override_index: int = _map_label_override_act_index
+		if act_transition_manager != null:
+			override_index = max(override_index, act_transition_manager.map_label_override_act_index())
+		if override_index >= 0:
+			act_number = override_index + 1
 		map_label.text = "Act %d Map" % act_number
 	else:
 		map_label.text = "Map"
-
-func _start_between_act_sequence() -> void:
-	if practice_mode:
-		return
-	_between_act_step = BetweenActStep.BUFF
-	_show_between_act_buff_choice()
-
-func _clear_container_children(container: Node) -> void:
-	if container == null:
-		return
-	for child in container.get_children():
-		child.queue_free()
-
-func _between_act_buff_candidates() -> Array[Dictionary]:
-	var options: Array[Dictionary] = []
-	options.append({
-		"id": "upgrade_hand",
-		"text": "Upgrade starting hand (+%d)" % shop_upgrade_hand_bonus,
-		"enabled": shop_upgrade_hand_bonus > 0 and (shop_max_hand_size <= 0 or starting_hand_size < shop_max_hand_size)
-	})
-	options.append({
-		"id": "vitality",
-		"text": "Vitality (+%d max HP, heal %d)" % [shop_vitality_max_hp_bonus, shop_vitality_heal],
-		"enabled": shop_vitality_max_hp_bonus > 0 or shop_vitality_heal > 0
-	})
-	options.append({
-		"id": "surge",
-		"text": "Surge (+%d max energy)" % shop_energy_bonus,
-		"enabled": shop_energy_bonus > 0 and max_energy_bonus < 2
-	})
-	options.append({
-		"id": "paddle_width",
-		"text": "Wider Paddle (+%d width)" % int(round(shop_paddle_width_bonus)),
-		"enabled": shop_paddle_width_bonus > 0.0
-	})
-	options.append({
-		"id": "paddle_speed",
-		"text": "Paddle Speed (+%d%%)" % int(round(shop_paddle_speed_bonus_percent)),
-		"enabled": shop_paddle_speed_bonus_percent > 0.0
-	})
-	options.append({
-		"id": "reserve_ball",
-		"text": "Reserve Ball (+%d per volley)" % shop_reserve_ball_bonus,
-		"enabled": shop_reserve_ball_bonus > 0 and volley_ball_bonus_base < 1
-	})
-	options.append({
-		"id": "shop_discount",
-		"text": "Shop Discount (-%d%% prices)" % int(round(shop_discount_percent)),
-		"enabled": shop_discount_percent > 0.0
-	})
-	options.append({
-		"id": "shop_scribe",
-		"text": "Shop Scribe (+%d card on entry)" % shop_entry_card_count,
-		"enabled": shop_entry_card_count > 0
-	})
-	return options
-
-func _roll_between_act_buffs(count: int = 3) -> Array[Dictionary]:
-	var candidates := _between_act_buff_candidates()
-	var enabled: Array[Dictionary] = []
-	for option in candidates:
-		if bool(option.get("enabled", true)):
-			enabled.append(option)
-	var picked: Array[Dictionary] = []
-	if enabled.is_empty():
-		return picked
-	var target: int = min(count, enabled.size())
-	while picked.size() < target:
-		var idx: int = run_rng.randi_range(0, enabled.size() - 1)
-		picked.append(enabled.pop_at(idx))
-	return picked
 
 func _apply_between_act_buff(buff_id: String) -> void:
 	match buff_id:
@@ -955,79 +906,6 @@ func _apply_between_act_buff(buff_id: String) -> void:
 		"shop_scribe":
 			_apply_shop_entry_cards(shop_entry_card_count)
 
-func _show_between_act_buff_choice() -> void:
-	_hide_all_panels()
-	_show_single_panel(treasure_panel)
-	if treasure_label:
-		treasure_label.text = "Act Rewards: Buff"
-	if treasure_continue_button:
-		treasure_continue_button.visible = false
-
-	_clear_container_children(treasure_rewards)
-	var buffs := _roll_between_act_buffs(3)
-	if buffs.is_empty():
-		_between_act_step = BetweenActStep.TREASURE
-		_show_between_act_treasure()
-		return
-	for buff in buffs:
-		var buff_id: String = String(buff.get("id", ""))
-		var text: String = String(buff.get("text", buff_id))
-		var button := Button.new()
-		button.text = text
-		button.pressed.connect(func() -> void:
-			_apply_between_act_buff(buff_id)
-			_update_labels()
-			_between_act_step = BetweenActStep.TREASURE
-			_show_between_act_treasure()
-		)
-		App.apply_neutral_button_style(button)
-		App.bind_button_feedback(button)
-		treasure_rewards.add_child(button)
-	_focus_treasure_buttons()
-	_update_volley_prompt_visibility()
-
-func _focus_treasure_buttons() -> void:
-	if treasure_panel == null:
-		return
-	var buttons: Array[BaseButton] = []
-	_collect_buttons(treasure_panel, buttons)
-	_apply_focus_chain(buttons)
-
-func _show_between_act_treasure() -> void:
-	_hide_all_panels()
-	_show_treasure_panel(true)
-	if treasure_label:
-		treasure_label.text = "Act Rewards: Treasure"
-	if treasure_continue_button:
-		treasure_continue_button.text = "Continue"
-		treasure_continue_button.visible = true
-	_between_act_step = BetweenActStep.TREASURE
-
-func _begin_between_act_rest() -> void:
-	_between_act_step = BetweenActStep.REST
-	call_deferred("_run_between_act_rest")
-
-func _run_between_act_rest() -> void:
-	App.stop_menu_music()
-	App.stop_combat_music()
-	App.stop_shop_music()
-	App.start_rest_music()
-	if not _between_act_prev_plan.is_empty():
-		_show_map_preview_from_plan(_between_act_prev_plan)
-	else:
-		_hide_all_panels()
-	info_label.text = ""
-	await _fade_overlay_to(1.0, 4.0)
-
-	_apply_rest_rewards()
-	_update_labels()
-
-	await get_tree().create_timer(4.0).timeout
-	if not _between_act_next_plan.is_empty():
-		_show_map_preview_from_plan(_between_act_next_plan)
-	await _fade_overlay_to(0.0, 4.0)
-	_begin_between_act_shop()
-
 func _apply_rest_rewards() -> void:
 	hp = max_hp
 	var removed: int = 0
@@ -1042,8 +920,26 @@ func _apply_rest_rewards() -> void:
 			deck_manager.remove_card_instance_from_all(instance_id, true)
 			removed += 1
 
-func _begin_between_act_shop() -> void:
-	_between_act_step = BetweenActStep.SHOP
+func _act_rewards_config() -> Dictionary:
+	return {
+		"shop_upgrade_hand_bonus": shop_upgrade_hand_bonus,
+		"shop_max_hand_size": shop_max_hand_size,
+		"starting_hand_size": starting_hand_size,
+		"shop_vitality_max_hp_bonus": shop_vitality_max_hp_bonus,
+		"shop_vitality_heal": shop_vitality_heal,
+		"shop_energy_bonus": shop_energy_bonus,
+		"max_energy_bonus": max_energy_bonus,
+		"shop_paddle_width_bonus": shop_paddle_width_bonus,
+		"shop_paddle_speed_bonus_percent": shop_paddle_speed_bonus_percent,
+		"shop_reserve_ball_bonus": shop_reserve_ball_bonus,
+		"volley_ball_bonus_base": volley_ball_bonus_base,
+		"shop_discount_percent": shop_discount_percent,
+		"shop_entry_card_count": shop_entry_card_count,
+		"rest_fade_seconds": 4.0,
+		"rest_pause_seconds": 4.0
+	}
+
+func _enter_act_rewards_shop_step() -> void:
 	state_manager.transition_to(GameState.SHOP)
 	if shop_label:
 		shop_label.text = "Act Rewards: Shop"
@@ -1059,8 +955,7 @@ func _begin_between_act_shop() -> void:
 		shop_leave_button.visible = true
 		shop_leave_button.text = "Continue"
 
-func _end_between_act_sequence() -> void:
-	_between_act_step = BetweenActStep.NONE
+func _exit_act_rewards_sequence() -> void:
 	if shop_leave_button:
 		shop_leave_button.text = "Leave"
 	if state == GameState.MAP:
@@ -1069,14 +964,12 @@ func _end_between_act_sequence() -> void:
 		_transition_event("go_to_map")
 
 func _on_treasure_continue_pressed() -> void:
-	if _between_act_step == BetweenActStep.TREASURE:
-		_begin_between_act_rest()
+	if act_transition_manager != null and act_transition_manager.handle_treasure_continue():
 		return
 	_go_to_map()
 
 func _on_shop_leave_pressed() -> void:
-	if _between_act_step == BetweenActStep.SHOP:
-		_end_between_act_sequence()
+	if act_transition_manager != null and act_transition_manager.handle_shop_continue():
 		return
 	_go_to_map()
 
@@ -1542,17 +1435,18 @@ func _end_encounter(win_event: String = "volley_win") -> void:
 			else:
 				_spawn_act_complete_particles()
 				await _play_planning_victory_message("Well done! Act %d Complete!" % (act_index + 1))
-				_between_act_prev_plan = {}
-				_between_act_next_plan = {}
+				var prev_plan: Dictionary = {}
+				var next_plan: Dictionary = {}
 				if map_manager != null:
-					_between_act_prev_plan = _map_plan_with_boss_label(map_manager.get_active_plan_summary(), act_index)
+					prev_plan = _map_plan_with_boss_label(map_manager.get_active_plan_summary(), act_index)
 				map_manager.advance_act()
 				if map_manager != null:
-					_between_act_next_plan = _map_plan_with_boss_label(map_manager.get_active_plan_summary(), map_manager.get_active_act_index())
+					next_plan = _map_plan_with_boss_label(map_manager.get_active_plan_summary(), map_manager.get_active_act_index())
 				if act_manager:
 					act_manager.refresh_limits()
 				_apply_act_limits()
-				_between_act_pending = true
+				if act_transition_manager != null:
+					act_transition_manager.queue_sequence(prev_plan, next_plan)
 				_end_encounter_in_progress = false
 				_transition_event("advance_act")
 			return
@@ -1973,10 +1867,7 @@ func _show_rest() -> void:
 	info_label.text = "Rest: fully heal and remove wounds."
 	_apply_rest_rewards()
 	_update_labels()
-	if _between_act_step == BetweenActStep.REST:
-		_begin_between_act_shop()
-	else:
-		_transition_event("go_to_map")
+	_transition_event("go_to_map")
 	_update_volley_prompt_visibility()
 
 func _show_game_over() -> void:
