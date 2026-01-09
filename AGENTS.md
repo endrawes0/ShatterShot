@@ -34,7 +34,7 @@ zip -r builds/ShatterShot-mac.zip builds/mac
 
 Notes:
 - `builds/` is ignored by git.
-- macOS uses bundle identifier `com.endrawes0.blockbreaker` from `export_presets.cfg`.
+- macOS uses bundle identifier `com.endrawes0.shattershot` from `export_presets.cfg`.
 
 ## Release Tag + Upload
 

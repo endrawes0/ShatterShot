@@ -7,7 +7,8 @@ A single-player Godot project that fuses Breakout-style paddle/ball action with 
 - Godot scenes:
   - `scenes/Main.tscn`: core gameplay scene with Paddle, Bricks container, Walls, and HUD panels.
   - `scenes/Paddle.tscn`, `scenes/Ball.tscn`, `scenes/Brick.tscn`: reusable gameplay actors.
-  - `scenes/MainMenu.tscn` and `scenes/Help.tscn`: front-end flow.
+  - `scenes/MainMenu.tscn`, `scenes/Help.tscn`, `scenes/Shop.tscn`: front-end flow and shop layout.
+  - `scenes/Settings.tscn`: settings menu (resolution/window mode and gameplay/VFX modifiers).
 - Core scripts:
   - `scripts/Main.gd`: main game controller. Owns the run state machine, deck/hand/discard, encounter setup, UI updates, and room flow (map, rewards, shop, rest, boss).
   - `scripts/Ball.gd`: ball physics, launch/bounce behavior, piercing logic, and loss handling.
@@ -34,20 +35,26 @@ A single-player Godot project that fuses Breakout-style paddle/ball action with 
 - Brick variants:
   - Shielded sides that negate hits from specific directions.
   - Regen-on-drop to grow HP after a ball is lost.
-  - Cursed bricks that add an unplayable Wound card to your discard.
+  - Cursed bricks that add a Wound card to your deck (draw pile).
 
 ## Deck and Cards
 - Start with a small deck of offensive, defensive, and utility cards.
 - Energy limits the number of cards you can play each planning phase.
-- Card examples:
-  - Strike: increase volley damage.
-  - Twin Launch: add an extra ball.
+- Card examples (see `GAMEPLAY.md` for the full, current list):
+  - Punch: increase volley damage.
+  - Twin Launch: gain an extra launch this volley.
   - Guard: gain block to reduce threat damage.
-  - Widen/ Haste: buff paddle size or speed for multiple turns.
-  - Bomb: destroy random bricks.
+  - Widen Paddle / Haste: buff paddle size or speed for multiple turns.
+  - Bomb / MOAB: destroy random bricks.
 
 ## Progression
-- Rewards after combat grant new cards or allow skips.
+- Rewards after combat offer new cards; you can skip the reward to keep your deck lean.
 - Shops sell cards or let you pay to remove a card.
 - Rest rooms heal a flat amount.
 - Victory is earned by clearing the final boss room.
+
+## Controls (Defaults)
+- Move paddle: `A/D` or `Left/Right`.
+- Launch volley / reserve ball: `Space` (Godot `ui_accept`).
+- Map preview: `M`.
+- Back/menu: `Esc` (Godot `ui_cancel`).
