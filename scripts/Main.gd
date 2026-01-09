@@ -4,6 +4,8 @@ signal toast_request_completed(token: int)
 
 const GameState = StateManager.GameState
 
+enum BetweenActStep { NONE, BUFF, TREASURE, REST, SHOP }
+
 const CARD_TYPE_COLORS: Dictionary = {
 	"offense": Color(1.0, 0.32, 0.02),
 	"defense": Color(0.05, 0.5, 1.0),
@@ -89,6 +91,11 @@ const VICTORY_REVIVE_TOAST: String = "Resurrection: You pull yourself back from 
 @onready var shop_ball_mods_buttons: Container = $HUD/ShopPanel/ShopLayout/BallModsPanel/BallModsButtons
 @onready var shop_leave_button: Button = $HUD/ShopPanel/LeaveButton
 @onready var shop_gold_label: Label = $HUD/ShopPanel/ShopGoldLabel
+@onready var shop_label: Label = $HUD/ShopPanel/ShopLabel
+@onready var shop_info_label: Label = $HUD/ShopPanel/ShopInfoLabel
+@onready var shop_buffs_panel: Control = $HUD/ShopPanel/ShopLayout/BuffsPanel
+@onready var shop_ball_mods_panel: Control = $HUD/ShopPanel/ShopLayout/BallModsPanel
+@onready var shop_cards_panel: Control = $HUD/ShopPanel/ShopLayout/CardsPanel
 @onready var deck_panel: Panel = $HUD/DeckPanel
 @onready var deck_list: VBoxContainer = $HUD/DeckPanel/DeckScroll/DeckList
 @onready var deck_close_button: Button = $HUD/DeckPanel/DeckCloseButton
@@ -131,6 +138,9 @@ var reward_manager: RewardManager
 var shop_manager: ShopManager
 var balance_data: Resource
 var card_effect_registry: CardEffectRegistry
+
+var _between_act_step: int = BetweenActStep.NONE
+var _between_act_pending: bool = false
 
 var card_data: Dictionary = {}
 var card_pool: Array[String] = []
@@ -328,9 +338,9 @@ func _ready() -> void:
 	if reward_skip_button:
 		reward_skip_button.pressed.connect(_go_to_map)
 	if treasure_continue_button:
-		treasure_continue_button.pressed.connect(_go_to_map)
+		treasure_continue_button.pressed.connect(_on_treasure_continue_pressed)
 	if shop_leave_button:
-		shop_leave_button.pressed.connect(_go_to_map)
+		shop_leave_button.pressed.connect(_on_shop_leave_pressed)
 	if mods_persist_checkbox:
 		mods_persist_checkbox.toggled.connect(func(pressed: bool) -> void:
 			persist_ball_mods = pressed
@@ -776,6 +786,10 @@ func _restart_run_same_seed() -> void:
 	_start_run("restart_run")
 
 func _show_map() -> void:
+	if _between_act_pending:
+		_between_act_pending = false
+		_start_between_act_sequence()
+		return
 	App.stop_shop_music()
 	var rest_active: bool = App.is_rest_music_active()
 	if not rest_active:
@@ -804,6 +818,185 @@ func _update_map_label() -> void:
 		map_label.text = "Act %d Map" % (map_manager.get_active_act_index() + 1)
 	else:
 		map_label.text = "Map"
+
+func _start_between_act_sequence() -> void:
+	if practice_mode:
+		return
+	_between_act_step = BetweenActStep.BUFF
+	_show_between_act_buff_choice()
+
+func _clear_container_children(container: Node) -> void:
+	if container == null:
+		return
+	for child in container.get_children():
+		child.queue_free()
+
+func _between_act_buff_candidates() -> Array[Dictionary]:
+	var options: Array[Dictionary] = []
+	options.append({
+		"id": "upgrade_hand",
+		"text": "Upgrade starting hand (+%d)" % shop_upgrade_hand_bonus,
+		"enabled": shop_upgrade_hand_bonus > 0 and (shop_max_hand_size <= 0 or starting_hand_size < shop_max_hand_size)
+	})
+	options.append({
+		"id": "vitality",
+		"text": "Vitality (+%d max HP, heal %d)" % [shop_vitality_max_hp_bonus, shop_vitality_heal],
+		"enabled": shop_vitality_max_hp_bonus > 0 or shop_vitality_heal > 0
+	})
+	options.append({
+		"id": "surge",
+		"text": "Surge (+%d max energy)" % shop_energy_bonus,
+		"enabled": shop_energy_bonus > 0 and max_energy_bonus < 2
+	})
+	options.append({
+		"id": "paddle_width",
+		"text": "Wider Paddle (+%d width)" % int(round(shop_paddle_width_bonus)),
+		"enabled": shop_paddle_width_bonus > 0.0
+	})
+	options.append({
+		"id": "paddle_speed",
+		"text": "Paddle Speed (+%d%%)" % int(round(shop_paddle_speed_bonus_percent)),
+		"enabled": shop_paddle_speed_bonus_percent > 0.0
+	})
+	options.append({
+		"id": "reserve_ball",
+		"text": "Reserve Ball (+%d per volley)" % shop_reserve_ball_bonus,
+		"enabled": shop_reserve_ball_bonus > 0 and volley_ball_bonus_base < 1
+	})
+	options.append({
+		"id": "shop_discount",
+		"text": "Shop Discount (-%d%% prices)" % int(round(shop_discount_percent)),
+		"enabled": shop_discount_percent > 0.0 and (shop_discount_max <= 0 or shop_discount_multiplier > (1.0 - float(shop_discount_max) * (shop_discount_percent / 100.0)))
+	})
+	options.append({
+		"id": "shop_scribe",
+		"text": "Shop Scribe (+%d card on entry)" % shop_entry_card_count,
+		"enabled": shop_entry_card_count > 0
+	})
+	return options
+
+func _roll_between_act_buffs(count: int = 3) -> Array[Dictionary]:
+	var candidates := _between_act_buff_candidates()
+	var enabled: Array[Dictionary] = []
+	for option in candidates:
+		if bool(option.get("enabled", true)):
+			enabled.append(option)
+	var picked: Array[Dictionary] = []
+	if enabled.is_empty():
+		return picked
+	var target: int = min(count, enabled.size())
+	while picked.size() < target:
+		var idx: int = run_rng.randi_range(0, enabled.size() - 1)
+		picked.append(enabled.pop_at(idx))
+	return picked
+
+func _apply_between_act_buff(buff_id: String) -> void:
+	match buff_id:
+		"upgrade_hand":
+			_upgrade_starting_hand(shop_upgrade_hand_bonus)
+		"vitality":
+			_apply_vitality(shop_vitality_max_hp_bonus, shop_vitality_heal)
+		"surge":
+			_apply_max_energy_buff(shop_energy_bonus)
+		"paddle_width":
+			_apply_paddle_width_buff(shop_paddle_width_bonus)
+		"paddle_speed":
+			_apply_paddle_speed_buff(shop_paddle_speed_bonus_percent)
+		"reserve_ball":
+			_apply_reserve_ball_buff(shop_reserve_ball_bonus)
+		"shop_discount":
+			_apply_shop_discount(shop_discount_percent)
+		"shop_scribe":
+			_apply_shop_entry_cards(shop_entry_card_count)
+
+func _show_between_act_buff_choice() -> void:
+	_hide_all_panels()
+	_show_single_panel(shop_panel)
+	if shop_label:
+		shop_label.text = "Between Acts: Choose a Buff"
+	if shop_info_label:
+		shop_info_label.text = "Pick one of three random buffs."
+	if shop_gold_label:
+		shop_gold_label.visible = false
+	if shop_cards_panel:
+		shop_cards_panel.visible = false
+	if shop_ball_mods_panel:
+		shop_ball_mods_panel.visible = false
+	if shop_buffs_panel:
+		shop_buffs_panel.visible = true
+	if shop_leave_button:
+		shop_leave_button.visible = false
+
+	_clear_container_children(shop_buffs_buttons)
+	var buffs := _roll_between_act_buffs(3)
+	if buffs.is_empty():
+		_between_act_step = BetweenActStep.TREASURE
+		_show_between_act_treasure()
+		return
+	for buff in buffs:
+		var buff_id: String = String(buff.get("id", ""))
+		var text: String = String(buff.get("text", buff_id))
+		var button := Button.new()
+		button.text = text
+		button.pressed.connect(func() -> void:
+			_apply_between_act_buff(buff_id)
+			_update_labels()
+			_between_act_step = BetweenActStep.TREASURE
+			_show_between_act_treasure()
+		)
+		App.apply_neutral_button_style(button)
+		App.bind_button_feedback(button)
+		shop_buffs_buttons.add_child(button)
+	_focus_shop_buttons()
+	_update_volley_prompt_visibility()
+
+func _show_between_act_treasure() -> void:
+	_hide_all_panels()
+	_show_treasure_panel(true)
+	if treasure_label:
+		treasure_label.text = "Between Acts: Treasure"
+	if treasure_continue_button:
+		treasure_continue_button.text = "Continue"
+	_between_act_step = BetweenActStep.TREASURE
+
+func _begin_between_act_rest() -> void:
+	_between_act_step = BetweenActStep.REST
+	_show_rest()
+
+func _begin_between_act_shop() -> void:
+	_between_act_step = BetweenActStep.SHOP
+	_show_shop()
+	if shop_label:
+		shop_label.text = "Between Acts: Shop"
+	if shop_info_label:
+		shop_info_label.text = "Spend gold, then continue."
+	if shop_gold_label:
+		shop_gold_label.visible = true
+	if shop_cards_panel:
+		shop_cards_panel.visible = true
+	if shop_ball_mods_panel:
+		shop_ball_mods_panel.visible = true
+	if shop_leave_button:
+		shop_leave_button.visible = true
+		shop_leave_button.text = "Continue"
+
+func _end_between_act_sequence() -> void:
+	_between_act_step = BetweenActStep.NONE
+	if shop_leave_button:
+		shop_leave_button.text = "Leave"
+	_transition_event("go_to_map")
+
+func _on_treasure_continue_pressed() -> void:
+	if _between_act_step == BetweenActStep.TREASURE:
+		_begin_between_act_rest()
+		return
+	_go_to_map()
+
+func _on_shop_leave_pressed() -> void:
+	if _between_act_step == BetweenActStep.SHOP:
+		_end_between_act_sequence()
+		return
+	_go_to_map()
 
 func _show_map_preview() -> void:
 	if map_panel == null:
@@ -1247,6 +1440,7 @@ func _end_encounter(win_event: String = "volley_win") -> void:
 				if act_manager:
 					act_manager.refresh_limits()
 				_apply_act_limits()
+				_between_act_pending = true
 				_end_encounter_in_progress = false
 				_transition_event("advance_act")
 			return
@@ -1649,10 +1843,24 @@ func _show_rest() -> void:
 	App.stop_shop_music()
 	App.start_rest_music()
 	_hide_all_panels()
-	info_label.text = "Rest to heal."
-	hp = min(max_hp, hp + 20)
+	info_label.text = "Rest: fully heal and remove wounds."
+	hp = max_hp
+	var removed: int = 0
+	if deck_manager != null:
+		var wound_instance_ids: Array[int] = []
+		for card in deck_manager.deck:
+			if card is Dictionary and String(card.get("card_id", "")) == "wound":
+				wound_instance_ids.append(int(card.get("id", -1)))
+		for instance_id in wound_instance_ids:
+			if removed >= 5:
+				break
+			deck_manager.remove_card_instance_from_all(instance_id, true)
+			removed += 1
 	_update_labels()
-	_transition_event("go_to_map")
+	if _between_act_step == BetweenActStep.REST:
+		_begin_between_act_shop()
+	else:
+		_transition_event("go_to_map")
 	_update_volley_prompt_visibility()
 
 func _show_game_over() -> void:
