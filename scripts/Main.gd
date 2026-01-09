@@ -141,6 +141,8 @@ var card_effect_registry: CardEffectRegistry
 
 var _between_act_step: int = BetweenActStep.NONE
 var _between_act_pending: bool = false
+var _between_act_prev_plan: Dictionary = {}
+var _between_act_next_plan: Dictionary = {}
 var _fade_overlay: ColorRect = null
 
 var card_data: Dictionary = {}
@@ -854,7 +856,10 @@ func _update_map_label() -> void:
 	if map_label == null:
 		return
 	if map_manager != null and map_manager.has_acts():
-		map_label.text = "Act %d Map" % (map_manager.get_active_act_index() + 1)
+		var act_number: int = map_manager.get_active_act_index() + 1
+		if _between_act_step == BetweenActStep.REST and not _between_act_prev_plan.is_empty():
+			act_number = int(_between_act_prev_plan.get("active_act_index", map_manager.get_active_act_index())) + 1
+		map_label.text = "Act %d Map" % act_number
 	else:
 		map_label.text = "Map"
 
@@ -1005,7 +1010,10 @@ func _run_between_act_rest() -> void:
 	App.stop_combat_music()
 	App.stop_shop_music()
 	App.start_rest_music()
-	_hide_all_panels()
+	if not _between_act_prev_plan.is_empty():
+		_show_map_preview_from_plan(_between_act_prev_plan)
+	else:
+		_hide_all_panels()
 	info_label.text = ""
 	await _fade_overlay_to(1.0, 4.0)
 
@@ -1013,6 +1021,8 @@ func _run_between_act_rest() -> void:
 	_update_labels()
 
 	await get_tree().create_timer(4.0).timeout
+	if not _between_act_next_plan.is_empty():
+		_show_map_preview_from_plan(_between_act_next_plan)
 	await _fade_overlay_to(0.0, 4.0)
 	_begin_between_act_shop()
 
@@ -1252,6 +1262,28 @@ func _update_map_graph(choices: Array[Dictionary]) -> void:
 			boss_label = String(act_config.boss_label)
 	plan["boss_label"] = boss_label
 	map_graph.call("set_plan", plan, choices)
+
+func _map_plan_with_boss_label(plan: Dictionary, act_index: int) -> Dictionary:
+	var merged: Dictionary = plan.duplicate(true)
+	var act_config: Resource = _load_act_config(act_index + 1)
+	var boss_label: String = ""
+	if act_config != null and act_config.has_method("get"):
+		boss_label = String(act_config.get("boss_label"))
+	merged["boss_label"] = boss_label
+	return merged
+
+func _show_map_preview_from_plan(plan: Dictionary) -> void:
+	if map_panel == null:
+		return
+	_hide_all_panels()
+	map_panel.visible = true
+	_clear_map_buttons()
+	_update_seed_display()
+	map_preview_active = false
+	if map_graph != null and map_graph.has_method("set_plan"):
+		map_graph.call("set_plan", plan, [])
+	_update_map_label()
+	_update_volley_prompt_visibility()
 
 func _enter_room(room_type: String) -> void:
 	if room_type == "mystery":
@@ -1506,7 +1538,13 @@ func _end_encounter(win_event: String = "volley_win") -> void:
 			else:
 				_spawn_act_complete_particles()
 				await _play_planning_victory_message("Well done! Act %d Complete!" % (act_index + 1))
+				_between_act_prev_plan = {}
+				_between_act_next_plan = {}
+				if map_manager != null:
+					_between_act_prev_plan = _map_plan_with_boss_label(map_manager.get_active_plan_summary(), act_index)
 				map_manager.advance_act()
+				if map_manager != null:
+					_between_act_next_plan = _map_plan_with_boss_label(map_manager.get_active_plan_summary(), map_manager.get_active_act_index())
 				if act_manager:
 					act_manager.refresh_limits()
 				_apply_act_limits()
