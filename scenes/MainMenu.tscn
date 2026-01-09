@@ -80,7 +80,7 @@ ok_button_text = "Start"
 
 [node name="PracticeDialog" type="ConfirmationDialog" parent="."]
 title = "Practice"
-size = Vector2i(420, 240)
+size = Vector2i(560, 360)
 borderless = true
 ok_button_text = "Start"
 cancel_button_text = "Cancel"
@@ -88,8 +88,8 @@ cancel_button_text = "Cancel"
 [node name="PracticeDialogPanel" type="VBoxContainer" parent="PracticeDialog"]
 offset_left = 10.0
 offset_top = 10.0
-offset_right = 410.0
-offset_bottom = 190.0
+offset_right = 550.0
+offset_bottom = 310.0
 theme_override_constants/separation = 10
 
 [node name="RoomTypeRow" type="HBoxContainer" parent="PracticeDialog/PracticeDialogPanel"]
@@ -118,18 +118,25 @@ text = "Act"
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="LayoutRow" type="HBoxContainer" parent="PracticeDialog/PracticeDialogPanel"]
+[node name="LayoutRow" type="VBoxContainer" parent="PracticeDialog/PracticeDialogPanel"]
 layout_mode = 2
-theme_override_constants/separation = 10
+size_flags_vertical = 3
+theme_override_constants/separation = 6
 
 [node name="LayoutLabel" type="Label" parent="PracticeDialog/PracticeDialogPanel/LayoutRow"]
 layout_mode = 2
-size_flags_horizontal = 3
 text = "Layout"
 
-[node name="LayoutOption" type="OptionButton" parent="PracticeDialog/PracticeDialogPanel/LayoutRow"]
+[node name="LayoutScroll" type="ScrollContainer" parent="PracticeDialog/PracticeDialogPanel/LayoutRow"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="LayoutGrid" type="GridContainer" parent="PracticeDialog/PracticeDialogPanel/LayoutRow/LayoutScroll"]
+layout_mode = 2
+columns = 5
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
 
 [node name="SeedDialogPanel" type="VBoxContainer" parent="SeedDialog"]
 offset_left = 8.0

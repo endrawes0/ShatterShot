@@ -13,12 +13,15 @@ extends Control
 @onready var practice_room_type_option: OptionButton = $PracticeDialog/PracticeDialogPanel/RoomTypeRow/RoomTypeOption
 @onready var practice_act_row: HBoxContainer = $PracticeDialog/PracticeDialogPanel/ActRow
 @onready var practice_act_option: OptionButton = $PracticeDialog/PracticeDialogPanel/ActRow/ActOption
-@onready var practice_layout_option: OptionButton = $PracticeDialog/PracticeDialogPanel/LayoutRow/LayoutOption
+@onready var practice_layout_grid: GridContainer = $PracticeDialog/PracticeDialogPanel/LayoutRow/LayoutScroll/LayoutGrid
 
 var suppress_seed_validation: bool = false
 var test_lab_unlocked: bool = false
 var _practice_room_type: String = "combat"
 var _practice_act_index: int = 1
+var _practice_layout_id: String = "grid"
+var _layout_button_group: ButtonGroup = null
+var _pattern_registry: PatternRegistry = PatternRegistry.new()
 var _menu_palette: Array[Color] = [
 	Color(0.86, 0.32, 0.26),
 	Color(0.95, 0.60, 0.20),
@@ -39,11 +42,12 @@ func _ready() -> void:
 	if seed_dialog:
 		seed_dialog.dialog_hide_on_ok = false
 		seed_dialog.confirmed.connect(_start_game)
-		var ok_button := seed_dialog.get_ok_button()
+		var ok_button: Button = seed_dialog.get_ok_button()
 		if ok_button:
 			ok_button.pressed.connect(_start_game)
 	if seed_input:
 		seed_input.text_changed.connect(_on_seed_text_changed)
+	_layout_button_group = ButtonGroup.new()
 	_setup_practice_dialog()
 	_lock_test_lab()
 	_apply_menu_palette()
@@ -132,7 +136,7 @@ func _setup_practice_dialog() -> void:
 		return
 	practice_dialog.dialog_hide_on_ok = false
 	practice_dialog.confirmed.connect(_start_practice)
-	var ok_button := practice_dialog.get_ok_button()
+	var ok_button: Button = practice_dialog.get_ok_button()
 	if ok_button:
 		ok_button.pressed.connect(_start_practice)
 	if practice_room_type_option:
@@ -154,7 +158,7 @@ func _setup_practice_dialog() -> void:
 func _open_practice_dialog() -> void:
 	if practice_dialog == null:
 		return
-	_refresh_practice_layout_options()
+	_refresh_practice_layout_grid()
 	practice_dialog.popup_centered()
 
 func _on_practice_room_type_selected(index: int) -> void:
@@ -167,47 +171,148 @@ func _on_practice_room_type_selected(index: int) -> void:
 			_practice_room_type = "combat"
 	if practice_act_row:
 		practice_act_row.visible = _practice_room_type == "boss"
-	_refresh_practice_layout_options()
+	_refresh_practice_layout_grid()
 
 func _on_practice_act_selected(index: int) -> void:
 	if practice_act_option == null:
 		return
 	_practice_act_index = int(practice_act_option.get_item_id(index))
-	_refresh_practice_layout_options()
+	_refresh_practice_layout_grid()
 
-func _refresh_practice_layout_options() -> void:
-	if practice_layout_option == null:
-		return
-	practice_layout_option.clear()
-	var layouts: Array[String] = []
+func _practice_layout_ids_for_selection() -> Array[String]:
 	if _practice_room_type == "boss":
-		layouts = ["boss_act1", "boss_act2", "boss_act3"]
-	else:
-		layouts = [
-			"grid",
-			"stagger",
-			"pyramid",
-			"zigzag",
-			"ring",
-			"split_lanes",
-			"core",
-			"criss_cross",
-			"hollow_diamond",
-			"checker_gate"
-		]
-	for i in range(layouts.size()):
-		practice_layout_option.add_item(layouts[i], i)
-	practice_layout_option.select(0)
+		return ["boss_act1", "boss_act2", "boss_act3"]
+	return [
+		"grid",
+		"stagger",
+		"pyramid",
+		"zigzag",
+		"ring",
+		"split_lanes",
+		"core",
+		"criss_cross",
+		"hollow_diamond",
+		"checker_gate"
+	]
+
+func _layout_label(layout_id: String) -> String:
+	if layout_id.begins_with("boss_act"):
+		var suffix: String = layout_id.trim_prefix("boss_act")
+		return "Boss Act %s" % suffix
+	return layout_id.replace("_", " ").capitalize()
+
+func _make_layout_preview(pattern_id: String, rows: int, cols: int, with_border: bool) -> Texture2D:
+	var width: int = 120
+	var height: int = 84
+	var border: int = 3
+	var gap: int = 2
+
+	var background: Color = Color(0.08, 0.08, 0.10, 1.0)
+	var cell_off: Color = Color(0.10, 0.10, 0.12, 1.0)
+	var cell_on: Color = Color(0.90, 0.90, 0.92, 1.0)
+	var border_color: Color = Color(0.95, 0.85, 0.25, 1.0)
+
+	var img: Image = Image.create(width, height, false, Image.FORMAT_RGBA8)
+	img.fill(background)
+
+	if with_border:
+		for x in range(width):
+			for y in range(border):
+				img.set_pixel(x, y, border_color)
+				img.set_pixel(x, height - 1 - y, border_color)
+		for y in range(height):
+			for x in range(border):
+				img.set_pixel(x, y, border_color)
+				img.set_pixel(width - 1 - x, y, border_color)
+
+	var inner_left: int = border
+	var inner_top: int = border
+	var inner_width: int = width - border * 2
+	var inner_height: int = height - border * 2
+
+	var cell_w: int = int(floor((float(inner_width - gap * (cols - 1))) / float(cols)))
+	var cell_h: int = int(floor((float(inner_height - gap * (rows - 1))) / float(rows)))
+	cell_w = max(2, cell_w)
+	cell_h = max(2, cell_h)
+
+	var used_w: int = cell_w * cols + gap * (cols - 1)
+	var used_h: int = cell_h * rows + gap * (rows - 1)
+	var start_x: int = inner_left + int(floor(float(inner_width - used_w) * 0.5))
+	var start_y: int = inner_top + int(floor(float(inner_height - used_h) * 0.5))
+
+	for row in range(rows):
+		for col in range(cols):
+			var on: bool = _pattern_registry.allows(row, col, rows, cols, pattern_id)
+			var color: Color = cell_on if on else cell_off
+			var x0: int = start_x + col * (cell_w + gap)
+			var y0: int = start_y + row * (cell_h + gap)
+			for y in range(cell_h):
+				for x in range(cell_w):
+					img.set_pixel(x0 + x, y0 + y, color)
+
+	return ImageTexture.create_from_image(img)
+
+func _layout_preview_grid_size(layout_id: String) -> Vector2i:
+	if layout_id.begins_with("boss_act"):
+		return Vector2i(6, 10)
+	return Vector2i(4, 9)
+
+func _refresh_practice_layout_grid() -> void:
+	if practice_layout_grid == null:
+		return
+	for child: Node in practice_layout_grid.get_children():
+		child.queue_free()
+
+	var layout_ids: Array[String] = _practice_layout_ids_for_selection()
+	if layout_ids.is_empty():
+		_practice_layout_id = ""
+		return
+	if not layout_ids.has(_practice_layout_id):
+		_practice_layout_id = layout_ids[0]
+
+	for layout_id: String in layout_ids:
+		var selected_layout_id: String = layout_id
+		var grid_size: Vector2i = _layout_preview_grid_size(layout_id)
+		var rows: int = grid_size.x
+		var cols: int = grid_size.y
+
+		var normal_tex: Texture2D = _make_layout_preview(selected_layout_id, rows, cols, false)
+		var pressed_tex: Texture2D = _make_layout_preview(selected_layout_id, rows, cols, true)
+
+		var button: TextureButton = TextureButton.new()
+		button.toggle_mode = true
+		button.button_group = _layout_button_group
+		button.texture_normal = normal_tex
+		button.texture_hover = pressed_tex
+		button.texture_pressed = pressed_tex
+		button.texture_focused = pressed_tex
+		button.custom_minimum_size = Vector2(120.0, 84.0)
+		button.tooltip_text = _layout_label(selected_layout_id)
+		button.toggled.connect(func(pressed: bool) -> void:
+			if pressed:
+				_practice_layout_id = selected_layout_id
+		)
+		if selected_layout_id == _practice_layout_id:
+			button.button_pressed = true
+
+		var label: Label = Label.new()
+		label.text = _layout_label(selected_layout_id)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+		var cell: VBoxContainer = VBoxContainer.new()
+		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cell.add_child(button)
+		cell.add_child(label)
+		practice_layout_grid.add_child(cell)
 
 func _start_practice() -> void:
-	if practice_layout_option == null:
+	if _practice_layout_id == "":
 		return
-	var layout: String = practice_layout_option.get_item_text(practice_layout_option.selected)
 	var room_type: String = _practice_room_type
 	var act_index: int = _practice_act_index
 	if room_type != "boss":
 		act_index = 1
-	App.start_practice(room_type, act_index, layout)
+	App.start_practice(room_type, act_index, _practice_layout_id)
 	if practice_dialog:
 		practice_dialog.hide()
 
