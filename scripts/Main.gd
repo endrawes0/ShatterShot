@@ -144,6 +144,7 @@ var _between_act_pending: bool = false
 var _between_act_prev_plan: Dictionary = {}
 var _between_act_next_plan: Dictionary = {}
 var _fade_overlay: ColorRect = null
+var _map_label_override_act_index: int = -1
 
 var card_data: Dictionary = {}
 var card_pool: Array[String] = []
@@ -831,6 +832,7 @@ func _show_map() -> void:
 		_between_act_pending = false
 		_start_between_act_sequence()
 		return
+	_map_label_override_act_index = -1
 	App.stop_shop_music()
 	var rest_active: bool = App.is_rest_music_active()
 	if not rest_active:
@@ -857,8 +859,8 @@ func _update_map_label() -> void:
 		return
 	if map_manager != null and map_manager.has_acts():
 		var act_number: int = map_manager.get_active_act_index() + 1
-		if _between_act_step == BetweenActStep.REST and not _between_act_prev_plan.is_empty():
-			act_number = int(_between_act_prev_plan.get("active_act_index", map_manager.get_active_act_index())) + 1
+		if _map_label_override_act_index >= 0:
+			act_number = _map_label_override_act_index + 1
 		map_label.text = "Act %d Map" % act_number
 	else:
 		map_label.text = "Map"
@@ -1280,6 +1282,7 @@ func _show_map_preview_from_plan(plan: Dictionary) -> void:
 	_clear_map_buttons()
 	_update_seed_display()
 	map_preview_active = false
+	_map_label_override_act_index = int(plan.get("active_act_index", -1))
 	if map_graph != null and map_graph.has_method("set_plan"):
 		var no_choices: Array[Dictionary] = []
 		map_graph.call("set_plan", plan, no_choices)
