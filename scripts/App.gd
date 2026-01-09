@@ -82,6 +82,15 @@ func _action_has_key(action: String, keycode: int) -> bool:
 func has_run() -> bool:
 	return run_instance != null and is_instance_valid(run_instance)
 
+func is_practice_run() -> bool:
+	if not has_run():
+		return false
+	if run_instance == null or not is_instance_valid(run_instance):
+		return false
+	if run_instance.has_method("is_practice_mode"):
+		return bool(run_instance.call("is_practice_mode"))
+	return bool(run_instance.get("practice_mode"))
+
 func set_test_lab_unlocked(unlocked: bool) -> void:
 	_test_lab_unlocked = unlocked
 
@@ -106,6 +115,36 @@ func start_new_run(seed_value: int = 0) -> void:
 	if run_instance.has_method("on_menu_closed"):
 		run_instance.on_menu_closed()
 	_switch_to_scene(run_instance)
+
+func start_practice(room_type: String, act_index: int, layout_id: String, floor_index: int = 1) -> void:
+	_menu_music_restart_after_run = false
+	stop_combat_music()
+	stop_rest_music()
+	if run_instance and is_instance_valid(run_instance):
+		run_instance.queue_free()
+	run_instance = RUN_SCENE.instantiate()
+	get_tree().root.add_child(run_instance)
+	if run_instance.has_method("set_test_lab_enabled"):
+		if _test_lab_unlocked:
+			run_instance.set_test_lab_enabled(true, false)
+	else:
+		run_instance.set_test_lab_enabled(false)
+	if run_instance.has_method("start_practice"):
+		run_instance.start_practice(room_type, act_index, layout_id, floor_index)
+	if run_instance.has_method("on_menu_closed"):
+		run_instance.on_menu_closed()
+	_switch_to_scene(run_instance)
+
+func end_run_to_menu() -> void:
+	_menu_music_restart_after_run = false
+	stop_combat_music()
+	stop_shop_music()
+	stop_rest_music()
+	if run_instance and is_instance_valid(run_instance):
+		run_instance.queue_free()
+	run_instance = null
+	show_menu()
+	start_menu_music()
 
 func continue_run() -> void:
 	if not has_run():

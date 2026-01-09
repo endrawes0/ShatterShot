@@ -51,9 +51,19 @@ theme_override_constants/separation = 10
 layout_mode = 2
 text = "Start Run"
 
-[node name="ContinueButton" type="Button" parent="Center/VBox/Buttons"]
+[node name="ContinueRow" type="HBoxContainer" parent="Center/VBox/Buttons"]
 layout_mode = 2
-text = "Continue Run"
+theme_override_constants/separation = 10
+
+[node name="ContinueButton" type="Button" parent="Center/VBox/Buttons/ContinueRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Continue"
+
+[node name="EndButton" type="Button" parent="Center/VBox/Buttons/ContinueRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "End Run"
 
 [node name="HelpButton" type="Button" parent="Center/VBox/Buttons"]
 layout_mode = 2
@@ -77,6 +87,76 @@ title = "Start Run"
 size = Vector2i(350, 150)
 borderless = true
 ok_button_text = "Start"
+
+[node name="PracticeDialog" type="ConfirmationDialog" parent="."]
+title = "Practice"
+size = Vector2i(560, 360)
+borderless = true
+ok_button_text = "Start"
+cancel_button_text = "Cancel"
+
+[node name="PracticeDialogPanel" type="VBoxContainer" parent="PracticeDialog"]
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 550.0
+offset_bottom = 310.0
+theme_override_constants/separation = 10
+
+[node name="RoomTypeRow" type="HBoxContainer" parent="PracticeDialog/PracticeDialogPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="RoomTypeLabel" type="Label" parent="PracticeDialog/PracticeDialogPanel/RoomTypeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Room type"
+
+[node name="RoomTypeOption" type="OptionButton" parent="PracticeDialog/PracticeDialogPanel/RoomTypeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FloorRow" type="HBoxContainer" parent="PracticeDialog/PracticeDialogPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="FloorLabel" type="Label" parent="PracticeDialog/PracticeDialogPanel/FloorRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Difficulty"
+
+[node name="FloorSlider" type="HSlider" parent="PracticeDialog/PracticeDialogPanel/FloorRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+min_value = 1.0
+max_value = 99.0
+step = 1.0
+value = 1.0
+
+[node name="FloorValue" type="Label" parent="PracticeDialog/PracticeDialogPanel/FloorRow"]
+layout_mode = 2
+size_flags_horizontal = 0
+custom_minimum_size = Vector2(40, 0)
+text = "1"
+
+[node name="LayoutRow" type="VBoxContainer" parent="PracticeDialog/PracticeDialogPanel"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="LayoutLabel" type="Label" parent="PracticeDialog/PracticeDialogPanel/LayoutRow"]
+layout_mode = 2
+text = "Layout"
+
+[node name="LayoutScroll" type="ScrollContainer" parent="PracticeDialog/PracticeDialogPanel/LayoutRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="LayoutGrid" type="GridContainer" parent="PracticeDialog/PracticeDialogPanel/LayoutRow/LayoutScroll"]
+layout_mode = 2
+columns = 4
+theme_override_constants/h_separation = 10
+theme_override_constants/v_separation = 10
 
 [node name="SeedDialogPanel" type="VBoxContainer" parent="SeedDialog"]
 offset_left = 8.0

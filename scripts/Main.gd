@@ -170,6 +170,12 @@ var gold: int = 0
 var floor_index: int = 0
 var max_combat_floors: int = 5
 var max_floors: int = 6
+var practice_mode: bool = false
+var _practice_room_type: String = "combat"
+var _practice_act_index: int = 1
+var _practice_layout_id: String = "grid"
+var _practice_floor_index: int = 1
+var _practice_pending: bool = false
 
 var max_energy: int = 3
 var energy: int = 3
@@ -328,8 +334,55 @@ func _ready() -> void:
 			persist_ball_mods = pressed
 		)
 		_apply_persist_checkbox_style()
+	if _practice_pending:
+		call_deferred("_start_practice_now")
 	_set_hud_tooltips()
-	_start_run()
+	if not _practice_pending:
+		_start_run()
+
+func start_practice(room_type: String, act_index: int, layout_id: String, floor_index: int = 1) -> void:
+	_practice_room_type = room_type.strip_edges().to_lower()
+	_practice_act_index = max(1, act_index)
+	_practice_layout_id = layout_id.strip_edges()
+	_practice_floor_index = max(1, floor_index)
+	_practice_pending = true
+	if is_node_ready():
+		call_deferred("_start_practice_now")
+
+func is_practice_mode() -> bool:
+	return practice_mode
+
+func _start_practice_now() -> void:
+	_practice_pending = false
+	practice_mode = true
+	hp = max_hp
+	gold = 0
+	floor_index = max(1, _practice_floor_index)
+	current_is_boss = false
+	current_is_elite = false
+	starting_hand_size = BASE_STARTING_HAND_SIZE
+	ball_mod_counts.clear()
+	active_ball_mod = ""
+	persist_ball_mods = false
+	if mods_persist_checkbox:
+		mods_persist_checkbox.button_pressed = false
+	active_balls.clear()
+	for child in bricks_root.get_children():
+		child.queue_free()
+	_reset_run_rng()
+	if deck_manager:
+		deck_manager.set_rng(run_rng)
+	if encounter_manager:
+		encounter_manager.set_rng(run_rng)
+	deck_manager.setup(starting_deck)
+	_update_labels()
+	var next_state: int = GameState.ENCOUNTER_COMBAT
+	match _practice_room_type:
+		"boss":
+			next_state = GameState.ENCOUNTER_BOSS
+		"elite":
+			next_state = GameState.ENCOUNTER_ELITE
+	state_manager.transition_to(next_state, {})
 
 func set_test_lab_enabled(enabled: bool, panel_visible: bool = true) -> void:
 	test_lab_enabled = enabled
@@ -980,7 +1033,14 @@ func _begin_encounter(is_elite: bool, is_boss: bool) -> void:
 	encounter_has_launched = false
 	App.stop_rest_music()
 	App.start_menu_music()
-	if act_manager != null:
+	if practice_mode:
+		active_act_config = _load_act_config(_practice_act_index)
+		if active_act_config == null:
+			active_act_config = ACT_CONFIG_SCRIPT.new()
+		act_ball_speed_multiplier = float(active_act_config.ball_speed_multiplier) if active_act_config != null else 1.0
+		act_threat_multiplier = float(active_act_config.block_threat_multiplier) if active_act_config != null else 1.0
+		info_label.text = "Practice: Boss fight." if is_boss else "Practice: Plan your volley, then launch."
+	elif act_manager != null:
 		active_act_config = act_manager.get_active_act_config()
 		act_ball_speed_multiplier = act_manager.get_ball_speed_multiplier()
 		act_threat_multiplier = act_manager.get_block_threat_multiplier()
@@ -995,6 +1055,8 @@ func _begin_encounter(is_elite: bool, is_boss: bool) -> void:
 	current_is_boss = is_boss
 	var config := encounter_manager.build_config_from_floor(floor_index, is_elite, is_boss)
 	_apply_act_config_to_encounter(config, is_elite, is_boss, active_act_config)
+	if practice_mode and _practice_layout_id != "":
+		config.pattern_id = _practice_layout_id
 	current_pattern = config.pattern_id
 	encounter_speed_boost = config.speed_boost
 	encounter_rows = config.rows
@@ -1166,6 +1228,10 @@ func _end_encounter(win_event: String = "volley_win") -> void:
 	_hide_all_panels()
 	_clear_active_balls()
 	_reset_deck_for_next_floor()
+	if practice_mode:
+		_end_encounter_in_progress = false
+		App.end_run_to_menu()
+		return
 	if current_is_boss:
 		if map_manager != null and map_manager.has_acts():
 			var act_index: int = map_manager.get_active_act_index()
@@ -1191,6 +1257,11 @@ func _end_encounter(win_event: String = "volley_win") -> void:
 		await _play_planning_victory_message(_get_planning_victory_message())
 	_end_encounter_in_progress = false
 	_transition_event(win_event)
+
+func _load_act_config(act_index: int) -> Resource:
+	var safe_index: int = max(1, act_index)
+	var path: String = "%s/act_%d.tres" % [ACT_CONFIG_DIR, safe_index]
+	return ResourceLoader.load(path)
 
 func _get_planning_victory_message() -> String:
 	if planning_victory_messages.is_empty():
