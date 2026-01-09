@@ -306,9 +306,9 @@ func _is_boss_core_cell(pattern_id: String, row: int, col: int, rows: int, cols:
 		return false
 	match pattern_id:
 		"boss_act1":
-			return row == 3 and (col == 3 or col == 6)
+			return false
 		"boss_act2":
-			return row == 3 and (col == 3 or col == 6)
+			return row == 3 and col == 3
 		"boss_act3":
 			return row == 3 and (col == 4 or col == 5)
 	return false

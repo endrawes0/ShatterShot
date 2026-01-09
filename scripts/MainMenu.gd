@@ -226,7 +226,13 @@ func _practice_layout_ids_for_selection() -> Array[String]:
 func _layout_label(layout_id: String) -> String:
 	if layout_id.begins_with("boss_act"):
 		var suffix: String = layout_id.trim_prefix("boss_act")
-		return "Boss Act %s" % suffix
+		var core_count: int = 0
+		match suffix:
+			"2":
+				core_count = 1
+			"3":
+				core_count = 2
+		return "Boss Act %s (%d Core%s)" % [suffix, core_count, "" if core_count == 1 else "s"]
 	if layout_id.begins_with("elite_"):
 		return "Elite: %s" % layout_id.trim_prefix("elite_").replace("_", " ").capitalize()
 	return layout_id.replace("_", " ").capitalize()
