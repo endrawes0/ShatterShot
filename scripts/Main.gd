@@ -149,6 +149,7 @@ var _map_label_override_act_index: int = -1
 var card_data: Dictionary = {}
 var card_pool: Array[String] = []
 var starting_deck: Array[String] = []
+var unlock_manager: UnlockManager = null
 var ball_mod_data: Dictionary = {}
 var ball_mod_order: Array[String] = []
 var ball_mod_colors: Dictionary = {}
@@ -314,6 +315,22 @@ func _ready() -> void:
 		"gameover_panel": gameover_panel,
 		"hand_container": hand_container
 	}, card_data, CARD_TYPE_COLORS, CARD_BUTTON_SIZE, card_emoji_font)
+		unlock_manager = App.get_unlock_manager()
+		if unlock_manager != null:
+			unlock_manager.bind_run_context(
+				hud,
+				hud_controller,
+				deck_manager,
+				hand_container,
+				card_data,
+				card_pool,
+				CARD_TYPE_COLORS,
+				CARD_BUTTON_SIZE,
+				OUTCOME_PARTICLE_SCENE,
+				outcome_rng,
+				Callable(self, "_refresh_hand"),
+				Callable(self, "_is_planning_state")
+			)
 	reward_manager = RewardManager.new()
 	add_child(reward_manager)
 	reward_manager.setup(hud_controller, reward_buttons)
@@ -536,6 +553,10 @@ func _apply_balance_data(data: Resource) -> void:
 		card_data = data.card_data
 		card_pool = _to_string_array(data.card_pool)
 		starting_deck = _to_string_array(data.starting_deck)
+	var manager: UnlockManager = App.get_unlock_manager()
+	if manager != null:
+		card_pool = manager.filter_unlocked_cards(card_pool)
+		manager.update_card_context(card_data, card_pool)
 	var mods: Dictionary = data.ball_mods
 	ball_mod_data = mods.get("data", {})
 	ball_mod_order = _to_string_array(mods.get("order", []))
@@ -2221,9 +2242,14 @@ func _discard_hand() -> void:
 	_refresh_hand()
 
 func _refresh_hand() -> void:
-	hud_controller.refresh_hand(deck_manager.hand, state != GameState.PLANNING, Callable(self, "_play_card"))
+	var locked: bool = false
+	if unlock_manager != null:
+		locked = unlock_manager.is_hand_interaction_locked()
+	hud_controller.refresh_hand(deck_manager.hand, locked or state != GameState.PLANNING, Callable(self, "_play_card"))
 
 func _play_card(instance_id: int) -> void:
+	if unlock_manager != null and (unlock_manager.is_hand_interaction_locked() or unlock_manager.is_unlock_sequence_active()):
+		return
 	if state != GameState.PLANNING:
 		return
 	var card_id: String = deck_manager.get_card_id_from_hand(instance_id)
@@ -2238,11 +2264,18 @@ func _play_card(instance_id: int) -> void:
 		return
 	energy -= cost
 	var should_discard: bool = _apply_card_effect(card_id, instance_id)
+	if unlock_manager != null:
+		var newly_unlocked: Array[String] = unlock_manager.record_card_played(card_id)
+		if not newly_unlocked.is_empty():
+			unlock_manager.enqueue_unlock_rewards(newly_unlocked)
 	if should_discard:
 		deck_manager.discard_card_instance(instance_id)
 	_refresh_hand()
 	_update_reserve_indicator()
 	_update_labels()
+
+func _is_planning_state() -> bool:
+	return state == GameState.PLANNING
 
 func _apply_card_effect(card_id: String, instance_id: int) -> bool:
 	if card_effect_registry == null:

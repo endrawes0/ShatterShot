@@ -114,6 +114,9 @@ func populate_card_container(container: Container, cards: Array, on_pressed: Cal
 		else:
 			card_id = String(card)
 		var button := create_card_button(card_id)
+		button.set_meta("card_id", card_id)
+		if instance_id >= 0:
+			button.set_meta("instance_id", instance_id)
 		button.disabled = disabled
 		if on_pressed.is_valid():
 			button.pressed.connect(func() -> void:

@@ -83,6 +83,15 @@ func add_card_to_hand(card_id: String) -> bool:
 	_emit_piles_changed()
 	return true
 
+func add_card_to_hand_with_instance_id(card_id: String, ignore_hand_size_limit: bool = false) -> int:
+	if not ignore_hand_size_limit and hand.size() >= MAX_HAND_SIZE:
+		return -1
+	var card: Dictionary = _make_card_instance(card_id)
+	hand.append(card)
+	_emit_hand_changed()
+	_emit_piles_changed()
+	return int(card.get("id", -1))
+
 func remove_card_instance_from_all(instance_id: int, remove_from_deck: bool = true) -> void:
 	if remove_from_deck:
 		_remove_one_instance_from_array(deck, instance_id)

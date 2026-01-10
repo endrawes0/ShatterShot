@@ -15,6 +15,7 @@ const UI_PARTICLE_SPEED_Y: Vector2 = Vector2(-220.0, -80.0)
 const NEUTRAL_BUTTON_NORMAL: Color = Color(0.14, 0.14, 0.16)
 const NEUTRAL_BUTTON_HOVER: Color = Color(0.18, 0.18, 0.22)
 const NEUTRAL_BUTTON_PRESSED: Color = Color(0.12, 0.12, 0.14)
+const UnlockManagerScript = preload("res://scripts/managers/UnlockManager.gd")
 
 var menu_instance: Node = null
 var run_instance: Node = null
@@ -35,6 +36,7 @@ var _settings_vfx_intensity: float = 1.0
 var _settings_ball_speed_multiplier: float = 1.0
 var _settings_paddle_speed_multiplier: float = 1.0
 var _test_lab_unlocked: bool = false
+var unlock_manager: UnlockManager = null
 
 func _ready() -> void:
 	_ui_particle_rng.randomize()
@@ -42,6 +44,7 @@ func _ready() -> void:
 	_ensure_paddle_keyboard_inputs()
 	_apply_global_theme()
 	_apply_saved_settings()
+	_ensure_unlock_manager()
 	_refresh_layout_cache()
 	_connect_window_signals()
 	start_menu_music()
@@ -96,6 +99,22 @@ func set_test_lab_unlocked(unlocked: bool) -> void:
 
 func is_test_lab_unlocked() -> bool:
 	return _test_lab_unlocked
+
+func reset_progress() -> void:
+	_ensure_unlock_manager()
+	if unlock_manager != null:
+		unlock_manager.reset_progress()
+
+func get_unlock_manager() -> UnlockManager:
+	_ensure_unlock_manager()
+	return unlock_manager
+
+func _ensure_unlock_manager() -> void:
+	if unlock_manager != null and is_instance_valid(unlock_manager):
+		return
+	unlock_manager = UnlockManagerScript.new()
+	add_child(unlock_manager)
+	unlock_manager.load_progress()
 
 func start_new_run(seed_value: int = 0) -> void:
 	_menu_music_restart_after_run = false

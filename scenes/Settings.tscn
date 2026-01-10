@@ -133,6 +133,26 @@ max_value = 150.0
 step = 5.0
 value = 100.0
 
+[node name="ProgressDivider" type="HSeparator" parent="Center/Card/VBox/Tabs/Gameplay"]
+layout_mode = 2
+
+[node name="ProgressLabel" type="Label" parent="Center/Card/VBox/Tabs/Gameplay"]
+layout_mode = 2
+text = "Progress"
+horizontal_alignment = 1
+
+[node name="ResetProgressButton" type="Button" parent="Center/Card/VBox/Tabs/Gameplay"]
+layout_mode = 2
+text = "Reset Unlock Progress"
+
 [node name="BackButton" type="Button" parent="Center/Card/VBox"]
 layout_mode = 2
 text = "Back"
+
+[node name="ResetProgressDialog" type="ConfirmationDialog" parent="."]
+title = "Reset Progress"
+dialog_text = "Reset unlock progress (achievements/cards)? This cannot be undone."
+
+[node name="ResetProgressNotice" type="AcceptDialog" parent="."]
+title = "Progress Reset"
+dialog_text = "Unlock progress has been reset."
