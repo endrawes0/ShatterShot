@@ -44,6 +44,11 @@ const CARD_UNLOCK_REQUIREMENTS: Dictionary = {
 		"type": "use_card",
 		"card_id": "bomb",
 		"count": 5
+	},
+	"riposte": {
+		"type": "use_card",
+		"card_id": "parry",
+		"count": 10
 	}
 }
 
