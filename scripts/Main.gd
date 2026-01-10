@@ -47,6 +47,10 @@ const BOUNCE_CATCH_HEAL_AMOUNT: int = 25
 const CATCH_PARTICLE_COUNT: int = 12
 const CATCH_PARTICLE_SPEED_X: Vector2 = Vector2(-160.0, 160.0)
 const CATCH_PARTICLE_SPEED_Y: Vector2 = Vector2(-260.0, 60.0)
+const UNLOCK_PARTICLE_COUNT: int = 22
+const UNLOCK_PARTICLE_SPEED_X: Vector2 = Vector2(-140.0, 140.0)
+const UNLOCK_PARTICLE_SPEED_Y: Vector2 = Vector2(-320.0, -90.0)
+const UNLOCK_PARTICLE_RADIUS: float = 26.0
 
 @export var brick_size: Vector2 = Vector2(64, 24)
 @export var brick_gap: Vector2 = Vector2(8, 8)
@@ -2284,6 +2288,11 @@ func _show_unlock_reveal_and_gift(card_id: String) -> void:
 	var time_scale: float = 2.0
 	var card: Dictionary = card_data.get(card_id, {})
 	var card_name: String = String(card.get("name", card_id))
+	var card_type: String = String(card.get("type", "utility"))
+	var particle_color: Color = Color(0.95, 0.85, 0.25, 1.0)
+	if CARD_TYPE_COLORS.has(card_type):
+		particle_color = CARD_TYPE_COLORS[card_type]
+	particle_color.a = 1.0
 
 	var overlay: Control = Control.new()
 	overlay.name = "CardUnlockOverlay"
@@ -2341,6 +2350,7 @@ func _show_unlock_reveal_and_gift(card_id: String) -> void:
 	intro.parallel().tween_property(mover, "rotation_degrees", -3.0, 0.28 * time_scale)
 	await intro.finished
 
+	_spawn_unlock_particles(start_pos + mover.size * 0.5, particle_color)
 	header.text = "%s unlocked!" % card_name
 	await get_tree().create_timer(0.55 * time_scale).timeout
 
@@ -2352,8 +2362,10 @@ func _show_unlock_reveal_and_gift(card_id: String) -> void:
 
 	var target_button: Button = _find_hand_button_by_instance_id(new_instance_id)
 	var target_pos: Vector2 = start_pos
+	var target_center: Vector2 = start_pos + mover.size * 0.5
 	if target_button != null:
 		target_pos = target_button.get_global_rect().position
+		target_center = target_button.get_global_rect().get_center()
 		target_button.modulate = Color(1, 1, 1, 0)
 		target_button.scale = Vector2.ONE * 0.92
 
@@ -2369,6 +2381,7 @@ func _show_unlock_reveal_and_gift(card_id: String) -> void:
 
 	if target_button != null:
 		target_button.modulate = Color(1, 1, 1, 1)
+		_spawn_unlock_particles(target_center, particle_color, 10, 14.0)
 		var pop: Tween = target_button.create_tween()
 		pop.set_trans(Tween.TRANS_BACK)
 		pop.set_ease(Tween.EASE_OUT)
@@ -2392,6 +2405,32 @@ func _set_hand_buttons_disabled(disabled: bool) -> void:
 	for child in hand_container.get_children():
 		if child is BaseButton:
 			(child as BaseButton).disabled = disabled
+
+func _spawn_unlock_particles(center: Vector2, color: Color, base_count: int = UNLOCK_PARTICLE_COUNT, radius: float = UNLOCK_PARTICLE_RADIUS) -> void:
+	var count: int = App.get_vfx_count(base_count)
+	if count <= 0:
+		return
+	var parent_node: Node = get_tree().root
+	if hud != null:
+		parent_node = hud
+	if parent_node == null:
+		return
+	for _i in range(count):
+		var particle := OUTCOME_PARTICLE_SCENE.instantiate()
+		if particle == null:
+			continue
+		parent_node.add_child(particle)
+		if particle is Node2D:
+			var node: Node2D = particle as Node2D
+			var angle: float = outcome_rng.randf_range(0.0, TAU)
+			var distance: float = outcome_rng.randf_range(0.0, radius)
+			node.global_position = center + Vector2(cos(angle), sin(angle)) * distance
+		if particle.has_method("setup"):
+			var velocity: Vector2 = Vector2(
+				outcome_rng.randf_range(UNLOCK_PARTICLE_SPEED_X.x, UNLOCK_PARTICLE_SPEED_X.y),
+				outcome_rng.randf_range(UNLOCK_PARTICLE_SPEED_Y.x, UNLOCK_PARTICLE_SPEED_Y.y)
+			)
+			particle.call("setup", color, velocity)
 
 func _apply_card_effect(card_id: String, instance_id: int) -> bool:
 	if card_effect_registry == null:
