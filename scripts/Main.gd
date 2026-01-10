@@ -296,8 +296,8 @@ func _ready() -> void:
 		hud_controller = HudController.new()
 		add_child(hud_controller)
 		card_emoji_font = load(EMOJI_FONT_PATH)
-			hud_controller.setup({
-			"energy_label": energy_label,
+		hud_controller.setup({
+		"energy_label": energy_label,
 		"deck_label": deck_label,
 		"discard_label": discard_label,
 		"deck_button": deck_button,
@@ -313,27 +313,27 @@ func _ready() -> void:
 		"shop_panel": shop_panel,
 		"deck_panel": deck_panel,
 		"gameover_panel": gameover_panel,
-			"hand_container": hand_container
-		}, card_data, CARD_TYPE_COLORS, CARD_BUTTON_SIZE, card_emoji_font)
-			unlock_manager = App.get_unlock_manager()
-			if unlock_manager != null:
-				unlock_manager.bind_run_context(
-					hud,
-					hud_controller,
-					deck_manager,
-					hand_container,
-					card_data,
-					card_pool,
-					CARD_TYPE_COLORS,
-					CARD_BUTTON_SIZE,
-					OUTCOME_PARTICLE_SCENE,
-					outcome_rng,
-					Callable(self, "_refresh_hand"),
-					Callable(self, "_is_planning_state")
-				)
-		reward_manager = RewardManager.new()
-		add_child(reward_manager)
-		reward_manager.setup(hud_controller, reward_buttons)
+		"hand_container": hand_container
+	}, card_data, CARD_TYPE_COLORS, CARD_BUTTON_SIZE, card_emoji_font)
+		unlock_manager = App.get_unlock_manager()
+		if unlock_manager != null:
+			unlock_manager.bind_run_context(
+				hud,
+				hud_controller,
+				deck_manager,
+				hand_container,
+				card_data,
+				card_pool,
+				CARD_TYPE_COLORS,
+				CARD_BUTTON_SIZE,
+				OUTCOME_PARTICLE_SCENE,
+				outcome_rng,
+				Callable(self, "_refresh_hand"),
+				Callable(self, "_is_planning_state")
+			)
+	reward_manager = RewardManager.new()
+	add_child(reward_manager)
+	reward_manager.setup(hud_controller, reward_buttons)
 	reward_manager.set_on_selected(Callable(self, "_on_reward_selected"))
 	reward_manager.set_panel_nodes(reward_label, reward_skip_button)
 	reward_manager.set_info_callback(Callable(self, "_set_info_text"))
