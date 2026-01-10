@@ -124,6 +124,12 @@ func _get_layout_cells(rows: int, cols: int, pattern_id: String) -> Array[Vector
 			if not pattern_registry.allows(row, col, rows, cols, pattern_id):
 				continue
 			cells.append(Vector2i(row, col))
+	if pattern_id.begins_with("boss_act"):
+		for core_cell in _boss_core_cells(pattern_id, rows, cols):
+			if core_cell.x < 0 or core_cell.y < 0 or core_cell.x >= rows or core_cell.y >= cols:
+				continue
+			if not cells.has(core_cell):
+				cells.append(core_cell)
 	return cells
 
 func _roll_brick_data(row: int, config: EncounterConfig) -> Dictionary:
@@ -287,10 +293,10 @@ func _apply_cell_variants(row: int, col: int, config: EncounterConfig, base_vari
 		var cluster_id: int = _boss_cluster_id_for_cell(pattern_id, row, col, config.cols)
 		if cluster_id >= 0:
 			variants["core_cluster_id"] = cluster_id
-			var is_core: bool = _is_boss_core_cell(pattern_id, row, col, config.rows, config.cols)
-			if is_core:
-				variants["is_armor_core"] = true
-				variants["core_locked"] = true
+		var is_core: bool = _is_boss_core_cell(pattern_id, row, col, config.rows, config.cols)
+		if is_core:
+			variants["is_armor_core"] = true
+			variants["core_locked"] = true
 	return variants
 
 func _boss_cluster_id_for_cell(pattern_id: String, _row: int, col: int, cols: int) -> int:
@@ -301,16 +307,25 @@ func _boss_cluster_id_for_cell(pattern_id: String, _row: int, col: int, cols: in
 			return 0
 	return -1
 
-func _is_boss_core_cell(pattern_id: String, row: int, col: int, rows: int, cols: int) -> bool:
-	if rows != 6 or cols != 10:
-		return false
+func _boss_core_cells(pattern_id: String, rows: int, cols: int) -> Array[Vector2i]:
+	var core_cells: Array[Vector2i] = []
 	match pattern_id:
-		"boss_act1":
-			return false
 		"boss_act2":
-			return row == 3 and col == 3
+			var core_row: int = clampi(int(floor(rows * 0.5)), 0, max(0, rows - 1))
+			var core_col: int = clampi(int(floor(cols * 0.3)), 0, max(0, cols - 1))
+			core_cells.append(Vector2i(core_row, core_col))
 		"boss_act3":
-			return row == 3 and (col == 4 or col == 5)
+			var core_row: int = clampi(int(floor(rows * 0.5)), 0, max(0, rows - 1))
+			var center_col: int = clampi(int(floor(cols * 0.5)), 0, max(0, cols - 1))
+			var left_col: int = clampi(center_col - 1, 0, max(0, cols - 1))
+			core_cells.append(Vector2i(core_row, left_col))
+			core_cells.append(Vector2i(core_row, center_col))
+	return core_cells
+
+func _is_boss_core_cell(pattern_id: String, row: int, col: int, rows: int, cols: int) -> bool:
+	for core_cell in _boss_core_cells(pattern_id, rows, cols):
+		if core_cell.x == row and core_cell.y == col:
+			return true
 	return false
 
 func _register_cluster_brick(brick: Node, cluster_id: int, is_core: bool) -> void:
