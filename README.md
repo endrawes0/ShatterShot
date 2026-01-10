@@ -13,6 +13,7 @@ Prereqs: Godot `4.5.1` (the project targets Godot `4.5`).
 
 ### Controls (Defaults)
 - Move paddle: `A/D` or `Left/Right`.
+- Precision move: hold `Ctrl` to slow paddle.
 - Launch volley / reserve ball: `Space` (Godot `ui_accept`).
 - Map preview: `M`.
 - Back/menu: `Esc` (Godot `ui_cancel`).

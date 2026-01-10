@@ -66,6 +66,7 @@ func _ensure_spacebar_not_ui_select() -> void:
 func _ensure_paddle_keyboard_inputs() -> void:
 	_ensure_action_key("ui_left", KEY_A)
 	_ensure_action_key("ui_right", KEY_D)
+	_ensure_action_key("paddle_slow", KEY_CTRL)
 
 func _ensure_action_key(action: String, keycode: Key) -> void:
 	if not InputMap.has_action(action):

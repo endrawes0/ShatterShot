@@ -4,6 +4,7 @@ const GhostShape = preload("res://scripts/effects/GhostShape.gd")
 
 @export var speed: float = 420.0
 @export var half_width: float = 60.0
+@export var slow_move_multiplier: float = 0.4
 
 @onready var rect: ColorRect = $Rect
 @onready var collider: CollisionPolygon2D = $CollisionPolygon2D
@@ -30,7 +31,10 @@ func _physics_process(_delta: float) -> void:
 	var left_strength: float = float(Input.get_action_strength("ui_left"))
 	var direction: float = right_strength - left_strength
 
-	velocity.x = direction * speed
+	var speed_multiplier: float = 1.0
+	if absf(direction) > 0.001 and Input.is_action_pressed("paddle_slow"):
+		speed_multiplier = clampf(slow_move_multiplier, 0.1, 1.0)
+	velocity.x = direction * speed * speed_multiplier
 	velocity.y = 0.0
 	move_and_slide()
 

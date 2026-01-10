@@ -55,6 +55,7 @@ A single-player Godot project that fuses Breakout-style paddle/ball action with 
 
 ## Controls (Defaults)
 - Move paddle: `A/D` or `Left/Right`.
+- Precision move: hold `Ctrl` to slow paddle.
 - Launch volley / reserve ball: `Space` (Godot `ui_accept`).
 - Map preview: `M`.
 - Back/menu: `Esc` (Godot `ui_cancel`).
