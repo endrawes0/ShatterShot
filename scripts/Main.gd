@@ -410,6 +410,7 @@ func _start_practice_now() -> void:
 	current_is_boss = false
 	current_is_elite = false
 	starting_hand_size = BASE_STARTING_HAND_SIZE
+	shop_discount_multiplier = 1.0
 	ball_mod_counts.clear()
 	active_ball_mod = ""
 	persist_ball_mods = false
@@ -786,6 +787,7 @@ func _start_run(event: String = "") -> void:
 	current_is_boss = false
 	current_is_elite = false
 	starting_hand_size = BASE_STARTING_HAND_SIZE
+	shop_discount_multiplier = 1.0
 	ball_mod_counts.clear()
 	active_ball_mod = ""
 	persist_ball_mods = false
@@ -1607,7 +1609,6 @@ func _show_shop() -> void:
 		shop_leave_button.visible = true
 		shop_leave_button.text = "Leave"
 	info_label.text = ""
-	shop_discount_multiplier = 1.0
 	if shop_manager:
 		shop_manager.reset_shop_limits()
 		shop_manager.reset_offers(Callable(self, "_pick_random_card"))
