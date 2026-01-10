@@ -36,7 +36,7 @@ var _settings_vfx_intensity: float = 1.0
 var _settings_ball_speed_multiplier: float = 1.0
 var _settings_paddle_speed_multiplier: float = 1.0
 var _test_lab_unlocked: bool = false
-var unlock_manager: UnlockManager = null
+var unlock_manager: Node = null
 
 func _ready() -> void:
 	_ui_particle_rng.randomize()
@@ -103,9 +103,9 @@ func is_test_lab_unlocked() -> bool:
 func reset_progress() -> void:
 	_ensure_unlock_manager()
 	if unlock_manager != null:
-		unlock_manager.reset_progress()
+		unlock_manager.call("reset_progress")
 
-func get_unlock_manager() -> UnlockManager:
+func get_unlock_manager() -> Node:
 	_ensure_unlock_manager()
 	return unlock_manager
 
@@ -114,7 +114,7 @@ func _ensure_unlock_manager() -> void:
 		return
 	unlock_manager = UnlockManagerScript.new()
 	add_child(unlock_manager)
-	unlock_manager.load_progress()
+	unlock_manager.call("load_progress")
 
 func start_new_run(seed_value: int = 0) -> void:
 	_menu_music_restart_after_run = false

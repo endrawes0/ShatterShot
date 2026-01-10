@@ -149,7 +149,7 @@ var _map_label_override_act_index: int = -1
 var card_data: Dictionary = {}
 var card_pool: Array[String] = []
 var starting_deck: Array[String] = []
-var unlock_manager: UnlockManager = null
+var unlock_manager: Node = null
 var ball_mod_data: Dictionary = {}
 var ball_mod_order: Array[String] = []
 var ball_mod_colors: Dictionary = {}
@@ -297,27 +297,28 @@ func _ready() -> void:
 		add_child(hud_controller)
 		card_emoji_font = load(EMOJI_FONT_PATH)
 		hud_controller.setup({
-		"energy_label": energy_label,
-		"deck_label": deck_label,
-		"discard_label": discard_label,
-		"deck_button": deck_button,
-		"discard_button": discard_button,
-		"hp_label": hp_label,
-		"gold_label": gold_label,
-		"shop_gold_label": shop_gold_label,
-		"threat_label": threat_label,
-		"floor_label": floor_label,
-		"map_panel": map_panel,
-		"reward_panel": reward_panel,
-		"treasure_panel": treasure_panel,
-		"shop_panel": shop_panel,
-		"deck_panel": deck_panel,
-		"gameover_panel": gameover_panel,
-		"hand_container": hand_container
-	}, card_data, CARD_TYPE_COLORS, CARD_BUTTON_SIZE, card_emoji_font)
+			"energy_label": energy_label,
+			"deck_label": deck_label,
+			"discard_label": discard_label,
+			"deck_button": deck_button,
+			"discard_button": discard_button,
+			"hp_label": hp_label,
+			"gold_label": gold_label,
+			"shop_gold_label": shop_gold_label,
+			"threat_label": threat_label,
+			"floor_label": floor_label,
+			"map_panel": map_panel,
+			"reward_panel": reward_panel,
+			"treasure_panel": treasure_panel,
+			"shop_panel": shop_panel,
+			"deck_panel": deck_panel,
+			"gameover_panel": gameover_panel,
+			"hand_container": hand_container
+		}, card_data, CARD_TYPE_COLORS, CARD_BUTTON_SIZE, card_emoji_font)
 		unlock_manager = App.get_unlock_manager()
 		if unlock_manager != null:
-			unlock_manager.bind_run_context(
+			unlock_manager.call(
+				"bind_run_context",
 				hud,
 				hud_controller,
 				deck_manager,
@@ -331,46 +332,46 @@ func _ready() -> void:
 				Callable(self, "_refresh_hand"),
 				Callable(self, "_is_planning_state")
 			)
-	reward_manager = RewardManager.new()
-	add_child(reward_manager)
-	reward_manager.setup(hud_controller, reward_buttons)
-	reward_manager.set_on_selected(Callable(self, "_on_reward_selected"))
-	reward_manager.set_panel_nodes(reward_label, reward_skip_button)
-	reward_manager.set_info_callback(Callable(self, "_set_info_text"))
-	reward_manager.configure({"reward_count": reward_card_count})
-	shop_manager = ShopManager.new()
-	add_child(shop_manager)
-	shop_manager.setup(hud_controller, shop_cards_buttons, shop_buffs_buttons, shop_ball_mods_buttons)
-	_configure_shop_manager()
-	act_transition_manager = ACT_TRANSITION_MANAGER_SCRIPT.new()
-	add_child(act_transition_manager)
-	act_transition_manager.setup(
-		self,
-		run_rng,
-		{
-			"hud": hud,
-			"treasure_panel": treasure_panel,
-			"treasure_label": treasure_label,
-			"treasure_rewards": treasure_rewards,
-			"treasure_continue_button": treasure_continue_button,
-			"map_panel": map_panel,
-			"map_graph": map_graph,
-			"map_label": map_label,
-			"shop_leave_button": shop_leave_button,
-			"shop_label": shop_label,
-			"shop_info_label": shop_info_label
-		},
-		{
-			"update_labels": Callable(self, "_update_labels"),
-			"hide_all_panels": Callable(self, "_hide_all_panels"),
-			"show_treasure_panel": Callable(self, "_show_treasure_panel"),
-			"show_single_panel": Callable(self, "_show_single_panel"),
-			"show_shop": Callable(self, "_show_shop"),
-			"transition_event": Callable(self, "_transition_event"),
-			"update_volley_prompt_visibility": Callable(self, "_update_volley_prompt_visibility"),
-			"clear_map_buttons": Callable(self, "_clear_map_buttons")
-		}
-	)
+		reward_manager = RewardManager.new()
+		add_child(reward_manager)
+		reward_manager.setup(hud_controller, reward_buttons)
+		reward_manager.set_on_selected(Callable(self, "_on_reward_selected"))
+		reward_manager.set_panel_nodes(reward_label, reward_skip_button)
+		reward_manager.set_info_callback(Callable(self, "_set_info_text"))
+		reward_manager.configure({"reward_count": reward_card_count})
+		shop_manager = ShopManager.new()
+		add_child(shop_manager)
+		shop_manager.setup(hud_controller, shop_cards_buttons, shop_buffs_buttons, shop_ball_mods_buttons)
+		_configure_shop_manager()
+		act_transition_manager = ACT_TRANSITION_MANAGER_SCRIPT.new()
+		add_child(act_transition_manager)
+		act_transition_manager.setup(
+			self,
+			run_rng,
+			{
+				"hud": hud,
+				"treasure_panel": treasure_panel,
+				"treasure_label": treasure_label,
+				"treasure_rewards": treasure_rewards,
+				"treasure_continue_button": treasure_continue_button,
+				"map_panel": map_panel,
+				"map_graph": map_graph,
+				"map_label": map_label,
+				"shop_leave_button": shop_leave_button,
+				"shop_label": shop_label,
+				"shop_info_label": shop_info_label
+			},
+			{
+				"update_labels": Callable(self, "_update_labels"),
+				"hide_all_panels": Callable(self, "_hide_all_panels"),
+				"show_treasure_panel": Callable(self, "_show_treasure_panel"),
+				"show_single_panel": Callable(self, "_show_single_panel"),
+				"show_shop": Callable(self, "_show_shop"),
+				"transition_event": Callable(self, "_transition_event"),
+				"update_volley_prompt_visibility": Callable(self, "_update_volley_prompt_visibility"),
+				"clear_map_buttons": Callable(self, "_clear_map_buttons")
+			}
+		)
 	_set_test_lab_enabled(test_lab_enabled)
 	_apply_hud_theme()
 	if bricks_root != null:
@@ -553,10 +554,12 @@ func _apply_balance_data(data: Resource) -> void:
 		card_data = data.card_data
 		card_pool = _to_string_array(data.card_pool)
 		starting_deck = _to_string_array(data.starting_deck)
-	var manager: UnlockManager = App.get_unlock_manager()
+	var manager: Node = App.get_unlock_manager()
 	if manager != null:
-		card_pool = manager.filter_unlocked_cards(card_pool)
-		manager.update_card_context(card_data, card_pool)
+		var filtered: Variant = manager.call("filter_unlocked_cards", card_pool)
+		if typeof(filtered) == TYPE_ARRAY:
+			card_pool = filtered
+		manager.call("update_card_context", card_data, card_pool)
 	var mods: Dictionary = data.ball_mods
 	ball_mod_data = mods.get("data", {})
 	ball_mod_order = _to_string_array(mods.get("order", []))
@@ -2244,11 +2247,11 @@ func _discard_hand() -> void:
 func _refresh_hand() -> void:
 	var locked: bool = false
 	if unlock_manager != null:
-		locked = unlock_manager.is_hand_interaction_locked()
+		locked = bool(unlock_manager.call("is_hand_interaction_locked"))
 	hud_controller.refresh_hand(deck_manager.hand, locked or state != GameState.PLANNING, Callable(self, "_play_card"))
 
 func _play_card(instance_id: int) -> void:
-	if unlock_manager != null and (unlock_manager.is_hand_interaction_locked() or unlock_manager.is_unlock_sequence_active()):
+	if unlock_manager != null and (bool(unlock_manager.call("is_hand_interaction_locked")) or bool(unlock_manager.call("is_unlock_sequence_active"))):
 		return
 	if state != GameState.PLANNING:
 		return
@@ -2265,9 +2268,9 @@ func _play_card(instance_id: int) -> void:
 	energy -= cost
 	var should_discard: bool = _apply_card_effect(card_id, instance_id)
 	if unlock_manager != null:
-		var newly_unlocked: Array[String] = unlock_manager.record_card_played(card_id)
-		if not newly_unlocked.is_empty():
-			unlock_manager.enqueue_unlock_rewards(newly_unlocked)
+		var newly_unlocked: Variant = unlock_manager.call("record_card_played", card_id)
+		if typeof(newly_unlocked) == TYPE_ARRAY and not (newly_unlocked as Array).is_empty():
+			unlock_manager.call("enqueue_unlock_rewards", newly_unlocked)
 	if should_discard:
 		deck_manager.discard_card_instance(instance_id)
 	_refresh_hand()
