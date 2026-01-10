@@ -302,8 +302,10 @@ func _boss_cluster_id_for_cell(pattern_id: String, _row: int, col: int, cols: in
 	return -1
 
 func _is_boss_core_cell(pattern_id: String, row: int, col: int, rows: int, cols: int) -> bool:
-	if rows != 6 or cols != 10:
-		return false
+	@warning_ignore("unused_parameter")
+	var _unused_rows: int = rows
+	@warning_ignore("unused_parameter")
+	var _unused_cols: int = cols
 	match pattern_id:
 		"boss_act1":
 			return false
