@@ -149,7 +149,7 @@ var _map_label_override_act_index: int = -1
 var card_data: Dictionary = {}
 var card_pool: Array[String] = []
 var starting_deck: Array[String] = []
-var unlock_manager: UnlockManager = null
+var unlock_manager: Node = null
 var ball_mod_data: Dictionary = {}
 var ball_mod_order: Array[String] = []
 var ball_mod_colors: Dictionary = {}
@@ -315,22 +315,23 @@ func _ready() -> void:
 		"gameover_panel": gameover_panel,
 		"hand_container": hand_container
 	}, card_data, CARD_TYPE_COLORS, CARD_BUTTON_SIZE, card_emoji_font)
-		unlock_manager = App.get_unlock_manager()
-		if unlock_manager != null:
-			unlock_manager.bind_run_context(
-				hud,
-				hud_controller,
-				deck_manager,
-				hand_container,
-				card_data,
+			unlock_manager = App.get_unlock_manager()
+			if unlock_manager != null:
+				unlock_manager.call(
+					"bind_run_context",
+					hud,
+					hud_controller,
+					deck_manager,
+					hand_container,
+					card_data,
 				card_pool,
 				CARD_TYPE_COLORS,
 				CARD_BUTTON_SIZE,
 				OUTCOME_PARTICLE_SCENE,
-				outcome_rng,
-				Callable(self, "_refresh_hand"),
-				Callable(self, "_is_planning_state")
-			)
+					outcome_rng,
+					Callable(self, "_refresh_hand"),
+					Callable(self, "_is_planning_state")
+				)
 	reward_manager = RewardManager.new()
 	add_child(reward_manager)
 	reward_manager.setup(hud_controller, reward_buttons)
@@ -553,10 +554,12 @@ func _apply_balance_data(data: Resource) -> void:
 		card_data = data.card_data
 		card_pool = _to_string_array(data.card_pool)
 		starting_deck = _to_string_array(data.starting_deck)
-	var manager: UnlockManager = App.get_unlock_manager()
+	var manager: Node = App.get_unlock_manager()
 	if manager != null:
-		card_pool = manager.filter_unlocked_cards(card_pool)
-		manager.update_card_context(card_data, card_pool)
+		var filtered: Variant = manager.call("filter_unlocked_cards", card_pool)
+		if typeof(filtered) == TYPE_ARRAY:
+			card_pool = filtered
+		manager.call("update_card_context", card_data, card_pool)
 	var mods: Dictionary = data.ball_mods
 	ball_mod_data = mods.get("data", {})
 	ball_mod_order = _to_string_array(mods.get("order", []))
@@ -2244,11 +2247,11 @@ func _discard_hand() -> void:
 func _refresh_hand() -> void:
 	var locked: bool = false
 	if unlock_manager != null:
-		locked = unlock_manager.is_hand_interaction_locked()
+		locked = bool(unlock_manager.call("is_hand_interaction_locked"))
 	hud_controller.refresh_hand(deck_manager.hand, locked or state != GameState.PLANNING, Callable(self, "_play_card"))
 
 func _play_card(instance_id: int) -> void:
-	if unlock_manager != null and (unlock_manager.is_hand_interaction_locked() or unlock_manager.is_unlock_sequence_active()):
+	if unlock_manager != null and (bool(unlock_manager.call("is_hand_interaction_locked")) or bool(unlock_manager.call("is_unlock_sequence_active"))):
 		return
 	if state != GameState.PLANNING:
 		return
@@ -2265,9 +2268,9 @@ func _play_card(instance_id: int) -> void:
 	energy -= cost
 	var should_discard: bool = _apply_card_effect(card_id, instance_id)
 	if unlock_manager != null:
-		var newly_unlocked: Array[String] = unlock_manager.record_card_played(card_id)
-		if not newly_unlocked.is_empty():
-			unlock_manager.enqueue_unlock_rewards(newly_unlocked)
+		var newly_unlocked: Variant = unlock_manager.call("record_card_played", card_id)
+		if typeof(newly_unlocked) == TYPE_ARRAY and not (newly_unlocked as Array).is_empty():
+			unlock_manager.call("enqueue_unlock_rewards", newly_unlocked)
 	if should_discard:
 		deck_manager.discard_card_instance(instance_id)
 	_refresh_hand()
