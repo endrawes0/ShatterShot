@@ -2,6 +2,10 @@ extends "res://scripts/Ball.gd"
 
 @export var paddle_path_override: NodePath
 
+func _enter_tree() -> void:
+	add_to_group("bounce_balls")
+	super._enter_tree()
+
 func setup(color: Color, initial_velocity: Vector2) -> void:
 	if rect:
 		rect.color = color

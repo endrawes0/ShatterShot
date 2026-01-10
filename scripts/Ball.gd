@@ -34,6 +34,9 @@ const GHOST_ALPHA: float = 0.45
 var mod_colors: Dictionary = {}
 var _ghost_last_pos: Vector2 = Vector2.ZERO
 
+func _enter_tree() -> void:
+	add_to_group("balls")
+
 func _ready() -> void:
 	base_damage = damage
 	_init_mod_effects()
