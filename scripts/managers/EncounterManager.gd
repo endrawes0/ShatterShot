@@ -227,7 +227,7 @@ func _build_fallback_config(floor_index: int, is_elite: bool, is_boss: bool) -> 
 	config.speed_boost = _roll_speed_boost(floor_index, is_boss)
 	config.variant_policy = _variant_policy_for_floor(floor_index, is_elite, is_boss)
 	if is_boss:
-		config.rows = 6
+		config.rows = 6 + int(floor_index / 2.0)
 		config.cols = 10
 		config.base_hp = 4 + int(floor_index / 2.0)
 		config.boss_core = false
