@@ -2281,6 +2281,7 @@ func _run_unlock_reward_queue() -> void:
 func _show_unlock_reveal_and_gift(card_id: String) -> void:
 	if hud == null or hud_controller == null:
 		return
+	var time_scale: float = 2.0
 	var card: Dictionary = card_data.get(card_id, {})
 	var card_name: String = String(card.get("name", card_id))
 
@@ -2333,15 +2334,15 @@ func _show_unlock_reveal_and_gift(card_id: String) -> void:
 	var intro: Tween = create_tween()
 	intro.set_trans(Tween.TRANS_BACK)
 	intro.set_ease(Tween.EASE_OUT)
-	intro.tween_property(backdrop, "color", Color(0, 0, 0, 0.55), 0.18)
-	intro.parallel().tween_property(header, "modulate", Color(1, 1, 1, 1), 0.12)
-	intro.parallel().tween_property(mover, "modulate", Color(1, 1, 1, 1), 0.12)
-	intro.parallel().tween_property(mover, "scale", Vector2.ONE, 0.28)
-	intro.parallel().tween_property(mover, "rotation_degrees", -3.0, 0.28)
+	intro.tween_property(backdrop, "color", Color(0, 0, 0, 0.55), 0.18 * time_scale)
+	intro.parallel().tween_property(header, "modulate", Color(1, 1, 1, 1), 0.12 * time_scale)
+	intro.parallel().tween_property(mover, "modulate", Color(1, 1, 1, 1), 0.12 * time_scale)
+	intro.parallel().tween_property(mover, "scale", Vector2.ONE, 0.28 * time_scale)
+	intro.parallel().tween_property(mover, "rotation_degrees", -3.0, 0.28 * time_scale)
 	await intro.finished
 
 	header.text = "%s unlocked!" % card_name
-	await get_tree().create_timer(0.55).timeout
+	await get_tree().create_timer(0.55 * time_scale).timeout
 
 	var new_instance_id: int = -1
 	if deck_manager != null:
@@ -2359,11 +2360,11 @@ func _show_unlock_reveal_and_gift(card_id: String) -> void:
 	var outro: Tween = create_tween()
 	outro.set_trans(Tween.TRANS_QUAD)
 	outro.set_ease(Tween.EASE_IN_OUT)
-	outro.tween_property(mover, "global_position", target_pos, 0.34)
-	outro.parallel().tween_property(mover, "scale", Vector2.ONE * 0.78, 0.34)
-	outro.parallel().tween_property(mover, "rotation_degrees", 0.0, 0.34)
-	outro.parallel().tween_property(backdrop, "color", Color(0, 0, 0, 0.0), 0.28)
-	outro.parallel().tween_property(header, "modulate", Color(1, 1, 1, 0), 0.18)
+	outro.tween_property(mover, "global_position", target_pos, 0.34 * time_scale)
+	outro.parallel().tween_property(mover, "scale", Vector2.ONE * 0.78, 0.34 * time_scale)
+	outro.parallel().tween_property(mover, "rotation_degrees", 0.0, 0.34 * time_scale)
+	outro.parallel().tween_property(backdrop, "color", Color(0, 0, 0, 0.0), 0.28 * time_scale)
+	outro.parallel().tween_property(header, "modulate", Color(1, 1, 1, 0), 0.18 * time_scale)
 	await outro.finished
 
 	if target_button != null:
@@ -2371,7 +2372,7 @@ func _show_unlock_reveal_and_gift(card_id: String) -> void:
 		var pop: Tween = target_button.create_tween()
 		pop.set_trans(Tween.TRANS_BACK)
 		pop.set_ease(Tween.EASE_OUT)
-		pop.tween_property(target_button, "scale", Vector2.ONE, 0.22)
+		pop.tween_property(target_button, "scale", Vector2.ONE, 0.22 * time_scale)
 
 	overlay.queue_free()
 
