@@ -48,9 +48,9 @@ const CATCH_PARTICLE_COUNT: int = 12
 const CATCH_PARTICLE_SPEED_X: Vector2 = Vector2(-160.0, 160.0)
 const CATCH_PARTICLE_SPEED_Y: Vector2 = Vector2(-260.0, 60.0)
 const UNLOCK_PARTICLE_COUNT: int = 22
-const UNLOCK_PARTICLE_SPEED_X: Vector2 = Vector2(-140.0, 140.0)
-const UNLOCK_PARTICLE_SPEED_Y: Vector2 = Vector2(-320.0, -90.0)
-const UNLOCK_PARTICLE_RADIUS: float = 26.0
+const UNLOCK_PARTICLE_SPEED_X: Vector2 = Vector2(90.0, 210.0)
+const UNLOCK_PARTICLE_SPEED_Y: Vector2 = Vector2(-320.0, -110.0)
+const UNLOCK_PARTICLE_ORIGIN_JITTER: Vector2 = Vector2(6.0, 18.0)
 
 @export var brick_size: Vector2 = Vector2(64, 24)
 @export var brick_gap: Vector2 = Vector2(8, 8)
@@ -2308,6 +2308,11 @@ func _show_unlock_reveal_and_gift(card_id: String) -> void:
 	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(backdrop)
 
+	var particles_root: Node2D = Node2D.new()
+	particles_root.name = "Particles"
+	particles_root.z_index = 1
+	overlay.add_child(particles_root)
+
 	var header: Label = Label.new()
 	header.name = "Header"
 	header.text = "New card unlocked!"
@@ -2319,6 +2324,7 @@ func _show_unlock_reveal_and_gift(card_id: String) -> void:
 	header.offset_bottom = 120.0
 	header.modulate = Color(1, 1, 1, 0)
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.z_index = 30
 	overlay.add_child(header)
 
 	var mover: Control = Control.new()
@@ -2327,6 +2333,7 @@ func _show_unlock_reveal_and_gift(card_id: String) -> void:
 	mover.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mover.modulate = Color(1, 1, 1, 0)
 	mover.pivot_offset = mover.size * 0.5
+	mover.z_index = 20
 	overlay.add_child(mover)
 
 	var card_button: Button = hud_controller.create_card_button(card_id)
@@ -2350,7 +2357,7 @@ func _show_unlock_reveal_and_gift(card_id: String) -> void:
 	intro.parallel().tween_property(mover, "rotation_degrees", -3.0, 0.28 * time_scale)
 	await intro.finished
 
-	_spawn_unlock_particles(start_pos + mover.size * 0.5, particle_color)
+	_spawn_unlock_particle_streams(particles_root, Rect2(start_pos, mover.size), particle_color)
 	header.text = "%s unlocked!" % card_name
 	await get_tree().create_timer(0.55 * time_scale).timeout
 
@@ -2362,10 +2369,8 @@ func _show_unlock_reveal_and_gift(card_id: String) -> void:
 
 	var target_button: Button = _find_hand_button_by_instance_id(new_instance_id)
 	var target_pos: Vector2 = start_pos
-	var target_center: Vector2 = start_pos + mover.size * 0.5
 	if target_button != null:
 		target_pos = target_button.get_global_rect().position
-		target_center = target_button.get_global_rect().get_center()
 		target_button.modulate = Color(1, 1, 1, 0)
 		target_button.scale = Vector2.ONE * 0.92
 
@@ -2381,7 +2386,6 @@ func _show_unlock_reveal_and_gift(card_id: String) -> void:
 
 	if target_button != null:
 		target_button.modulate = Color(1, 1, 1, 1)
-		_spawn_unlock_particles(target_center, particle_color, 10, 14.0)
 		var pop: Tween = target_button.create_tween()
 		pop.set_trans(Tween.TRANS_BACK)
 		pop.set_ease(Tween.EASE_OUT)
@@ -2406,16 +2410,44 @@ func _set_hand_buttons_disabled(disabled: bool) -> void:
 		if child is BaseButton:
 			(child as BaseButton).disabled = disabled
 
-func _spawn_unlock_particles(center: Vector2, color: Color, base_count: int = UNLOCK_PARTICLE_COUNT, radius: float = UNLOCK_PARTICLE_RADIUS) -> void:
+func _spawn_unlock_particle_streams(parent_node: Node, card_rect: Rect2, color: Color, base_count: int = UNLOCK_PARTICLE_COUNT) -> void:
 	var count: int = App.get_vfx_count(base_count)
 	if count <= 0:
 		return
-	var parent_node: Node = get_tree().root
-	if hud != null:
-		parent_node = hud
 	if parent_node == null:
 		return
-	for _i in range(count):
+	var per_side: int = max(1, int(ceil(float(count) * 0.5)))
+	for _i in range(per_side):
+		_spawn_unlock_particle(parent_node, card_rect, color, true)
+	for _i in range(count - per_side):
+		_spawn_unlock_particle(parent_node, card_rect, color, false)
+
+func _spawn_unlock_particle(parent_node: Node, card_rect: Rect2, color: Color, left_side: bool) -> void:
+	if parent_node == null:
+		return
+	var particle := OUTCOME_PARTICLE_SCENE.instantiate()
+	if particle == null:
+		return
+	parent_node.add_child(particle)
+	if particle is Node2D:
+		var node: Node2D = particle as Node2D
+		var side_x: float = card_rect.position.x if left_side else card_rect.position.x + card_rect.size.x
+		var origin := Vector2(
+			side_x,
+			card_rect.position.y + (card_rect.size.y * 0.5)
+		)
+		origin.x += outcome_rng.randf_range(-UNLOCK_PARTICLE_ORIGIN_JITTER.x, UNLOCK_PARTICLE_ORIGIN_JITTER.x)
+		origin.y += outcome_rng.randf_range(-UNLOCK_PARTICLE_ORIGIN_JITTER.y, UNLOCK_PARTICLE_ORIGIN_JITTER.y)
+		node.global_position = origin
+	if particle.has_method("setup"):
+		var x_speed: float = outcome_rng.randf_range(UNLOCK_PARTICLE_SPEED_X.x, UNLOCK_PARTICLE_SPEED_X.y)
+		if left_side:
+			x_speed = -x_speed
+		var velocity: Vector2 = Vector2(
+			x_speed,
+			outcome_rng.randf_range(UNLOCK_PARTICLE_SPEED_Y.x, UNLOCK_PARTICLE_SPEED_Y.y)
+		)
+		particle.call("setup", color, velocity)
 		var particle := OUTCOME_PARTICLE_SCENE.instantiate()
 		if particle == null:
 			continue
