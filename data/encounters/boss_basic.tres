@@ -7,7 +7,7 @@
 script = ExtResource("1")
 id = "boss_basic"
 encounter_kind = "boss"
-rows = 5
+rows = 6
 cols = 10
 base_hp = 2
 pattern_id = "boss_act1"
