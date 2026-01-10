@@ -175,6 +175,11 @@ func _save_progress() -> void:
 	config.set_value("progress", "card_use_counts", _card_use_counts)
 	config.save(PROGRESS_PATH)
 
+func reset_progress() -> void:
+	_unlocked_cards = {}
+	_card_use_counts = {}
+	_save_progress()
+
 func start_new_run(seed_value: int = 0) -> void:
 	_menu_music_restart_after_run = false
 	stop_combat_music()

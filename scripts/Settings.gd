@@ -9,6 +9,9 @@ extends Control
 @onready var sfx_slider: HSlider = $Center/Card/VBox/Tabs/Audio/SfxSlider
 @onready var ball_speed_slider: HSlider = $Center/Card/VBox/Tabs/Gameplay/BallSpeedSlider
 @onready var paddle_speed_slider: HSlider = $Center/Card/VBox/Tabs/Gameplay/PaddleSpeedSlider
+@onready var reset_progress_button: Button = $Center/Card/VBox/Tabs/Gameplay/ResetProgressButton
+@onready var reset_progress_dialog: ConfirmationDialog = $ResetProgressDialog
+@onready var reset_progress_notice: AcceptDialog = $ResetProgressNotice
 @onready var back_button: Button = $Center/Card/VBox/BackButton
 
 const MODE_LABELS: Array[String] = ["Windowed", "Fullscreen"]
@@ -37,6 +40,8 @@ func _ready() -> void:
 	sfx_slider.value_changed.connect(_apply_audio)
 	ball_speed_slider.value_changed.connect(_apply_gameplay)
 	paddle_speed_slider.value_changed.connect(_apply_gameplay)
+	reset_progress_button.pressed.connect(_confirm_reset_progress)
+	reset_progress_dialog.confirmed.connect(_reset_progress)
 	back_button.pressed.connect(_back_to_menu)
 	_sync_window_mode()
 	_sync_resolution()
@@ -96,6 +101,15 @@ func _update_resolution_enabled() -> void:
 
 func _back_to_menu() -> void:
 	App.close_settings()
+
+func _confirm_reset_progress() -> void:
+	if reset_progress_dialog:
+		reset_progress_dialog.popup_centered()
+
+func _reset_progress() -> void:
+	App.reset_progress()
+	if reset_progress_notice:
+		reset_progress_notice.popup_centered()
 
 func _build_resolution_options() -> void:
 	resolution.clear()
