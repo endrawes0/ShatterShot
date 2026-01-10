@@ -47,10 +47,6 @@ const BOUNCE_CATCH_HEAL_AMOUNT: int = 25
 const CATCH_PARTICLE_COUNT: int = 12
 const CATCH_PARTICLE_SPEED_X: Vector2 = Vector2(-160.0, 160.0)
 const CATCH_PARTICLE_SPEED_Y: Vector2 = Vector2(-260.0, 60.0)
-const UNLOCK_PARTICLE_COUNT: int = 22
-const UNLOCK_PARTICLE_SPEED_X: Vector2 = Vector2(90.0, 210.0)
-const UNLOCK_PARTICLE_SPEED_Y: Vector2 = Vector2(-320.0, -110.0)
-const UNLOCK_PARTICLE_ORIGIN_JITTER: Vector2 = Vector2(6.0, 18.0)
 
 @export var brick_size: Vector2 = Vector2(64, 24)
 @export var brick_gap: Vector2 = Vector2(8, 8)
@@ -153,9 +149,7 @@ var _map_label_override_act_index: int = -1
 var card_data: Dictionary = {}
 var card_pool: Array[String] = []
 var starting_deck: Array[String] = []
-var _hand_interaction_locked: bool = false
-var _unlock_reward_queue: Array[String] = []
-var _unlock_sequence_active: bool = false
+var unlock_manager: UnlockManager = null
 var ball_mod_data: Dictionary = {}
 var ball_mod_order: Array[String] = []
 var ball_mod_colors: Dictionary = {}
@@ -302,8 +296,8 @@ func _ready() -> void:
 		hud_controller = HudController.new()
 		add_child(hud_controller)
 		card_emoji_font = load(EMOJI_FONT_PATH)
-		hud_controller.setup({
-		"energy_label": energy_label,
+			hud_controller.setup({
+			"energy_label": energy_label,
 		"deck_label": deck_label,
 		"discard_label": discard_label,
 		"deck_button": deck_button,
@@ -319,11 +313,27 @@ func _ready() -> void:
 		"shop_panel": shop_panel,
 		"deck_panel": deck_panel,
 		"gameover_panel": gameover_panel,
-		"hand_container": hand_container
-	}, card_data, CARD_TYPE_COLORS, CARD_BUTTON_SIZE, card_emoji_font)
-	reward_manager = RewardManager.new()
-	add_child(reward_manager)
-	reward_manager.setup(hud_controller, reward_buttons)
+			"hand_container": hand_container
+		}, card_data, CARD_TYPE_COLORS, CARD_BUTTON_SIZE, card_emoji_font)
+			unlock_manager = App.get_unlock_manager()
+			if unlock_manager != null:
+				unlock_manager.bind_run_context(
+					hud,
+					hud_controller,
+					deck_manager,
+					hand_container,
+					card_data,
+					card_pool,
+					CARD_TYPE_COLORS,
+					CARD_BUTTON_SIZE,
+					OUTCOME_PARTICLE_SCENE,
+					outcome_rng,
+					Callable(self, "_refresh_hand"),
+					Callable(self, "_is_planning_state")
+				)
+		reward_manager = RewardManager.new()
+		add_child(reward_manager)
+		reward_manager.setup(hud_controller, reward_buttons)
 	reward_manager.set_on_selected(Callable(self, "_on_reward_selected"))
 	reward_manager.set_panel_nodes(reward_label, reward_skip_button)
 	reward_manager.set_info_callback(Callable(self, "_set_info_text"))
@@ -543,7 +553,10 @@ func _apply_balance_data(data: Resource) -> void:
 		card_data = data.card_data
 		card_pool = _to_string_array(data.card_pool)
 		starting_deck = _to_string_array(data.starting_deck)
-	card_pool = App.filter_unlocked_cards(card_pool)
+	var manager: UnlockManager = App.get_unlock_manager()
+	if manager != null:
+		card_pool = manager.filter_unlocked_cards(card_pool)
+		manager.update_card_context(card_data, card_pool)
 	var mods: Dictionary = data.ball_mods
 	ball_mod_data = mods.get("data", {})
 	ball_mod_order = _to_string_array(mods.get("order", []))
@@ -2229,10 +2242,13 @@ func _discard_hand() -> void:
 	_refresh_hand()
 
 func _refresh_hand() -> void:
-	hud_controller.refresh_hand(deck_manager.hand, _hand_interaction_locked or state != GameState.PLANNING, Callable(self, "_play_card"))
+	var locked: bool = false
+	if unlock_manager != null:
+		locked = unlock_manager.is_hand_interaction_locked()
+	hud_controller.refresh_hand(deck_manager.hand, locked or state != GameState.PLANNING, Callable(self, "_play_card"))
 
 func _play_card(instance_id: int) -> void:
-	if _hand_interaction_locked or _unlock_sequence_active:
+	if unlock_manager != null and (unlock_manager.is_hand_interaction_locked() or unlock_manager.is_unlock_sequence_active()):
 		return
 	if state != GameState.PLANNING:
 		return
@@ -2248,206 +2264,18 @@ func _play_card(instance_id: int) -> void:
 		return
 	energy -= cost
 	var should_discard: bool = _apply_card_effect(card_id, instance_id)
-	var newly_unlocked: Array[String] = App.record_card_played(card_id)
-	if not newly_unlocked.is_empty():
-		_enqueue_unlock_rewards(newly_unlocked)
+	if unlock_manager != null:
+		var newly_unlocked: Array[String] = unlock_manager.record_card_played(card_id)
+		if not newly_unlocked.is_empty():
+			unlock_manager.enqueue_unlock_rewards(newly_unlocked)
 	if should_discard:
 		deck_manager.discard_card_instance(instance_id)
 	_refresh_hand()
 	_update_reserve_indicator()
 	_update_labels()
 
-func _enqueue_unlock_rewards(card_ids: Array[String]) -> void:
-	for card_id in card_ids:
-		var id: String = String(card_id)
-		if id.is_empty():
-			continue
-		_unlock_reward_queue.append(id)
-	if _unlock_sequence_active:
-		return
-	_unlock_sequence_active = true
-	_hand_interaction_locked = true
-	_refresh_hand()
-	_run_unlock_reward_queue()
-
-func _run_unlock_reward_queue() -> void:
-	while not _unlock_reward_queue.is_empty():
-		var unlock_id: String = String(_unlock_reward_queue.pop_front())
-		if unlock_id.is_empty():
-			continue
-		if not card_pool.has(unlock_id):
-			card_pool.append(unlock_id)
-		await _show_unlock_reveal_and_gift(unlock_id)
-	_unlock_sequence_active = false
-	_hand_interaction_locked = false
-	_set_hand_buttons_disabled(state != GameState.PLANNING)
-
-func _show_unlock_reveal_and_gift(card_id: String) -> void:
-	if hud == null or hud_controller == null:
-		return
-	var time_scale: float = 2.0
-	var card: Dictionary = card_data.get(card_id, {})
-	var card_name: String = String(card.get("name", card_id))
-	var card_type: String = String(card.get("type", "utility"))
-	var particle_color: Color = Color(0.95, 0.85, 0.25, 1.0)
-	if CARD_TYPE_COLORS.has(card_type):
-		particle_color = CARD_TYPE_COLORS[card_type]
-	particle_color.a = 1.0
-
-	var overlay: Control = Control.new()
-	overlay.name = "CardUnlockOverlay"
-	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	overlay.focus_mode = Control.FOCUS_ALL
-	hud.add_child(overlay)
-
-	var backdrop: ColorRect = ColorRect.new()
-	backdrop.name = "Backdrop"
-	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	backdrop.color = Color(0, 0, 0, 0.0)
-	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overlay.add_child(backdrop)
-
-	var particles_root: Node2D = Node2D.new()
-	particles_root.name = "Particles"
-	particles_root.z_index = 1
-	overlay.add_child(particles_root)
-
-	var header: Label = Label.new()
-	header.name = "Header"
-	header.text = "New card unlocked!"
-	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	header.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	header.add_theme_font_size_override("font_size", 22)
-	header.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	header.offset_top = 80.0
-	header.offset_bottom = 120.0
-	header.modulate = Color(1, 1, 1, 0)
-	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	header.z_index = 30
-	overlay.add_child(header)
-
-	var mover: Control = Control.new()
-	mover.name = "CardMover"
-	mover.size = CARD_BUTTON_SIZE
-	mover.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mover.modulate = Color(1, 1, 1, 0)
-	mover.pivot_offset = mover.size * 0.5
-	mover.z_index = 20
-	overlay.add_child(mover)
-
-	var card_button: Button = hud_controller.create_card_button(card_id)
-	card_button.disabled = true
-	card_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card_button.set_anchors_preset(Control.PRESET_FULL_RECT)
-	mover.add_child(card_button)
-
-	var viewport_rect: Rect2 = get_viewport().get_visible_rect()
-	var start_pos: Vector2 = viewport_rect.position + (viewport_rect.size * 0.5) - (mover.size * 0.5)
-	mover.global_position = start_pos
-	mover.scale = Vector2.ONE * 0.6
-
-	var intro: Tween = create_tween()
-	intro.set_trans(Tween.TRANS_BACK)
-	intro.set_ease(Tween.EASE_OUT)
-	intro.tween_property(backdrop, "color", Color(0, 0, 0, 0.55), 0.18 * time_scale)
-	intro.parallel().tween_property(header, "modulate", Color(1, 1, 1, 1), 0.12 * time_scale)
-	intro.parallel().tween_property(mover, "modulate", Color(1, 1, 1, 1), 0.12 * time_scale)
-	intro.parallel().tween_property(mover, "scale", Vector2.ONE, 0.28 * time_scale)
-	intro.parallel().tween_property(mover, "rotation_degrees", -3.0, 0.28 * time_scale)
-	await intro.finished
-
-	_spawn_unlock_particle_streams(particles_root, Rect2(start_pos, mover.size), particle_color)
-	header.text = "%s unlocked!" % card_name
-	await get_tree().create_timer(0.55 * time_scale).timeout
-
-	var new_instance_id: int = -1
-	if deck_manager != null:
-		new_instance_id = deck_manager.add_card_to_hand_with_instance_id(card_id, true)
-	_refresh_hand()
-	await get_tree().process_frame
-
-	var target_button: Button = _find_hand_button_by_instance_id(new_instance_id)
-	var target_pos: Vector2 = start_pos
-	if target_button != null:
-		target_pos = target_button.get_global_rect().position
-		target_button.modulate = Color(1, 1, 1, 0)
-		target_button.scale = Vector2.ONE * 0.92
-
-	var outro: Tween = create_tween()
-	outro.set_trans(Tween.TRANS_QUAD)
-	outro.set_ease(Tween.EASE_IN_OUT)
-	outro.tween_property(mover, "global_position", target_pos, 0.34 * time_scale)
-	outro.parallel().tween_property(mover, "scale", Vector2.ONE * 0.78, 0.34 * time_scale)
-	outro.parallel().tween_property(mover, "rotation_degrees", 0.0, 0.34 * time_scale)
-	outro.parallel().tween_property(backdrop, "color", Color(0, 0, 0, 0.0), 0.28 * time_scale)
-	outro.parallel().tween_property(header, "modulate", Color(1, 1, 1, 0), 0.18 * time_scale)
-	await outro.finished
-
-	if target_button != null:
-		target_button.modulate = Color(1, 1, 1, 1)
-		var pop: Tween = target_button.create_tween()
-		pop.set_trans(Tween.TRANS_BACK)
-		pop.set_ease(Tween.EASE_OUT)
-		pop.tween_property(target_button, "scale", Vector2.ONE, 0.22 * time_scale)
-
-	overlay.queue_free()
-
-func _find_hand_button_by_instance_id(instance_id: int) -> Button:
-	if instance_id < 0 or hand_container == null:
-		return null
-	for child in hand_container.get_children():
-		if child is Button:
-			var button: Button = child as Button
-			if button.has_meta("instance_id") and int(button.get_meta("instance_id")) == instance_id:
-				return button
-	return null
-
-func _set_hand_buttons_disabled(disabled: bool) -> void:
-	if hand_container == null:
-		return
-	for child in hand_container.get_children():
-		if child is BaseButton:
-			(child as BaseButton).disabled = disabled
-
-func _spawn_unlock_particle_streams(parent_node: Node, card_rect: Rect2, color: Color, base_count: int = UNLOCK_PARTICLE_COUNT) -> void:
-	var count: int = App.get_vfx_count(base_count)
-	if count <= 0:
-		return
-	if parent_node == null:
-		return
-	var per_side: int = max(1, int(ceil(float(count) * 0.5)))
-	for _i in range(per_side):
-		_spawn_unlock_particle(parent_node, card_rect, color, true)
-	for _i in range(count - per_side):
-		_spawn_unlock_particle(parent_node, card_rect, color, false)
-
-func _spawn_unlock_particle(parent_node: Node, card_rect: Rect2, color: Color, left_side: bool) -> void:
-	if parent_node == null:
-		return
-	var particle := OUTCOME_PARTICLE_SCENE.instantiate()
-	if particle == null:
-		return
-	parent_node.add_child(particle)
-	if particle is Node2D:
-		var node: Node2D = particle as Node2D
-		var side_x: float = card_rect.position.x if left_side else card_rect.position.x + card_rect.size.x
-		var origin := Vector2(
-			side_x,
-			card_rect.position.y + (card_rect.size.y * 0.5)
-		)
-		origin.x += outcome_rng.randf_range(-UNLOCK_PARTICLE_ORIGIN_JITTER.x, UNLOCK_PARTICLE_ORIGIN_JITTER.x)
-		origin.y += outcome_rng.randf_range(-UNLOCK_PARTICLE_ORIGIN_JITTER.y, UNLOCK_PARTICLE_ORIGIN_JITTER.y)
-		node.global_position = origin
-	if particle.has_method("setup"):
-		var x_speed: float = outcome_rng.randf_range(UNLOCK_PARTICLE_SPEED_X.x, UNLOCK_PARTICLE_SPEED_X.y)
-		if left_side:
-			x_speed = -x_speed
-		var velocity: Vector2 = Vector2(
-			x_speed,
-			outcome_rng.randf_range(UNLOCK_PARTICLE_SPEED_Y.x, UNLOCK_PARTICLE_SPEED_Y.y)
-		)
-		particle.call("setup", color, velocity)
+func _is_planning_state() -> bool:
+	return state == GameState.PLANNING
 
 func _apply_card_effect(card_id: String, instance_id: int) -> bool:
 	if card_effect_registry == null:

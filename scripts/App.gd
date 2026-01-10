@@ -5,7 +5,6 @@ const RUN_SCENE: PackedScene = preload("res://scenes/Main.tscn")
 const HELP_SCENE: PackedScene = preload("res://scenes/Help.tscn")
 const SETTINGS_SCENE: PackedScene = preload("res://scenes/Settings.tscn")
 const SETTINGS_PATH: String = "user://settings.cfg"
-const PROGRESS_PATH: String = "user://progress.cfg"
 const FALLBACK_BASE_RESOLUTION: Vector2i = Vector2i(800, 600)
 const UI_SCALE: float = 0.75
 const UI_PARTICLE_SCENE: PackedScene = preload("res://scenes/HitParticle.tscn")
@@ -16,6 +15,7 @@ const UI_PARTICLE_SPEED_Y: Vector2 = Vector2(-220.0, -80.0)
 const NEUTRAL_BUTTON_NORMAL: Color = Color(0.14, 0.14, 0.16)
 const NEUTRAL_BUTTON_HOVER: Color = Color(0.18, 0.18, 0.22)
 const NEUTRAL_BUTTON_PRESSED: Color = Color(0.12, 0.12, 0.14)
+const UnlockManagerScript = preload("res://scripts/managers/UnlockManager.gd")
 
 var menu_instance: Node = null
 var run_instance: Node = null
@@ -36,26 +36,7 @@ var _settings_vfx_intensity: float = 1.0
 var _settings_ball_speed_multiplier: float = 1.0
 var _settings_paddle_speed_multiplier: float = 1.0
 var _test_lab_unlocked: bool = false
-var _unlocked_cards: Dictionary = {}
-var _card_use_counts: Dictionary = {}
-
-const CARD_UNLOCK_REQUIREMENTS: Dictionary = {
-	"moab": {
-		"type": "use_card",
-		"card_id": "bomb",
-		"count": 5
-	},
-	"riposte": {
-		"type": "use_card",
-		"card_id": "parry",
-		"count": 10
-	},
-	"what_doesnt_kill_us": {
-		"type": "use_card",
-		"card_id": "wound",
-		"count": 10
-	}
-}
+var unlock_manager: UnlockManager = null
 
 func _ready() -> void:
 	_ui_particle_rng.randomize()
@@ -63,7 +44,7 @@ func _ready() -> void:
 	_ensure_paddle_keyboard_inputs()
 	_apply_global_theme()
 	_apply_saved_settings()
-	_load_progress()
+	_ensure_unlock_manager()
 	_refresh_layout_cache()
 	_connect_window_signals()
 	start_menu_music()
@@ -119,66 +100,21 @@ func set_test_lab_unlocked(unlocked: bool) -> void:
 func is_test_lab_unlocked() -> bool:
 	return _test_lab_unlocked
 
-func is_card_unlocked(card_id: String) -> bool:
-	if not CARD_UNLOCK_REQUIREMENTS.has(card_id):
-		return true
-	return bool(_unlocked_cards.get(card_id, false))
-
-func filter_unlocked_cards(card_ids: Array[String]) -> Array[String]:
-	var filtered: Array[String] = []
-	for card_id in card_ids:
-		if is_card_unlocked(card_id):
-			filtered.append(card_id)
-	return filtered
-
-func record_card_played(card_id: String) -> Array[String]:
-	var unlocked: Array[String] = []
-	var previous: int = int(_card_use_counts.get(card_id, 0))
-	_card_use_counts[card_id] = previous + 1
-
-	for unlocked_card_id in CARD_UNLOCK_REQUIREMENTS.keys():
-		var unlock_id: String = String(unlocked_card_id)
-		if is_card_unlocked(unlock_id):
-			continue
-		var requirement: Dictionary = CARD_UNLOCK_REQUIREMENTS.get(unlock_id, {})
-		if String(requirement.get("type", "")) != "use_card":
-			continue
-		var required_card_id: String = String(requirement.get("card_id", ""))
-		if required_card_id != card_id:
-			continue
-		var required_count: int = int(requirement.get("count", 0))
-		var played_count: int = int(_card_use_counts.get(required_card_id, 0))
-		if required_count > 0 and played_count >= required_count:
-			_unlocked_cards[unlock_id] = true
-			unlocked.append(unlock_id)
-
-	_save_progress()
-	return unlocked
-
-func _load_progress() -> void:
-	var config := ConfigFile.new()
-	var err: int = config.load(PROGRESS_PATH)
-	_unlocked_cards = {}
-	_card_use_counts = {}
-	if err == OK:
-		var loaded_unlocked: Variant = config.get_value("progress", "unlocked_cards", {})
-		if typeof(loaded_unlocked) == TYPE_DICTIONARY:
-			_unlocked_cards = loaded_unlocked
-		var loaded_counts: Variant = config.get_value("progress", "card_use_counts", {})
-		if typeof(loaded_counts) == TYPE_DICTIONARY:
-			_card_use_counts = loaded_counts
-
-func _save_progress() -> void:
-	var config := ConfigFile.new()
-	config.load(PROGRESS_PATH)
-	config.set_value("progress", "unlocked_cards", _unlocked_cards)
-	config.set_value("progress", "card_use_counts", _card_use_counts)
-	config.save(PROGRESS_PATH)
-
 func reset_progress() -> void:
-	_unlocked_cards = {}
-	_card_use_counts = {}
-	_save_progress()
+	_ensure_unlock_manager()
+	if unlock_manager != null:
+		unlock_manager.reset_progress()
+
+func get_unlock_manager() -> UnlockManager:
+	_ensure_unlock_manager()
+	return unlock_manager
+
+func _ensure_unlock_manager() -> void:
+	if unlock_manager != null and is_instance_valid(unlock_manager):
+		return
+	unlock_manager = UnlockManagerScript.new()
+	add_child(unlock_manager)
+	unlock_manager.load_progress()
 
 func start_new_run(seed_value: int = 0) -> void:
 	_menu_music_restart_after_run = false
