@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/binder-entry.schema.json",
+  "title": "Binder Entry Frontmatter Schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "title",
+    "status",
+    "domain",
+    "tags",
+    "owners",
+    "created",
+    "last_reviewed",
+    "source"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "description": "Globally unique entry id in kebab-case."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 120
+    },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "stable", "deprecated"]
+    },
+    "domain": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "description": "Domain folder name, kebab-case."
+    },
+    "tags": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      },
+      "uniqueItems": true
+    },
+    "owners": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 2 },
+      "description": "Team or handle responsible for accuracy (e.g., platform-team, @org/team)."
+    },
+    "created": {
+      "type": "string",
+      "format": "date"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "applies_to": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true,
+      "description": "Optional list of services/repos this guidance applies to."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["internal", "external", "mixed"],
+      "description": "Where the guidance came from."
+    },
+    "references": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true,
+      "description": "Optional links or pointers to PRs, RFCs, docs, runbooks."
+    },
+    "supersedes": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+      "uniqueItems": true,
+      "description": "Optional list of entry ids superseded by this entry."
+    },
+    "security": {
+      "type": "string",
+      "enum": ["public", "internal", "restricted"],
+      "default": "internal",
+      "description": "Intended sensitivity level; do not include secrets regardless."
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "Optional author notes, assumptions, or caveats."
+    }
+  }
+}
+

@@ -12,6 +12,9 @@
 .DS_Store
 Thumbs.db
 
+# Local dev
+.dev-tmux.json
+
 # Builds
 builds/
 .release_extract/
