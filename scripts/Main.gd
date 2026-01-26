@@ -1137,6 +1137,10 @@ func _begin_encounter(is_elite: bool, is_boss: bool) -> void:
 	_hide_all_panels()
 	_clear_all_balls_for_new_layout()
 	post_clear_catch_active = false
+	if not _is_persist_enabled():
+		active_ball_mod = ""
+		_apply_ball_mod_to_active_balls()
+		_refresh_mod_buttons()
 	current_is_elite = is_elite
 	encounter_has_launched = false
 	App.stop_rest_music()
