@@ -1,0 +1,24 @@
+name: Binder CI
+
+on:
+  pull_request:
+    paths:
+      - "binder/**"
+
+jobs:
+  binder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install binder CLI
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "git+https://github.com/endrawes0/binder@main"
+      - name: Validate entries
+        run: binder validate .
+      - name: Check indexes
+        run: binder build-index . --check
+
