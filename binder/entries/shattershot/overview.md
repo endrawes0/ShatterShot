@@ -32,8 +32,10 @@ references: ["README.md", "PROJECT_DESCRIPTION.md"]
   - `scenes/Main.tscn` (core combat scene)
 
 ## Pitfalls
-- Copying large tables or long design docs into Binder; link to `GAMEPLAY.md` / `data/balance/` instead.
-- Relying on Binder over the running project when they disagree.
+- Mixing responsibilities between phases: keep deck/energy/card effects in `PLANNING` and physics/resolution in `VOLLEY`.
+- Hard-coding balance values in scripts instead of updating `data/balance/` (and the derived reference in `GAMEPLAY.md`).
+- Editing `project.godot` manually for complex changes (prefer the editor UI) and accidentally breaking autoloads/settings.
+- Adding state transitions without updating HUD/input gating (card play should be disabled outside `PLANNING`).
 
 ## Verification
 - Run the game and confirm you can reach the main menu and start a run.
