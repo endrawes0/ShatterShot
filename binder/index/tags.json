@@ -1,0 +1,75 @@
+{
+  "architecture": [
+    "shattershot-project-structure"
+  ],
+  "balance": [
+    "shattershot-balance-data"
+  ],
+  "breakout": [
+    "shattershot-overview"
+  ],
+  "builds": [
+    "shattershot-export-and-release"
+  ],
+  "cards": [
+    "shattershot-balance-data"
+  ],
+  "combat": [
+    "shattershot-gameplay-loop"
+  ],
+  "data": [
+    "shattershot-balance-data",
+    "shattershot-project-structure"
+  ],
+  "deck-builder": [
+    "shattershot-gameplay-loop",
+    "shattershot-overview"
+  ],
+  "development": [
+    "shattershot-run-locally"
+  ],
+  "export": [
+    "shattershot-export-and-release"
+  ],
+  "gameplay": [
+    "shattershot-gameplay-loop"
+  ],
+  "godot": [
+    "shattershot-export-and-release",
+    "shattershot-overview",
+    "shattershot-project-structure",
+    "shattershot-run-locally"
+  ],
+  "mods": [
+    "shattershot-balance-data"
+  ],
+  "release": [
+    "shattershot-export-and-release"
+  ],
+  "roguelike": [
+    "shattershot-overview"
+  ],
+  "run": [
+    "shattershot-run-locally"
+  ],
+  "scenes": [
+    "shattershot-project-structure"
+  ],
+  "scripts": [
+    "shattershot-project-structure"
+  ],
+  "shattershot": [
+    "shattershot-balance-data",
+    "shattershot-export-and-release",
+    "shattershot-gameplay-loop",
+    "shattershot-overview",
+    "shattershot-project-structure",
+    "shattershot-run-locally"
+  ],
+  "shop": [
+    "shattershot-balance-data"
+  ],
+  "state-machine": [
+    "shattershot-gameplay-loop"
+  ]
+}

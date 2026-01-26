@@ -1,0 +1,170 @@
+[
+  {
+    "applies_to": [
+      "shattershot"
+    ],
+    "created": "2026-01-26",
+    "domain": "shattershot",
+    "id": "shattershot-balance-data",
+    "last_reviewed": "2026-01-26",
+    "owners": [
+      "@endrawes0"
+    ],
+    "path": "binder/entries/shattershot/balance-data.md",
+    "references": [
+      "GAMEPLAY.md",
+      "data/balance/cards.tres",
+      "data/balance/basic.tres"
+    ],
+    "source": "internal",
+    "status": "stable",
+    "tags": [
+      "shattershot",
+      "balance",
+      "data",
+      "cards",
+      "mods",
+      "shop"
+    ],
+    "title": "ShatterShot balance data (cards, mods, buffs)"
+  },
+  {
+    "applies_to": [
+      "shattershot"
+    ],
+    "created": "2026-01-26",
+    "domain": "shattershot",
+    "id": "shattershot-export-and-release",
+    "last_reviewed": "2026-01-26",
+    "owners": [
+      "@endrawes0"
+    ],
+    "path": "binder/entries/shattershot/export-and-release.md",
+    "references": [
+      "EXPORTING.md",
+      "export_presets.cfg"
+    ],
+    "source": "internal",
+    "status": "stable",
+    "tags": [
+      "shattershot",
+      "export",
+      "release",
+      "godot",
+      "builds"
+    ],
+    "title": "Export and release ShatterShot"
+  },
+  {
+    "applies_to": [
+      "shattershot"
+    ],
+    "created": "2026-01-26",
+    "domain": "shattershot",
+    "id": "shattershot-gameplay-loop",
+    "last_reviewed": "2026-01-26",
+    "owners": [
+      "@endrawes0"
+    ],
+    "path": "binder/entries/shattershot/gameplay-loop.md",
+    "references": [
+      "README.md",
+      "PROJECT_DESCRIPTION.md",
+      "scripts/Main.gd"
+    ],
+    "source": "internal",
+    "status": "stable",
+    "tags": [
+      "shattershot",
+      "gameplay",
+      "state-machine",
+      "combat",
+      "deck-builder"
+    ],
+    "title": "ShatterShot gameplay loop and states"
+  },
+  {
+    "applies_to": [
+      "shattershot"
+    ],
+    "created": "2026-01-26",
+    "domain": "shattershot",
+    "id": "shattershot-overview",
+    "last_reviewed": "2026-01-26",
+    "owners": [
+      "@endrawes0"
+    ],
+    "path": "binder/entries/shattershot/overview.md",
+    "references": [
+      "README.md",
+      "PROJECT_DESCRIPTION.md"
+    ],
+    "source": "internal",
+    "status": "stable",
+    "tags": [
+      "shattershot",
+      "godot",
+      "roguelike",
+      "deck-builder",
+      "breakout"
+    ],
+    "title": "ShatterShot overview"
+  },
+  {
+    "applies_to": [
+      "shattershot"
+    ],
+    "created": "2026-01-26",
+    "domain": "shattershot",
+    "id": "shattershot-project-structure",
+    "last_reviewed": "2026-01-26",
+    "owners": [
+      "@endrawes0"
+    ],
+    "path": "binder/entries/shattershot/project-structure.md",
+    "references": [
+      "README.md",
+      "DEVELOPMENT.md",
+      "project.godot"
+    ],
+    "source": "internal",
+    "status": "stable",
+    "tags": [
+      "shattershot",
+      "godot",
+      "architecture",
+      "scenes",
+      "scripts",
+      "data"
+    ],
+    "title": "ShatterShot project structure"
+  },
+  {
+    "applies_to": [
+      "shattershot"
+    ],
+    "created": "2026-01-26",
+    "domain": "shattershot",
+    "id": "shattershot-run-locally",
+    "last_reviewed": "2026-01-26",
+    "owners": [
+      "@endrawes0"
+    ],
+    "path": "binder/entries/shattershot/run-locally.md",
+    "references": [
+      "README.md",
+      "DEVELOPMENT.md",
+      "start.sh",
+      "project.godot"
+    ],
+    "source": "internal",
+    "status": "stable",
+    "tags": [
+      "shattershot",
+      "godot",
+      "development",
+      "run"
+    ],
+    "title": "Run ShatterShot locally"
+  }
+]
